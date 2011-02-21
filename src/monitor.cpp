@@ -28,43 +28,54 @@
 #include <string>
 #include <iostream>
 
+#include "mainloop.h"
+
 using namespace std;
 using namespace qmf;
 using qpid::types::Variant;
 using qpid::messaging::Duration;
 
-int main(int argc, char** argv)
+static gboolean
+monitor_timeout(gpointer data)
+{
+	ConsoleSession *session = (ConsoleSession *)data;
+	ConsoleEvent event;
+
+	if (session->nextEvent(event)) {
+		if (event.getType() == CONSOLE_EVENT) {
+			const Data& data(event.getData(0));
+			cout << " content=" << data.getProperties() << endl;
+		}
+	}
+
+	return TRUE;
+}
+
+int monitor_new_host(std::string& host_url)
 {
 	string connectionOptions;
 	string sessionOptions;
-	string url;
+	int rc;
 
-	if (argc > 1) {
-		url = argv[1];
-	} else {
-		url = "localhost";
-	}
-	if (argc > 2)
-		connectionOptions = argv[2];
-	if (argc > 3)
-		sessionOptions = argv[3];
-
-	qpid::messaging::Connection connection(url, connectionOptions);
+	qpid::messaging::Connection connection(host_url, connectionOptions);
 	connection.open();
 
 	ConsoleSession session(connection, sessionOptions);
 	session.open();
 
-	while (true) {
-		ConsoleEvent event;
-		if (session.nextEvent(event)) {
-			if (event.getType() == CONSOLE_EVENT) {
-				const Data& data(event.getData(0));
-				//cout << "Event: timestamp=" << event.getTimestamp() << " severity=" <<
-				//    event.getSeverity() << " content=" << data.getProperties() << endl;
-				cout << " content=" << data.getProperties() << endl;
-			}
-		}
+	rc = g_timeout_add(3,
+                      monitor_timeout,
+		      &session);
+
+	if (rc > 0) {
+		return 0;
+	} else {
+		return -1;
 	}
+}
+
+int monitor_del_host(string& host_url)
+{
+	return 0;
 }
 
