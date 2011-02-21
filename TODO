@@ -1,0 +1,45 @@
+
+#
+# for now all on the same broker
+#
+QPID_MANAGER_HOST="localhost"
+QPID_MANAGER_PORT=49000
+QPID_DEPLOY_HOST="localhost"
+QPID_DEPLOY_PORT=49000
+
+# start broker
+#
+qpidd -p $QPID_MANAGER_PORT --auth no
+
+#
+# start Policy Engine
+#
+cped -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT
+
+add_host() {
+	if [ $1 = "localhost" ]
+	then
+		SSH_CMD=""
+	else
+		SSH_CMD="ssh $1 "
+	fi
+	$SSH_CMD "matahari-hostd -b $QPID_DEPLOY_HOST -p $QPID_DEPLOY_PORT -d"
+	sleep 1
+	conductor-dummy -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT --add $1
+}
+
+del_host() {
+	if [ $1 = "localhost" ]
+	then
+		SSH_CMD=""
+	else
+		SSH_CMD="ssh $1 "
+	fi
+	conductor-dummy -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT --del $1
+	$SSH_CMD "killall matahari-hostd"
+}
+
+add_host localhost
+del_host localhost
+
+

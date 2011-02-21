@@ -1,0 +1,13 @@
+<schema package="org.cloudpolicyengine">
+
+<!-- deployable API -->
+ <class name="Deployable">
+   <!-- APIs -->
+   <method name="host_add"      desc="Tells the host to beep its pc speaker.">
+     <arg name="name"           dir="I" type="sstr" />
+   </method>
+   <method name="host_del"        desc="Shutdown node">
+     <arg name="name"           dir="I" type="sstr" />
+   </method>
+ </class>
+</schema>
