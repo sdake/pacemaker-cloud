@@ -1,0 +1,20 @@
+
+
+qpidd -p 49000 --auth no
+matahari-hostd -p 49000 -b localhost
+
+./src/cped
+
+
+# in another shell
+qpid-tool localhost:49000
+qpid: list deployable
+Object Summary:
+    ID   Created   Destroyed  Index
+    =============================================================
+    101  01:04:26  -          org.cloudpolicyengine:deployable
+
+call 101 host_add localhost
+qpid: OK (0) - {}
+
+

@@ -36,7 +36,7 @@ $(qmfauto_c): schema.xml
 	qmf-gen schema.xml
 
 
-cped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp monitor.cpp
+cped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp assembly.cpp
 cped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
 cped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
 

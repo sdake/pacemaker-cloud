@@ -26,13 +26,9 @@
 
 #include <qpid/agent/ManagementAgent.h>
 #include "agent.h"
-//#include "monitor.h"
-
-extern int monitor_new_host(std::string& host_url);
-extern int monitor_del_host(std::string& host_url);
+#include "assembly.h"
 
 using namespace std;
-
 
 extern "C" {
 #include <stdlib.h>
@@ -87,7 +83,7 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 		cout << "request to add " << ioArgs.i_name << endl;
 		url = ioArgs.i_name;
 		url += ":49000";
-		if (monitor_new_host(url) == 0) {
+		if (assembly_monitor_start(url) == 0) {
 			rc = Manageable::STATUS_OK;
 		} else {
 			rc = Manageable::STATUS_PARAMETER_INVALID;
@@ -101,7 +97,7 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 		url = ioArgs.i_name;
 		url += ":49000";
 		cout << "request to delete " << ioArgs.i_name << endl;
-		if (monitor_del_host(url) == 0) {
+		if (assembly_monitor_stop(url) == 0) {
 			rc = Manageable::STATUS_OK;
 		} else {
 			rc = Manageable::STATUS_PARAMETER_INVALID;

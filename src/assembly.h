@@ -26,56 +26,30 @@
 #include <qmf/Data.h>
 #include <qpid/types/Variant.h>
 #include <string>
-#include <iostream>
 
-#include "mainloop.h"
+class Assembly {
+  private:
+	std::string connectionOptions;
+	std::string sessionOptions;
+	qmf::ConsoleSession *session;
+	qpid::messaging::Connection *connection;
+  public:
+	std::string name;
+	bool is_connected;
+	int refcount;
 
-using namespace std;
-using namespace qmf;
-using qpid::types::Variant;
-using qpid::messaging::Duration;
+	Assembly();
+	Assembly(std::string& host_url);
+	~Assembly();
 
-static gboolean
-monitor_timeout(gpointer data)
-{
-	ConsoleSession *session = (ConsoleSession *)data;
-	ConsoleEvent event;
+	bool nextEvent(qmf::ConsoleEvent&);
+	void stop(void);
+	void deref(void);
+};
 
-	if (session->nextEvent(event)) {
-		if (event.getType() == CONSOLE_EVENT) {
-			const Data& data(event.getData(0));
-			cout << " content=" << data.getProperties() << endl;
-		}
-	}
 
-	return TRUE;
-}
+int assembly_monitor_start(std::string& host_url);
+int assembly_monitor_stop(std::string& host_url);
 
-int monitor_new_host(std::string& host_url)
-{
-	string connectionOptions;
-	string sessionOptions;
-	int rc;
 
-	qpid::messaging::Connection connection(host_url, connectionOptions);
-	connection.open();
-
-	ConsoleSession session(connection, sessionOptions);
-	session.open();
-
-	rc = g_timeout_add(3,
-                      monitor_timeout,
-		      &session);
-
-	if (rc > 0) {
-		return 0;
-	} else {
-		return -1;
-	}
-}
-
-int monitor_del_host(string& host_url)
-{
-	return 0;
-}
 
