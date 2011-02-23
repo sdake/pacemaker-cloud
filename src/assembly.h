@@ -44,12 +44,15 @@ class Assembly {
 
 	bool nextEvent(qmf::ConsoleEvent&);
 	void stop(void);
+	int status(void);
+
 	void deref(void);
 };
 
 
 int assembly_monitor_start(std::string& host_url);
 int assembly_monitor_stop(std::string& host_url);
+int assembly_monitor_status(std::string& host_url);
 
 
 

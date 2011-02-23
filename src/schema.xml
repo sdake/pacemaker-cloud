@@ -1,13 +1,44 @@
 <schema package="org.cloudpolicyengine">
 
 <!-- deployable API -->
- <class name="Deployable">
+<class name="Deployable">
+
+   <property name="name"         type="sstr"   access="RO" desc="Deployable name" />
+   <property name="uuid"         type="sstr"   access="RO" desc="Deployable UUID" index="y" />
+
    <!-- APIs -->
-   <method name="host_add"      desc="Tells the host to beep its pc speaker.">
-     <arg name="name"           dir="I" type="sstr" />
+   <method name="assembly_add"      desc="Add an assembly to the deployable.">
+     <arg name="name"               dir="I" type="sstr"/>
+     <arg name="rc"                 dir="O"  type="uint32"/>
    </method>
-   <method name="host_del"        desc="Shutdown node">
-     <arg name="name"           dir="I" type="sstr" />
+   <method name="assembly_remove"   desc="Remove an assembly from the deployable">
+     <arg name="name"               dir="I" type="sstr" />
+     <arg name="rc"                 dir="O"  type="uint32"/>
    </method>
+   <method name="assembly_status"   desc="Check the health of an assembly">
+     <arg name="name"               dir="I" type="sstr" />
+     <arg name="rc"                 dir="O"  type="uint32"/>
+   </method>
+   <method name="assemblies_list"   desc="List known assemblies">
+     <arg name="assemblies"         dir="O"  type="list"/>
+   </method>
+
+   <method name="service_add"           desc="Add a service to the deployable.">
+     <arg name="name"           dir="I" type="sstr"/>
+     <arg name="rc"             dir="O"  type="uint32"/>
+   </method>
+   <method name="service_remove"        desc="Remove a service from the deployable">
+     <arg name="name"           dir="I" type="sstr" />
+     <arg name="rc"             dir="O"  type="uint32"/>
+   </method>
+   <method name="service_status"        desc="Check the health of a service">
+     <arg name="name"           dir="I" type="sstr" />
+     <arg name="rc"             dir="O"  type="uint32"/>
+   </method>
+   <method name="services_list"          desc="List services">
+     <arg name="assemblies"     dir="O"  type="list"/>
+   </method>
+
  </class>
+
 </schema>

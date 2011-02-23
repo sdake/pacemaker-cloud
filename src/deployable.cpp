@@ -21,8 +21,10 @@
 #include <iostream>
 
 #include "org/cloudpolicyengine/Deployable.h"
-#include "org/cloudpolicyengine/ArgsDeployableHost_add.h"
-#include "org/cloudpolicyengine/ArgsDeployableHost_del.h"
+#include "org/cloudpolicyengine/ArgsDeployableAssembly_add.h"
+#include "org/cloudpolicyengine/ArgsDeployableAssembly_remove.h"
+#include "org/cloudpolicyengine/ArgsDeployableAssembly_status.h"
+#include "org/cloudpolicyengine/ArgsDeployableAssemblies_list.h"
 
 #include <qpid/agent/ManagementAgent.h>
 #include "agent.h"
@@ -77,9 +79,9 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 
 	switch(method)
 	{
-	case _qmf::Deployable::METHOD_HOST_ADD:
+	case _qmf::Deployable::METHOD_ASSEMBLY_ADD:
 		{
-		_qmf::ArgsDeployableHost_add& ioArgs = (_qmf::ArgsDeployableHost_add&) arguments;
+		_qmf::ArgsDeployableAssembly_add& ioArgs = (_qmf::ArgsDeployableAssembly_add&) arguments;
 		cout << "request to add " << ioArgs.i_name << endl;
 		url = ioArgs.i_name;
 		url += ":49000";
@@ -88,12 +90,13 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 		} else {
 			rc = Manageable::STATUS_PARAMETER_INVALID;
 		}
+		ioArgs.o_rc = rc;
 		break;
 		}
 
-	case _qmf::Deployable::METHOD_HOST_DEL:
+	case _qmf::Deployable::METHOD_ASSEMBLY_REMOVE:
 		{
-		_qmf::ArgsDeployableHost_del& ioArgs = (_qmf::ArgsDeployableHost_del&) arguments;
+		_qmf::ArgsDeployableAssembly_remove& ioArgs = (_qmf::ArgsDeployableAssembly_remove&) arguments;
 		url = ioArgs.i_name;
 		url += ":49000";
 		cout << "request to delete " << ioArgs.i_name << endl;
@@ -102,6 +105,21 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 		} else {
 			rc = Manageable::STATUS_PARAMETER_INVALID;
 		}
+		ioArgs.o_rc = rc;
+		break;
+		}
+	case _qmf::Deployable::METHOD_ASSEMBLY_STATUS:
+		{
+		_qmf::ArgsDeployableAssembly_status& ioArgs = (_qmf::ArgsDeployableAssembly_status&) arguments;
+		url = ioArgs.i_name;
+		url += ":49000";
+		cout << "request for status " << ioArgs.i_name << endl;
+		if (assembly_monitor_status(url) == 0) {
+			rc = Manageable::STATUS_OK;
+		} else {
+			rc = Manageable::STATUS_PARAMETER_INVALID;
+		}
+		ioArgs.o_rc = rc;
 		break;
 		}
 	}

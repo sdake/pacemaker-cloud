@@ -119,6 +119,11 @@ Assembly::Assembly(std::string& host_url)
 	this->refcount++;
 }
 
+int Assembly::status(void)
+{
+	return 0;
+}
+
 static std::map<std::string, Assembly*> hosts;
 
 int assembly_monitor_start(std::string& host_url)
@@ -149,4 +154,16 @@ int assembly_monitor_stop(string& host_url)
 	}
 	return 0;
 }
+
+int assembly_monitor_status(string& host_url)
+{
+	Assembly *h = hosts[host_url];
+	if (h) {
+		return h->status();
+	} else {
+		return -1;
+	}
+}
+
+
 
