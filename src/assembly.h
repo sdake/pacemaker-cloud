@@ -28,12 +28,19 @@
 #include <string>
 
 class Assembly {
-  private:
+private:
 	std::string connectionOptions;
 	std::string sessionOptions;
 	qmf::ConsoleSession *session;
 	qpid::messaging::Connection *connection;
-  public:
+	uint32_t state;
+
+public:
+	static const uint32_t HEARTBEAT_INIT = 1;
+	static const uint32_t HEARTBEAT_NOT_RECEIVED = 2;
+	static const uint32_t HEARTBEAT_OK = 3;
+	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
+
 	std::string name;
 	bool is_connected;
 	int refcount;
@@ -44,15 +51,12 @@ class Assembly {
 
 	bool nextEvent(qmf::ConsoleEvent&);
 	void stop(void);
-	int status(void);
-
+	uint32_t state_get(void) { return this->state; };
+	void state_set(uint32_t new_state);
 	void deref(void);
 };
-
 
 int assembly_monitor_start(std::string& host_url);
 int assembly_monitor_stop(std::string& host_url);
 int assembly_monitor_status(std::string& host_url);
-
-
 

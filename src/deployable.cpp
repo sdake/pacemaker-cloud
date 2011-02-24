@@ -39,11 +39,11 @@ extern "C" {
 
 class DeployableAgent : public CpeAgent
 {
-    private:
+private:
 	ManagementAgent* _agent;
 	_qmf::Deployable* _management_object;
 
-    public:
+public:
 	int setup(ManagementAgent* agent);
 	ManagementObject* GetManagementObject() const { return _management_object; }
 	status_t ManagementMethod(uint32_t method, Args& arguments, string& text);
@@ -52,23 +52,24 @@ class DeployableAgent : public CpeAgent
 int
 main(int argc, char **argv)
 {
-    DeployableAgent agent;
-    int rc = agent.init(argc, argv, "net");
-    if (rc == 0) {
-	agent.run();
-    }
-    return rc;
+	DeployableAgent agent;
+	int rc = agent.init(argc, argv, "net");
+	if (rc == 0) {
+		agent.run();
+	}
+	return rc;
 }
 
 
 int
 DeployableAgent::setup(ManagementAgent* agent)
 {
-    this->_agent = agent;
-    this->_management_object = new _qmf::Deployable(agent, this);
+	this->_agent = agent;
+	this->_management_object = new _qmf::Deployable(agent, this);
 
-    agent->addObject(this->_management_object);
-    return 0;
+	agent->addObject(this->_management_object);
+
+	return 1;
 }
 
 Manageable::status_t
@@ -81,48 +82,49 @@ DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text
 	{
 	case _qmf::Deployable::METHOD_ASSEMBLY_ADD:
 		{
-		_qmf::ArgsDeployableAssembly_add& ioArgs = (_qmf::ArgsDeployableAssembly_add&) arguments;
-		cout << "request to add " << ioArgs.i_name << endl;
-		url = ioArgs.i_name;
-		url += ":49000";
-		if (assembly_monitor_start(url) == 0) {
-			rc = Manageable::STATUS_OK;
-		} else {
-			rc = Manageable::STATUS_PARAMETER_INVALID;
+			_qmf::ArgsDeployableAssembly_add& ioArgs = (_qmf::ArgsDeployableAssembly_add&) arguments;
+			cout << "request to add " << ioArgs.i_name << endl;
+			url = ioArgs.i_name;
+			url += ":49000";
+			if (assembly_monitor_start(url) == 0) {
+				rc = Manageable::STATUS_OK;
+			} else {
+				rc = Manageable::STATUS_PARAMETER_INVALID;
+			}
+			ioArgs.o_rc = rc;
 		}
-		ioArgs.o_rc = rc;
 		break;
-		}
 
 	case _qmf::Deployable::METHOD_ASSEMBLY_REMOVE:
 		{
-		_qmf::ArgsDeployableAssembly_remove& ioArgs = (_qmf::ArgsDeployableAssembly_remove&) arguments;
-		url = ioArgs.i_name;
-		url += ":49000";
-		cout << "request to delete " << ioArgs.i_name << endl;
-		if (assembly_monitor_stop(url) == 0) {
-			rc = Manageable::STATUS_OK;
-		} else {
-			rc = Manageable::STATUS_PARAMETER_INVALID;
+			_qmf::ArgsDeployableAssembly_remove& ioArgs = (_qmf::ArgsDeployableAssembly_remove&) arguments;
+			url = ioArgs.i_name;
+			url += ":49000";
+			cout << "request to delete " << ioArgs.i_name << endl;
+			if (assembly_monitor_stop(url) == 0) {
+				rc = Manageable::STATUS_OK;
+			} else {
+				rc = Manageable::STATUS_PARAMETER_INVALID;
+			}
+			ioArgs.o_rc = rc;
 		}
-		ioArgs.o_rc = rc;
 		break;
-		}
+
 	case _qmf::Deployable::METHOD_ASSEMBLY_STATUS:
 		{
-		_qmf::ArgsDeployableAssembly_status& ioArgs = (_qmf::ArgsDeployableAssembly_status&) arguments;
-		url = ioArgs.i_name;
-		url += ":49000";
-		cout << "request for status " << ioArgs.i_name << endl;
-		if (assembly_monitor_status(url) == 0) {
-			rc = Manageable::STATUS_OK;
-		} else {
-			rc = Manageable::STATUS_PARAMETER_INVALID;
+			_qmf::ArgsDeployableAssembly_status& ioArgs = (_qmf::ArgsDeployableAssembly_status&) arguments;
+			url = ioArgs.i_name;
+			url += ":49000";
+			cout << "request for status " << ioArgs.i_name << endl;
+			if (assembly_monitor_status(url) == 0) {
+				rc = Manageable::STATUS_OK;
+			} else {
+				rc = Manageable::STATUS_PARAMETER_INVALID;
+			}
+			ioArgs.o_rc = rc;
 		}
-		ioArgs.o_rc = rc;
 		break;
-		}
 	}
 
-    return rc;
+	return rc;
 }

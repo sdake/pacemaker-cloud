@@ -31,26 +31,24 @@ using namespace qmf;
 
 static gboolean host_proxy_timeout(gpointer data)
 {
-	Assembly *h = (Assembly *)data;
+	Assembly *a = (Assembly *)data;
 	ConsoleEvent event;
-	bool got_event = false;
+	uint32_t new_state = Assembly::HEARTBEAT_NOT_RECEIVED;
 
-	if (!h->is_connected) {
-		h->deref();
+	if (!a->is_connected) {
+		a->deref();
 		return FALSE;
 	}
 
-	if (h->nextEvent(event)) {
+	if (a->nextEvent(event)) {
 		if (event.getType() == CONSOLE_EVENT) {
 			const Data& data(event.getData(0));
-			got_event = true;
+			new_state = Assembly::HEARTBEAT_OK;
 			// TODO check the sequence number
 			cout << "Event content " << data.getProperties() << endl;
 		}
 	}
-	if (!got_event) {
-		cout << "Aarg - no event in the last 5 secs!" << endl;
-	}
+	a->state_set(new_state);
 
 	return TRUE;
 }
@@ -66,6 +64,19 @@ void Assembly::deref(void)
 	if (this->refcount == 0) {
 		delete this;
 	}
+}
+
+void Assembly::state_set(uint32_t new_state)
+{
+	if (new_state == Assembly::HEARTBEAT_NOT_RECEIVED &&
+		this->state == Assembly::HEARTBEAT_INIT) {
+		cout << "Still waiting for the first heartbeat." << endl;
+		return;
+	}
+	if (new_state == this->state) {
+		return;
+	}
+	this->state = new_state;
 }
 
 void Assembly::stop(void)
@@ -101,6 +112,7 @@ Assembly::Assembly(std::string& host_url)
 {
 	this->is_connected = false;
 	this->refcount = 1;
+	this->state = HEARTBEAT_INIT;
 
 	this->name = host_url;
 	this->connection = new qpid::messaging::Connection(host_url, this->connectionOptions);;
@@ -114,14 +126,9 @@ Assembly::Assembly(std::string& host_url)
 	cout << "Assembly() " << this->name << endl;
 
 	g_timeout_add(5000,
-                      host_proxy_timeout,
-		      this);
+				  host_proxy_timeout,
+				  this);
 	this->refcount++;
-}
-
-int Assembly::status(void)
-{
-	return 0;
 }
 
 static std::map<std::string, Assembly*> hosts;
@@ -159,11 +166,9 @@ int assembly_monitor_status(string& host_url)
 {
 	Assembly *h = hosts[host_url];
 	if (h) {
-		return h->status();
+		return h->state_get();
 	} else {
 		return -1;
 	}
 }
-
-
 
