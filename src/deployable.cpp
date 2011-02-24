@@ -69,6 +69,10 @@ DeployableAgent::setup(ManagementAgent* agent)
 
 	agent->addObject(this->_management_object);
 
+	// TODO get the proper values of these
+	_management_object->set_uuid("~!@#$%^&*()");
+	_management_object->set_name("deplorable deployable");
+
 	return 1;
 }
 
