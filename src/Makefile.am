@@ -27,7 +27,11 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 
 EXTRA_DIST		= autogen.sh
 
+upstartconfdir = $(sysconfdir)/init
+upstartconf_DATA = dped.conf
+
 sbin_PROGRAMS = cped
+bin_PROGRAMS = cpe-tool2
 
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Deployable.cpp
@@ -35,8 +39,10 @@ qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Deployable.cpp
 $(qmfauto_c): schema.xml
 	qmf-gen schema.xml
 
-
 cped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp assembly.cpp
 cped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
 cped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
 
+cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
+cpe_tool2_CPPFLAGS = $(DBUS_GLIB_1_CFLAGS)
+cpe_tool2_LDADD = $(DBUS_GLIB_1_LIBS)

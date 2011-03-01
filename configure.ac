@@ -32,7 +32,8 @@ fi
 
 # Checks for libraries.
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.0)
-PKG_CHECK_MODULES(QPID, qpid-0.9 >= 0.9)
+PKG_CHECK_MODULES(QPID, qpid >= 0.9)
+PKG_CHECK_MODULES(DBUS_GLIB_1, dbus-glib-1 >= 0.25)
 
 # Checks for header files.
 
