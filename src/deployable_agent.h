@@ -23,7 +23,7 @@
 
 #include <qpid/agent/ManagementAgent.h>
 #include "org/cloudpolicyengine/Deployable.h"
-#include "dpe.h"
+#include "dpe_agent.h"
 
 class DeployableAgent : public Manageable
 {

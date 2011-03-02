@@ -30,7 +30,7 @@
 #include "org/cloudpolicyengine/ArgsDeployableAssembly_status.h"
 #include "org/cloudpolicyengine/ArgsDeployableAssemblies_list.h"
 
-#include "deployable.h"
+#include "deployable_agent.h"
 #include "assembly.h"
 
 using namespace std;

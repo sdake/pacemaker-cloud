@@ -37,7 +37,7 @@ qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Dpe.cpp $(qmfauto_path)/
 $(qmfauto_c): schema.xml
 	qmf-gen schema.xml
 
-dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp dpe.cpp deployable.cpp assembly.cpp
+dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp dpe_agent.cpp deployable_agent.cpp assembly.cpp
 dped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
 dped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
 
