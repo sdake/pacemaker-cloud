@@ -1,21 +1,26 @@
-/* mh_agent.cpp - Copyright (C) 2010 Red Hat, Inc.
- * Written by Andrew Beekhof <andrew@beekhof.net>
+/*
+ * Copyright (C) 2011 Red Hat, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * Authors: Andrew Beekhof <andrew@beekhof.net>
+ *          Angus Salkeld <asalkeld@redhat.com>
  *
- * This software is distributed in the hope that it will be useful,
+ * This file is part of cpe.
+ *
+ * cpe is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * cpe is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU General Public License
+ * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
 #include <getopt.h>
 int use_stderr = 0;
 
@@ -79,18 +84,18 @@ print_usage(const char *proc_name)
 }
 
 static gboolean
-mh_qpid_callback(int fd, gpointer user_data)
+qpid_callback(int fd, gpointer user_data)
 {
 	ManagementAgent *agent = (ManagementAgent *)user_data;
-	//mh_trace("Qpid message recieved");
+	//trace("Qpid message recieved");
 	agent->pollCallbacks();
 	return TRUE;
 }
 
 static void
-mh_qpid_disconnect(gpointer user_data)
+qpid_disconnect(gpointer user_data)
 {
-	//mh_err("Qpid connection closed");
+	//err("Qpid connection closed");
 }
 
 int
@@ -112,7 +117,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 
 	/* Set up basic logging */
 	openlog(NULL, LOG_PERROR|LOG_PID, LOG_DAEMON);
-	//    mh_log_init(proc_name, LOG_INFO, FALSE);
+	//    log_init(proc_name, LOG_INFO, FALSE);
 
 	// Get args
 	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
@@ -126,8 +131,8 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			daemonize = true;
 			break;
 		case 'v':
-			//mh_log_level++;
-			//mh_enable_stderr(1);
+			//log_level++;
+			//enable_stderr(1);
 			break;
 		case 's':
 			if (optarg) {
@@ -188,7 +193,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 	}
 
 	/* Re-initialize logging now that we've completed option processing */
-	//mh_log_init(proc_name, LOG_INFO+debuglevel, debuglevel > 0);
+	//log_init(proc_name, LOG_INFO+debuglevel, debuglevel > 0);
 
 	// Get our management agent
 	singleton = new ManagementAgent::Singleton();
@@ -223,16 +228,16 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 	/* Do any setup required by our agent */
 	if (this->setup(agent) < 0) {
 		fprintf(stderr, "Failed to set up broker connection to %s on %d for %s\n",
-				servername, serverport, proc_name);
+			servername, serverport, proc_name);
 		return -1;
 	}
 
 	this->mainloop = g_main_new(FALSE);
 	this->qpid_source = mainloop_add_fd(G_PRIORITY_HIGH,
-										agent->getSignalFd(),
-										mh_qpid_callback,
-										mh_qpid_disconnect,
-										agent);
+					    agent->getSignalFd(),
+					    qpid_callback,
+					    qpid_disconnect,
+					    agent);
 
 	return 0;
 }

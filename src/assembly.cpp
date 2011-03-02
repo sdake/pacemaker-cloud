@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Red Hat, Inc.
+ * Copyright (C) 2011 Red Hat, Inc.
  *
  * Authors: Angus Salkeld <asalkeld@redhat.com>
  *
@@ -19,6 +19,7 @@
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
 #include <iostream>
 #include <map>
 #include <assert.h>
@@ -69,7 +70,7 @@ void Assembly::deref(void)
 void Assembly::state_set(uint32_t new_state)
 {
 	if (new_state == Assembly::HEARTBEAT_NOT_RECEIVED &&
-		this->state == Assembly::HEARTBEAT_INIT) {
+	    this->state == Assembly::HEARTBEAT_INIT) {
 		cout << "Still waiting for the first heartbeat." << endl;
 		return;
 	}
@@ -126,8 +127,8 @@ Assembly::Assembly(std::string& host_url)
 	cout << "Assembly() " << this->name << endl;
 
 	g_timeout_add(5000,
-				  host_proxy_timeout,
-				  this);
+		      host_proxy_timeout,
+		      this);
 	this->refcount++;
 }
 
