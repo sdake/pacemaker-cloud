@@ -53,7 +53,7 @@ int
 main(int argc, char **argv)
 {
 	DeployableAgent agent;
-	int rc = agent.init(argc, argv, "net");
+	int rc = agent.init(argc, argv, "deployable");
 	if (rc == 0) {
 		agent.run();
 	}
