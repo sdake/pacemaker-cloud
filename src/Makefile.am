@@ -7,8 +7,6 @@
 # cpe is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
-
-
 # (at your option) any later version.
 #
 # cpe is distributed in the hope that it will be useful,
@@ -30,7 +28,7 @@ EXTRA_DIST		= autogen.sh
 upstartconfdir = $(sysconfdir)/init
 upstartconf_DATA = dped.conf
 
-sbin_PROGRAMS = cped
+sbin_PROGRAMS = dped
 bin_PROGRAMS = cpe-tool2
 
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
@@ -39,9 +37,9 @@ qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Deployable.cpp
 $(qmfauto_c): schema.xml
 	qmf-gen schema.xml
 
-cped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp assembly.cpp
-cped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
-cped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
+dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp assembly.cpp
+dped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
+dped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
 cpe_tool2_CPPFLAGS = $(DBUS_GLIB_1_CFLAGS)
