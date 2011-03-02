@@ -1,0 +1,43 @@
+I'd like to spend a moment to tell you about a new project myself and Angus
+Salkeld are working on.  The project, called the Pacemaker Cloud Policy
+Engine, is a cloud-specific policy engine and will act as a sub-project
+of the Pacemaker project.
+
+We are doing a ground-up implementation of a cloud policy manager, using a
+few other open source building block components.
+
+Our dependencies are:
+QPID/QMF (provides a management bus for communication of the various components)
+Upstart (provides a mechanism to launch our internal processes)
+Pacemaker Policy Engine (provides a mechanism for us to make policy decisions)
+Matahari (provides a mechanism to monitor VM images)
+
+We have decided on a general model for managing cloud deployments:
+Assembly: A VM image with a Matahari instance
+Deployable: Collection of Assemblies
+
+We are working on 5 components at the moment:
+1. QMF model of the methods/events for various components
+2. CLI Shell
+2.1 requests the CPE start a deployable
+2.2 requests the CPE stop a deployable
+2.3 Displays assembly failures
+3. Cloud Policy Engine
+3.1 starts a deployable policy engine
+3.2 Stops a deployable policy engine
+4. VM Launcher
+4.1 Starts VM images
+5. Deployable Policy Engine
+5.1 Requests VM launcher to start images
+5.2 Monitors a VM image via matahari
+5.3 Starts applications via matahari
+5.4 Stops applications via matahari
+5.5 Recovers failures detected by matahari managed applications
+5.6 Uses the Pacemaker policy engine library to make decisions about which
+    sort of matahari actions to take
+
+Our repository is here:
+	git://gitorious.org/cloud-policy-engine/mainline.git
+
+For the moment we will share the pacemaker list for our development:
+	http://oss.clusterlabs.org/mailman/listinfo/pacemaker
