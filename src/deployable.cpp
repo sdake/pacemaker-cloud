@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+
 #include <string>
 #include <iostream>
 
@@ -29,54 +30,19 @@
 #include "org/cloudpolicyengine/ArgsDeployableAssembly_status.h"
 #include "org/cloudpolicyengine/ArgsDeployableAssemblies_list.h"
 
-#include <qpid/agent/ManagementAgent.h>
-#include "agent.h"
+#include "deployable.h"
 #include "assembly.h"
 
 using namespace std;
 
-extern "C" {
-#include <stdlib.h>
-#include <string.h>
-};
-
-class DeployableAgent : public CpeAgent
+DeployableAgent::DeployableAgent(ManagementAgent* agent, DpeAgent* parent,
+			std::string& name, std::string& uuid)
 {
-private:
-	ManagementAgent* _agent;
-	_qmf::Deployable* _management_object;
+	_mgmtObject = new _qmf::Deployable(agent, this);
 
-public:
-	int setup(ManagementAgent* agent);
-	ManagementObject* GetManagementObject() const { return _management_object; }
-	status_t ManagementMethod(uint32_t method, Args& arguments, string& text);
-};
-
-int
-main(int argc, char **argv)
-{
-	DeployableAgent agent;
-	int rc = agent.init(argc, argv, "deployable");
-	if (rc == 0) {
-		agent.run();
-	}
-	return rc;
-}
-
-
-int
-DeployableAgent::setup(ManagementAgent* agent)
-{
-	this->_agent = agent;
-	this->_management_object = new _qmf::Deployable(agent, this);
-
-	agent->addObject(this->_management_object);
-
-	// TODO get the proper values of these
-	_management_object->set_uuid("~!@#$%^&*()");
-	_management_object->set_name("deplorable deployable");
-
-	return 1;
+	agent->addObject(_mgmtObject);
+	_mgmtObject->set_uuid(uuid);
+	_mgmtObject->set_name(name);
 }
 
 Manageable::status_t

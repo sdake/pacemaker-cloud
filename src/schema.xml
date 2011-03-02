@@ -1,12 +1,33 @@
 <schema package="org.cloudpolicyengine">
 
+<!-- Each dpe daemon will implement this API -->
+<!-- Once running it will wait to be assigned deployments -->
+<!-- via the load and unload methods -->
+<class name="dpe">
+   <statistic name="deployables"      type="uint32" desc="numbers of managed deployables" />
+   <statistic name="assemblies"       type="uint32"  desc="numbers of managed assemblies" />
+
+   <method name="deployable_load"   desc="load">
+     <arg name="name"                 dir="I" type="sstr"/>
+     <arg name="uuid"                 dir="I" type="sstr"/>
+     <arg name="rc"                   dir="O"  type="uint32"/>
+   </method>
+   <method name="deployable_unload"  desc="unload">
+     <arg name="name"                 dir="I" type="sstr" />
+     <arg name="uuid"                 dir="I" type="sstr"/>
+     <arg name="rc"                   dir="O"  type="uint32"/>
+   </method>
+   <method name="deployables_list"    desc="List known deployables">
+     <arg name="deployables"          dir="O"  type="list"/>
+   </method>
+</class>
+
 <!-- deployable API -->
 <class name="Deployable">
 
    <property name="name"         type="sstr"   access="RO" desc="Deployable name" />
    <property name="uuid"         type="sstr"   access="RO" desc="Deployable UUID" index="y" />
 
-   <!-- APIs -->
    <method name="assembly_add"      desc="Add an assembly to the deployable.">
      <arg name="name"               dir="I" type="sstr"/>
      <arg name="rc"                 dir="O"  type="uint32"/>
@@ -23,9 +44,15 @@
      <arg name="assemblies"         dir="O"  type="list"/>
    </method>
 
-   <method name="service_add"           desc="Add a service to the deployable.">
-     <arg name="name"           dir="I" type="sstr"/>
-     <arg name="rc"             dir="O"  type="uint32"/>
+   <method name="service_add"       desc="Add a service to the deployable.">
+     <arg name="name"               dir="I" type="sstr"/>
+     <arg name="class"              dir="IO" type="sstr" />
+     <arg name="provider"           dir="IO" type="sstr" />
+     <arg name="type"               dir="IO" type="sstr" />
+     <arg name="interval"           dir="IO" type="uint32" />
+     <arg name="parameters"         dir="I"  type="map" />
+     <arg name="timeout"            dir="I"  type="uint32" />
+     <arg name="rc"                 dir="O"  type="uint32" />
    </method>
    <method name="service_remove"        desc="Remove a service from the deployable">
      <arg name="name"           dir="I" type="sstr" />

@@ -32,14 +32,18 @@ sbin_PROGRAMS = dped
 bin_PROGRAMS = cpe-tool2
 
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
-qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Deployable.cpp
+qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Dpe.cpp $(qmfauto_path)/Deployable.cpp
 
 $(qmfauto_c): schema.xml
 	qmf-gen schema.xml
 
-dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp deployable.cpp assembly.cpp
+dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp dpe.cpp deployable.cpp assembly.cpp
 dped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
 dped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
+
+#cpe_tool_SOURCES = cpe-tool.cpp
+#cpe_tool_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS)
+#cpe_tool_LDADD = $(QPID_LIBS) -lqmf2
 
 cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
 cpe_tool2_CPPFLAGS = $(DBUS_GLIB_1_CFLAGS)
