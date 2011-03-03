@@ -1,5 +1,21 @@
 <schema package="org.cloudpolicyengine">
 
+<!-- The cpe daemon will implement this API  -->
+<!-- Once running it will wait to start deployments -->
+<!-- via the start and stop methods -->
+<class name="cpe">
+   <method name="deployable_start"   desc="start">
+     <arg name="name"                 dir="I" type="sstr"/>
+     <arg name="uuid"                 dir="I" type="sstr"/>
+     <arg name="rc"                   dir="O"  type="uint32"/>
+   </method>
+   <method name="deployable_stop"   desc="stop">
+     <arg name="name"                 dir="I" type="sstr"/>
+     <arg name="uuid"                 dir="I" type="sstr"/>
+     <arg name="rc"                   dir="O"  type="uint32"/>
+   </method>
+</class>
+
 <!-- Each dpe daemon will implement this API -->
 <!-- Once running it will wait to be assigned deployments -->
 <!-- via the load and unload methods -->

@@ -28,11 +28,11 @@
 #include "org/cloudpolicyengine/ArgsDpeDeployables_list.h"
 
 #include <qpid/agent/ManagementAgent.h>
-#include "agent.h"
+#include "common_agent.h"
 
 class DeployableAgent;
 
-class DpeAgent : public CpeAgent
+class DpeAgent : public CommonAgent
 {
 private:
 	ManagementAgent* _agent;

@@ -1,20 +1,27 @@
-
-
-qpidd -p 49000 --auth no
-matahari-hostd -p 49000 -b localhost
-
-./src/cped
-
+user% qpidd -p 49000 --auth no
+user# ./src/cped
 
 # in another shell
 qpid-tool localhost:49000
-qpid: list deployable
+qpid: list cpe
 Object Summary:
     ID   Created   Destroyed  Index
-    =============================================================
-    101  01:04:26  -          org.cloudpolicyengine:deployable
+    ======================================================
+    144  23:27:08  -          org.cloudpolicyengine:cpe:
 
-call 101 host_add localhost
-qpid: OK (0) - {}
+qpid: call 144 deployable_start name0 UUID0
+qpid: OK (0) - {u'rc': 0}
 
+qpid: call 144 deployable_start name1 UUID1
+qpid: OK (0) - {u'rc': 0}
 
+qpid: call 144 deployable_start name2 UUID2
+qpid: OK (0) - {u'rc': 0}
+
+qpid: quit
+
+user% ps -ef | grep dped
+root     12296     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID0
+root     12300     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID1
+root     12304     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID2
+sdake    12321 12261  0 16:29 pts/48   00:00:00 grep --color=auto dped

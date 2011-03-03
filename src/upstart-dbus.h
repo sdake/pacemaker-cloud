@@ -26,9 +26,17 @@
 #include <dbus/dbus.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int upstart_init(GMainLoop *loop);
-int upstart_job_start(char * service, char * instance);
-int upstart_job_stop(char * service, char * instance);
+int upstart_job_start(const char * service, const char * instance);
+int upstart_job_stop(const char * service, const char * instance);
 void upstart_fini(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UPSTART_DBUS_H */

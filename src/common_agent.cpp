@@ -40,7 +40,7 @@ int use_stderr = 0;
 #include <qpid/client/ConnectionSettings.h>
 
 #include "org/cloudpolicyengine/Package.h"
-#include "agent.h"
+#include "common_agent.h"
 
 
 using namespace qpid::management;
@@ -100,7 +100,7 @@ qpid_disconnect(gpointer user_data)
 }
 
 int
-CpeAgent::init(int argc, char **argv, const char* proc_name)
+CommonAgent::init(int argc, char **argv, const char* proc_name)
 {
 	int arg;
 	int idx = 0;
@@ -247,7 +247,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 }
 
 void
-CpeAgent::run()
+CommonAgent::run()
 {
 	g_main_run(this->mainloop);
 }

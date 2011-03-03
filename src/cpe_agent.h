@@ -27,9 +27,9 @@
 #include "org/cloudpolicyengine/ArgsCpeDeployable_stop.h"
 
 #include <qpid/agent/ManagementAgent.h>
-#include "agent.h"
+#include "common_agent.h"
 
-class CpeAgent : public GlobalAgent
+class CpeAgent : public CommonAgent
 {
 private:
 	ManagementAgent* _agent;

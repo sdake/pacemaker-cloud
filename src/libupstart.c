@@ -63,7 +63,7 @@ upstart_init (GMainLoop *loop)
 }
 
 int
-upstart_job_start(char * service, char * instance)
+upstart_job_start(const char* service, const char* instance)
 {
 	DBusMessage *   method_call;
 	DBusMessageIter iter;

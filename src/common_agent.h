@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __MATAHARI_DAEMON_H
-#define __MATAHARI_DAEMON_H
+#ifndef __COMMON_AGENT_H
+#define __COMMON_AGENT_H
 
 #include <string>
 #include <qpid/sys/Time.h>
@@ -38,19 +38,19 @@ using namespace std;
 #include "org/cloudpolicyengine/Package.h"
 namespace _qmf = qmf::org::cloudpolicyengine;
 
-class CpeAgent : public Manageable
+class CommonAgent : public Manageable
 {
 	GMainLoop *mainloop;
 	mainloop_fd_t *qpid_source;
 	Selector log_selector;
 
 public:
-	CpeAgent() {};
-	~CpeAgent() {};
+	CommonAgent() {};
+	~CommonAgent() {};
 
 	virtual int setup(ManagementAgent *agent) { return 0; };
 	int init(int argc, char **argv, const char* proc_name);
 	void run();
 };
 
-#endif // __MATAHARI_DAEMON_H
+#endif
