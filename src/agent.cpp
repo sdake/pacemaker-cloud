@@ -132,7 +132,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			daemonize = true;
 			break;
 		case 'v':
-			log_selector.enable(debug);
+			debuglevel++;
 			break;
 		case 's':
 			if (optarg) {
@@ -184,6 +184,12 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			break;
 		}
 	}
+	if (debuglevel == 1) {
+		log_selector.enable(debug);
+	}
+	if (debuglevel == 2) {
+		log_selector.enable(trace);
+	}
 	l.select(log_selector);
 
 	if (daemonize == true) {
@@ -192,9 +198,6 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			exit(1);
 		}
 	}
-
-	/* Re-initialize logging now that we've completed option processing */
-	//log_init(proc_name, LOG_INFO+debuglevel, debuglevel > 0);
 
 	// Get our management agent
 	singleton = new ManagementAgent::Singleton();
