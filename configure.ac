@@ -4,7 +4,7 @@
 AC_PREREQ([2.66])
 AC_INIT([Cloud Policy Engine], [0.1], [asalkeld@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
-AC_CONFIG_SRCDIR([src/deployable.cpp])
+AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for programs.
