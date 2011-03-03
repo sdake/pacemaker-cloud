@@ -50,6 +50,7 @@ namespace _qmf = qmf::org::cloudpolicyengine;
 
 // Global Variables
 ManagementAgent::Singleton* singleton;
+Logger& l = Logger::instance();
 
 void
 shutdown(int /*signal*/)
@@ -87,7 +88,7 @@ static gboolean
 qpid_callback(int fd, gpointer user_data)
 {
 	ManagementAgent *agent = (ManagementAgent *)user_data;
-	//trace("Qpid message recieved");
+	QPID_LOG(trace, "Qpid message recieved");
 	agent->pollCallbacks();
 	return TRUE;
 }
@@ -95,7 +96,7 @@ qpid_callback(int fd, gpointer user_data)
 static void
 qpid_disconnect(gpointer user_data)
 {
-	//err("Qpid connection closed");
+	QPID_LOG(error, "Qpid connection closed");
 }
 
 int
@@ -115,9 +116,9 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 	qpid::management::ConnectionSettings settings;
 	ManagementAgent *agent;
 
-	/* Set up basic logging */
-	openlog(NULL, LOG_PERROR|LOG_PID, LOG_DAEMON);
-	//    log_init(proc_name, LOG_INFO, FALSE);
+	log_selector.enable(info);
+	log_selector.enable(warning);
+	log_selector.enable(error);
 
 	// Get args
 	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
@@ -131,8 +132,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			daemonize = true;
 			break;
 		case 'v':
-			//log_level++;
-			//enable_stderr(1);
+			log_selector.enable(debug);
 			break;
 		case 's':
 			if (optarg) {
@@ -184,6 +184,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 			break;
 		}
 	}
+	l.select(log_selector);
 
 	if (daemonize == true) {
 		if (daemon(0, 0) < 0) {
@@ -222,7 +223,7 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 
 	syslog(LOG_INFO, "Connecting to Qpid broker at %s on port %d", servername, serverport);
 	agent->setName("cloudpolicyengine.org", proc_name);
-	std::string dataFile(".cloudpolicyengine-data-");
+	string dataFile(".cloudpolicyengine-data-");
 	agent->init(settings, 5, true, dataFile + proc_name);
 
 	/* Do any setup required by our agent */
@@ -232,12 +233,12 @@ CpeAgent::init(int argc, char **argv, const char* proc_name)
 		return -1;
 	}
 
-	this->mainloop = g_main_new(FALSE);
-	this->qpid_source = mainloop_add_fd(G_PRIORITY_HIGH,
-					    agent->getSignalFd(),
-					    qpid_callback,
-					    qpid_disconnect,
-					    agent);
+	mainloop = g_main_new(FALSE);
+	qpid_source = mainloop_add_fd(G_PRIORITY_HIGH,
+				      agent->getSignalFd(),
+				      qpid_callback,
+				      qpid_disconnect,
+				      agent);
 
 	return 0;
 }

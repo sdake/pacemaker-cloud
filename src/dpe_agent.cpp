@@ -24,6 +24,7 @@
 #include <iostream>
 #include "deployable_agent.h"
 
+
 extern "C" {
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +36,9 @@ int
 main(int argc, char **argv)
 {
 	DpeAgent agent;
-	int rc = agent.init(argc, argv, "dpe");
+	int32_t rc;
+
+	rc = agent.init(argc, argv, "dpe");
 	if (rc == 0) {
 		agent.run();
 	}

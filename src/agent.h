@@ -24,12 +24,15 @@
 #include <qpid/sys/Time.h>
 #include <qpid/agent/ManagementAgent.h>
 #include <qpid/management/Manageable.h>
+#include <qpid/log/Logger.h>
+#include <qpid/log/Options.h>
 
 extern "C" {
 #include "mainloop.h"
 }
 
 using namespace qpid::management;
+using namespace qpid::log;
 using namespace std;
 
 #include "org/cloudpolicyengine/Package.h"
@@ -39,6 +42,7 @@ class CpeAgent : public Manageable
 {
 	GMainLoop *mainloop;
 	mainloop_fd_t *qpid_source;
+	Selector log_selector;
 
 public:
 	CpeAgent() {};
