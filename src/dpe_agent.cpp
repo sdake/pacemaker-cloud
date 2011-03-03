@@ -73,22 +73,36 @@ DpeAgent::setup(ManagementAgent* agent)
 }
 
 Manageable::status_t
-DpeAgent::dep_load(std::string& name, std::string& uuid)
+DpeAgent::dep_load(std::string& dep_name, std::string& dep_uuid)
 {
-        DeployableAgent *child = new DeployableAgent(_agent, this,
-						     name, uuid);
+        DeployableAgent *child;
 
-	deployments[name] = child;
+	Mutex::ScopedLock _lock(map_lock);
+
+	child = deployments[dep_name];
+	if (child != NULL) {
+		return Manageable::STATUS_PARAMETER_INVALID;
+	}
+
+	child = new DeployableAgent(_agent, dep_name, dep_uuid);
+
+	QPID_LOG(debug, "new deployment: " << dep_name << ", ptr: "<< child);
+
+	deployments[dep_name] = child;
 
 	update_stats(num_deps + 1, num_ass);
-	cout << "request to load deployable " << name << endl;
 	return Manageable::STATUS_OK;
 }
 
 Manageable::status_t
 DpeAgent::dep_unload(std::string& name, std::string& uuid)
 {
-	DeployableAgent *child = deployments[name];
+	DeployableAgent *child;
+
+	Mutex::ScopedLock _lock(map_lock);
+
+	child = deployments[name];
+
 	if (child) {
 		cout << "request to unload " << name << endl;
 		update_stats(num_deps - 1, num_ass);
@@ -123,14 +137,22 @@ DpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 	case _qmf::Dpe::METHOD_DEPLOYABLES_LIST:
 		list_args = (_qmf::ArgsDpeDeployables_list*)&arguments;
 		cout << "request for listing " << endl;
+		{
+			Mutex::ScopedLock _lock(map_lock);
 
-		for (map<string, DeployableAgent*>::iterator iter = deployments.begin();
-		     iter != deployments.end();  iter++) {
-			list_args->o_deployables.push_back(iter->second->getKey());
+			for (map<string, DeployableAgent*>::iterator iter = deployments.begin();
+			     iter != deployments.end();  iter++) {
+
+				cout << "listing(active) " << iter->first <<
+					iter->second->get_name() <<
+					", uuid " <<
+					iter->second->get_uuid() << endl;
+
+				list_args->o_deployables.push_back(iter->second->get_name());
+				}
+
+			break;
 		}
-
-		break;
-
 	default:
 		rc = Manageable::STATUS_NOT_IMPLEMENTED;
 		break;

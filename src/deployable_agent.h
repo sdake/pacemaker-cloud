@@ -32,13 +32,15 @@ private:
 
 public:
 
-	DeployableAgent(ManagementAgent* agent, DpeAgent* parent,
+	DeployableAgent(ManagementAgent* agent,
 			std::string& name, std::string& uuid);
 	~DeployableAgent() { _mgmtObject->resourceDestroy(); }
 
 	ManagementObject* GetManagementObject(void) const  { return _mgmtObject; }
 	status_t ManagementMethod(uint32_t method, Args& arguments, std::string& text);
-	std::string getKey() const { return _mgmtObject->getKey(); }
+	std::string get_key() const { return _mgmtObject->getKey(); }
+	std::string get_name() const { return _mgmtObject->get_name(); }
+	std::string get_uuid() const { return _mgmtObject->get_uuid(); }
 };
 
 #endif /* _DEPLOYABLE_H_ */

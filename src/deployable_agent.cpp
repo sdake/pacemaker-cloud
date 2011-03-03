@@ -35,7 +35,7 @@
 
 using namespace std;
 
-DeployableAgent::DeployableAgent(ManagementAgent* agent, DpeAgent* parent,
+DeployableAgent::DeployableAgent(ManagementAgent* agent,
 			std::string& name, std::string& uuid)
 {
 	_mgmtObject = new _qmf::Deployable(agent, this);

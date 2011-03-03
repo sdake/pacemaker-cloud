@@ -38,6 +38,7 @@ private:
 	ManagementAgent* _agent;
 	_qmf::Dpe* _management_object;
 	std::map<std::string, DeployableAgent*> deployments;
+	Mutex map_lock;
 	uint32_t num_deps;
 	uint32_t num_ass;
 
