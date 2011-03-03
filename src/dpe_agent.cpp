@@ -24,12 +24,6 @@
 #include <iostream>
 #include "deployable_agent.h"
 
-
-extern "C" {
-#include <stdlib.h>
-#include <string.h>
-};
-
 using namespace std;
 
 int
@@ -73,7 +67,7 @@ DpeAgent::setup(ManagementAgent* agent)
 }
 
 Manageable::status_t
-DpeAgent::dep_load(std::string& dep_name, std::string& dep_uuid)
+DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 {
         DeployableAgent *child;
 
@@ -95,7 +89,7 @@ DpeAgent::dep_load(std::string& dep_name, std::string& dep_uuid)
 }
 
 Manageable::status_t
-DpeAgent::dep_unload(std::string& name, std::string& uuid)
+DpeAgent::dep_unload(string& name, string& uuid)
 {
 	DeployableAgent *child;
 

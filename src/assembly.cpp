@@ -109,7 +109,7 @@ Assembly::~Assembly()
 	}
 }
 
-Assembly::Assembly(std::string& host_url)
+Assembly::Assembly(string& host_url)
 {
 	this->is_connected = false;
 	this->refcount = 1;
@@ -132,9 +132,9 @@ Assembly::Assembly(std::string& host_url)
 	this->refcount++;
 }
 
-static std::map<std::string, Assembly*> hosts;
+static map<string, Assembly*> hosts;
 
-int assembly_monitor_start(std::string& host_url)
+int assembly_monitor_start(string& host_url)
 {
 	Assembly *h = hosts[host_url];
 	if (h) {

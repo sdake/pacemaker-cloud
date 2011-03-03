@@ -36,7 +36,7 @@
 using namespace std;
 
 DeployableAgent::DeployableAgent(ManagementAgent* agent,
-			std::string& name, std::string& uuid)
+			string& name, string& uuid)
 {
 	_mgmtObject = new _qmf::Deployable(agent, this);
 
@@ -50,7 +50,7 @@ Manageable::status_t
 DeployableAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 {
 	Manageable::status_t rc = Manageable::STATUS_NOT_IMPLEMENTED;
-	std::string url;
+	string url;
 
 	switch(method)
 	{
