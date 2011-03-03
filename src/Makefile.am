@@ -35,7 +35,7 @@ qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/Package.cpp $(qmfauto_path)/Dpe.cpp $(qmfauto_path)/Deployable.cpp
 
 $(qmfauto_c): schema.xml
-	qmf-gen --v2-style schema.xml
+	qmf-gen schema.xml
 
 dped_SOURCES = mainloop.c $(qmfauto_c) agent.cpp dpe_agent.cpp deployable_agent.cpp assembly.cpp
 dped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
