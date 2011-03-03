@@ -40,9 +40,10 @@ DeployableAgent::DeployableAgent(ManagementAgent* agent,
 {
 	_mgmtObject = new _qmf::Deployable(agent, this);
 
-	agent->addObject(_mgmtObject);
 	_mgmtObject->set_uuid(uuid);
 	_mgmtObject->set_name(name);
+
+	agent->addObject(_mgmtObject);
 }
 
 Manageable::status_t
