@@ -21,13 +21,50 @@
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "config.h"
+#include <qpid/messaging/Connection.h>
+#include <qpid/messaging/Duration.h>
+#include <qmf/ConsoleSession.h>
+#include <qmf/ConsoleEvent.h>
+#include <qmf/Agent.h>
+#include <qpid/types/Variant.h>
 #include <string>
 #include <iostream>
+#include "mainloop.h"
+
 #include "cpe_agent.h"
 #include "upstart-dbus.h"
 
 using namespace std;
+using namespace qmf;
+
+static gboolean host_proxy_timeout(gpointer data)
+{
+        CpeAgent *a = (CpeAgent *)data;
+
+	return(a->console_handler());
+}
+
+int
+CpeAgent::console_handler(void)
+{
+	ConsoleEvent event;
+
+	if (console_session->nextEvent(event)) {
+cout << "event" <<endl;
+		if (event.getType() == CONSOLE_AGENT_ADD) {
+			string extra;
+cout << "agent added" <<endl;
+			if (event.getAgent().getName() == console_session->getConnectedBrokerAgent().getName()) {
+				extra = "  [Connected Broker]";
+				cout << "Agent Added: " << event.getAgent().getName() << extra << endl;
+			}
+		}
+	}
+
+        return TRUE;
+}
 
 int
 main(int argc, char **argv)
@@ -39,6 +76,7 @@ main(int argc, char **argv)
 	if (rc == 0) {
 		agent.run();
 	}
+
 	return rc;
 }
 
@@ -47,6 +85,22 @@ CpeAgent::setup(ManagementAgent* agent)
 {
 	_agent = agent;
 	_management_object = new _qmf::Cpe(agent, this);
+	string connectionOptions;
+	string sessionOptions;
+	string url("localhost:49000");
+
+cout << "setup" << endl;
+        console_connection = new qpid::messaging::Connection(url, connectionOptions);
+        console_connection->open();
+
+        console_session = new ConsoleSession(*console_connection, sessionOptions);
+	console_session->setAgentFilter("");
+
+        upstart_init(mainloop);
+
+	g_timeout_add(5000,
+		host_proxy_timeout,
+		this);
 
 	agent->addObject(this->_management_object);
 	num_ass = 1;
@@ -63,36 +117,8 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 
 	uuid = dep_uuid.c_str();
 
-        loop = g_main_loop_new (NULL, FALSE);
-
-	QPID_LOG(debug, "new deployment: " << dep_uuid);
-
-        upstart_init(loop);
-
         upstart_job_start("dped", (char *)uuid);
 
-        /* Start the event loop */
-//      g_main_loop_run (loop);
-
-//      upstart_fini();
-
-/*
-        DeployableAgent *child;
-
-	Mutex::ScopedLock _lock(map_lock);
-
-	child = deployments[dep_name];
-	if (child != NULL) {
-		return Manageable::STATUS_PARAMETER_INVALID;
-	}
-
-	child = new DeployableAgent(_agent, dep_name, dep_uuid);
-
-
-	deployments[dep_name] = child;
-
-	update_stats(num_deps + 1, num_ass);
-*/
 	return Manageable::STATUS_OK;
 }
 

@@ -40,11 +40,11 @@ namespace _qmf = qmf::org::cloudpolicyengine;
 
 class CommonAgent : public Manageable
 {
-	GMainLoop *mainloop;
 	mainloop_fd_t *qpid_source;
 	Selector log_selector;
 
 public:
+	GMainLoop *mainloop;
 	CommonAgent() {};
 	~CommonAgent() {};
 
