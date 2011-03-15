@@ -24,13 +24,21 @@ class Deployable(object):
         self.name = name
         self.assemblies = {}
 
+    def __del__(self):
+        self.stop()
+
     def assembly_add(self, ass):
         self.assemblies[ass.name] = ass
 
     def start(self):
         for n, a in self.assemblies.iteritems():
             a.start()
+        # send cpe a qmf message saying this deployment has started
+        # with the config
 
     def stop(self):
+        # send cpe a qmf message saying this deployment is about to
+        # be stopped
         for n, a in self.assemblies.iteritems():
             a.stop()
+

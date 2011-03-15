@@ -43,7 +43,7 @@ cped_LDADD = $(DBUS_GLIB_1_LIBS) $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lq
 
 dped_SOURCES = mainloop.c $(qmfauto_c) common_agent.cpp dpe_agent.cpp deployable_agent.cpp assembly.cpp
 dped_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS) -I$(qmfauto_path)
-dped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 $(GLIB_LIBS)
+dped_LDADD = $(QPID_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 -lqpidmessaging $(GLIB_LIBS)
 
 #cpe_tool_SOURCES = cpe-tool.cpp
 #cpe_tool_CPPFLAGS = $(GLIB_CFLAGS) $(QPID_CFLAGS)

@@ -1,4 +1,4 @@
-#/usr/bin/env python
+#!/usr/bin/env python
 #
 # Copyright (C) 2011 Red Hat, Inc.
 #
@@ -23,12 +23,13 @@ import unittest
 import logging
 import manufacturer
 import deployable
+from process_monitor import ProcessMonitor
 
 class TestAeolusHA(unittest.TestCase):
 
     def setUp(self):
-        # start qpidd
-        # start cped
+        self.qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
+        self.cped = ProcessMonitor(['../src/cped'])
         self.manufacturer = manufacturer.Manufacturer()
 
     def test_one_assembly(self):
@@ -36,6 +37,9 @@ class TestAeolusHA(unittest.TestCase):
         Start a deployable wth one assembly.
         Assertion: it is started and we can run acommand on it.
         '''
+        self.assertTrue(self.qpidd.is_running())
+        self.assertTrue(self.cped.is_running())
+
         d = deployable.Deployable('test')
         ai1 = self.manufacturer.assemble('f14-cpe-test', 1)
         d.assembly_add(ai1)
@@ -45,8 +49,13 @@ class TestAeolusHA(unittest.TestCase):
         self.assertEqual(out.strip(), 'f14-cpe-test-1')
         d.stop()
 
+        self.assertTrue(self.qpidd.is_running())
+        self.assertTrue(self.cped.is_running())
+
     def tearDown(self):
         #self.manufacturer.stop()
+        self.cped.stop()
+        self.qpidd.stop()
         pass
 
 if __name__ == '__main__':
