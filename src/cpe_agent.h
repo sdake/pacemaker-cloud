@@ -50,7 +50,7 @@ private:
 	uint32_t num_deps;
 	uint32_t num_ass;
 
-	uint32_t dep_start(std::string& name, std::string& uuid);
+	uint32_t dep_start(std::string& name, std::string& uuid, std::string& config);
 	uint32_t dep_stop(std::string& name, std::string& uuid);
 
 public:

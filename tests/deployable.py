@@ -32,7 +32,6 @@ class Cpe(object):
         self.conn = cqpid.Connection('localhost:49000')
         self.conn.open()
         self.session = qmf2.ConsoleSession(self.conn)
-        #self.session.setAgentFilter('[org.cloudpolicyengine]')
         self.session.setAgentFilter('[]')
         self.session.open()
         time.sleep(3)
@@ -48,13 +47,21 @@ class Cpe(object):
             print ''
             sys.exit(3)
 
-    def deployable_start(self, name, uuid):
+    def __del__(self):
+      self.session.close()
+      self.conn.close()
+
+    def deployable_start(self, name, uuid, config):
         if self.cpe_obj:
-            self.cpe_obj.deployable_start(name, uuid)
+            result = self.cpe_obj.deployable_start(name, uuid, config)
+            for k,v in result.items():
+                print "Output Parameters: %s=%s" % (k, v)
 
     def deployable_stop(self, name, uuid):
         if self.cpe_obj:
-            self.cpe_obj.deployable_stop(name, uuid)
+            result = self.cpe_obj.deployable_stop(name, uuid)
+            for k,v in result.items():
+                print "Output Parameters: %s=%s" % (k, v)
 
 
 class Deployable(object):
@@ -68,6 +75,7 @@ class Deployable(object):
 
     def __del__(self):
         self.stop()
+        del self.cpe
 
     def assembly_add(self, ass):
         self.assemblies[ass.name] = ass
@@ -92,7 +100,7 @@ class Deployable(object):
 
         self.generate_config()
 
-        self.cpe.deployable_start(self.name, self.uuid)
+        self.cpe.deployable_start(self.name, self.uuid, self.xmlconfig)
 
     def stop(self):
         # send cpe a qmf message saying this deployment is about to
