@@ -117,6 +117,7 @@ CommonAgent::init(int argc, char **argv, const char* proc_name)
 	ManagementAgent *agent;
 
 	log_selector.enable(info);
+	log_selector.enable(notice);
 	log_selector.enable(warning);
 	log_selector.enable(error);
 

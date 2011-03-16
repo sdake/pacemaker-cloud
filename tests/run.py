@@ -29,8 +29,10 @@ class TestAeolusHA(unittest.TestCase):
 
     def setUp(self):
         self.qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
-        self.cped = ProcessMonitor(['../src/cped'])
+        time.sleep(1)
+        self.cped = ProcessMonitor(['../src/cped', '-v', '-v', '-v'])
         self.manufacturer = manufacturer.Manufacturer()
+        time.sleep(2)
 
     def test_one_assembly(self):
         '''

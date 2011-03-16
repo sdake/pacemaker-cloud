@@ -89,7 +89,7 @@ CpeAgent::setup(ManagementAgent* agent)
 	string sessionOptions;
 	string url("localhost:49000");
 
-cout << "setup" << endl;
+	QPID_LOG(info, "setup()");
         console_connection = new qpid::messaging::Connection(url, connectionOptions);
         console_connection->open();
 
@@ -117,6 +117,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 
 	uuid = dep_uuid.c_str();
 
+	QPID_LOG(info, "dpe start " << dep_name);
         upstart_job_start("dped", (char *)uuid);
 
 	return Manageable::STATUS_OK;
@@ -125,6 +126,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 Manageable::status_t
 CpeAgent::dep_stop(string& name, string& uuid)
 {
+	QPID_LOG(info, "dpe stop " << name);
 /*
 	DeployableAgent *child;
 
