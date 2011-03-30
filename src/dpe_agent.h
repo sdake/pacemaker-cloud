@@ -30,14 +30,14 @@
 #include <qpid/agent/ManagementAgent.h>
 #include "common_agent.h"
 
-class DeployableAgent;
+class Deployable;
 
 class DpeAgent : public CommonAgent
 {
 private:
 	ManagementAgent* _agent;
 	_qmf::Dpe* _management_object;
-	std::map<std::string, DeployableAgent*> deployments;
+	std::map<std::string, Deployable*> deployments;
 	Mutex map_lock;
 	uint32_t num_deps;
 	uint32_t num_ass;

@@ -18,30 +18,30 @@
  * You should have received a copy of the GNU General Public License
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _DEPLOYABLE_H_
-#define _DEPLOYABLE_H_
+#include <string>
+#include <map>
 
-#include <qpid/agent/ManagementAgent.h>
-#include "org/cloudpolicyengine/Deployable.h"
-#include "dpe_agent.h"
+class Assembly;
 
-class DeployableAgent : public Manageable
-{
+class Deployable {
 private:
-	_qmf::Deployable* _mgmtObject;
+	std::string _name;
+	std::string _uuid;
+	std::map<std::string, Assembly*> assemblies;
 
 public:
 
-	DeployableAgent(ManagementAgent* agent,
-			std::string& name, std::string& uuid);
-	~DeployableAgent() { _mgmtObject->resourceDestroy(); }
+	Deployable();
+	Deployable(std::string& uuid);
+	~Deployable();
+	std::string get_name() const { return _name; }
+	std::string get_uuid() const { return _uuid; }
 
-	ManagementObject* GetManagementObject(void) const  { return _mgmtObject; }
-	status_t ManagementMethod(uint32_t method, Args& arguments, std::string& text);
-	std::string get_key() const { return _mgmtObject->getKey(); }
-	std::string get_name() const { return _mgmtObject->get_name(); }
-	std::string get_uuid() const { return _mgmtObject->get_uuid(); }
+	void reload(void);
+
+	int32_t assembly_add(std::string& uuid, std::string& name);
+	int32_t assembly_remove(std::string& uuid, std::string& name);
 };
 
-#endif /* _DEPLOYABLE_H_ */
+
 

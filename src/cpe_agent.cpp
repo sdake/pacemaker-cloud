@@ -110,7 +110,7 @@ CpeAgent::setup(ManagementAgent* agent)
 }
 
 Manageable::status_t
-CpeAgent::dep_start(string& dep_name, string& dep_uuid, string& config)
+CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 {
 	GMainLoop *loop;
 	const char *uuid;
@@ -154,8 +154,7 @@ CpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 	{
 	case _qmf::Cpe::METHOD_DEPLOYABLE_START:
 		start_args = (_qmf::ArgsCpeDeployable_start*) &arguments;
-		rc = dep_start(start_args->i_name, start_args->i_uuid,
-			       start_args->i_config);
+		rc = dep_start(start_args->i_name, start_args->i_uuid);
 		start_args->o_rc = rc;
 		break;
 
