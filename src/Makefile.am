@@ -64,7 +64,7 @@ cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
 cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS)
 
 pe_test_SOURCES = pe_test.c
-pe_test_CPPFLAGS = $(GLIB_CFLAGS) $(LIBXML2_CFLAGS) \
+pe_test_CPPFLAGS = -Wall $(GLIB_CFLAGS) $(LIBXML2_CFLAGS) \
 		   -I/usr/include/pacemaker \
 		   -I/usr/include/heartbeat
 
