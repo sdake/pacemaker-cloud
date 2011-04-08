@@ -34,27 +34,31 @@ noinst_PROGRAMS = cpe-tool2
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 
+
+
 $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
-cped_SOURCES = libupstart.c mainloop.c $(qmfauto_c) common_agent.cpp \
-	       cpe_agent.cpp
-cped_CPPFLAGS = $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
-		-I$(qmfauto_path)
-cped_LDADD = $(dbus_glib_1_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes \
-	     -lqpidcommon -lqmf2 $(glib_LIBS)
 
-dped_SOURCES = mainloop.c $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
-	       deployable.cpp assembly.cpp config_loader.cpp
+cped_SOURCES  = libupstart.c mainloop.c $(qmfauto_c) common_agent.cpp \
+	        cpe_agent.cpp
+
+cped_CPPFLAGS = $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
+		  -I$(qmfauto_path)
+
+cped_LDFLAGS  = $(dbus_glib_1_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes \
+	        -lqpidcommon -lqmf2 $(glib_LIBS)
+
+
+dped_SOURCES  = mainloop.c $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
+	        deployable.cpp assembly.cpp config_loader.cpp
+
 dped_CPPFLAGS = $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \
 		-I$(qmfauto_path)
-dped_LDADD = $(qpid_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 \
-	     -lqpidmessaging $(glib_LIBS) $(libxml2_LIBS)
 
-#cpe_tool_SOURCES = cpe-tool.cpp
-#cpe_tool_CPPFLAGS = $(glib_CFLAGS) $(qpid_CFLAGS)
-#cpe_tool_LDADD = $(qpid_LIBS) -lqmf2
+dped_LDFLAGS  = $(qpid_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 \
+		-lqpidmessaging $(glib_LIBS) $(libxml2_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
-cpe_tool2_LDADD = $(dbus_glib_1_LIBS)
+cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS)
