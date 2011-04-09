@@ -31,8 +31,9 @@ import assembly
 
 class Manufacturer(object):
 
-    def __init__(self):
+    def __init__(self, dist):
         self.assemblies = {}
+        self.dist = dist
 
     def get_conf(self, config, section, key, default):
         if config is not None and config.has_section(section) \
@@ -55,7 +56,7 @@ class Manufacturer(object):
 
         if not os.access(tdl_filename, os.F_OK):
             # get the tdl and fix the name
-            doc = libxml2.parseFile('templates/tdl')
+            doc = libxml2.parseFile('templates/%s.tdl' % self.dist)
             result = doc.xpathEval('/template/name')
             for node in result:
                 node.setContent("%s" % instname)
@@ -70,7 +71,7 @@ class Manufacturer(object):
         if not os.access(kickstart_filename, os.F_OK):
             net = '--bootproto=dhcp --device=eth0 --onboot=on --hostname=%s' % instname
             o = open(kickstart_filename,"w")
-            data = open("templates/ks").read()
+            data = open("templates/%s.ks" % self.dist).read()
             o.write(re.sub("@NETWORK@",net, data))
             o.close()
 
@@ -81,6 +82,16 @@ class Manufacturer(object):
                                          'qemu:///system')
         libvirt_conn = libvirt.open(libvirt_uri)
 
+        print 'guest factory...'
+        try:
+            guest = oz.GuestFactory.guest_factory(tdl, oz_config, kickstart_filename)
+
+        except oz.OzException, exc:
+                print ""
+                print "ERROR: %s" % (str(exc))
+                print ""
+                raise
+    
         guest = oz.GuestFactory.guest_factory(tdl, oz_config, kickstart_filename)
         try:
             guest.check_for_guest_conflict()
@@ -95,7 +106,7 @@ class Manufacturer(object):
                 print 'generating disk image...'
                 guest.generate_diskimage()
                 print 'installing fedora onto guest...'
-                libvirt_xml = guest.install(None)
+                libvirt_xml = guest.install(50000)
                 open(libvirt_filename, 'w').write(libvirt_xml)
             finally:
                 guest.cleanup_install()

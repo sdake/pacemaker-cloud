@@ -31,7 +31,7 @@ class TestAeolusHA(unittest.TestCase):
         self.qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
         time.sleep(1)
         self.cped = ProcessMonitor(['../src/cped', '-v', '-v', '-v'])
-        self.manufacturer = manufacturer.Manufacturer()
+        self.manufacturer = manufacturer.Manufacturer('rhel6')
         time.sleep(2)
 
     def test_one_assembly(self):
@@ -43,12 +43,12 @@ class TestAeolusHA(unittest.TestCase):
         self.assertTrue(self.cped.is_running())
 
         d = deployable.Deployable('test')
-        ai1 = self.manufacturer.assemble('f14-cpe-test', 1)
+        ai1 = self.manufacturer.assemble('rhel6-cpe-test', 2)
         d.assembly_add(ai1)
         d.start()
-        (rc, out) = d.assemblies['f14-cpe-test-1'].rsh('hostname')
+        (rc, out) = d.assemblies['rhel6-cpe-test-2'].rsh('hostname')
         self.assertEqual(rc, 0)
-        self.assertEqual(out.strip(), 'f14-cpe-test-1')
+        self.assertEqual(out.strip(), 'rhel6-cpe-test-2')
         d.stop()
 
         self.assertTrue(self.qpidd.is_running())

@@ -46,8 +46,8 @@ logvol / --fstype ext4 --name=LogVol00 --vgname=VolGroup00 --size=1024 --grow
 
 %packages
 @hardware-support
-@base
-@core
+#matahari
+#httpd
 
 %end
 

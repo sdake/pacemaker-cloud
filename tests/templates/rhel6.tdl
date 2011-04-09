@@ -1,0 +1,12 @@
+<template>
+  <name>rhel6-basic</name>
+  <os>
+    <name>RHEL-6</name>
+    <version>0</version>
+    <arch>x86_64</arch>
+    <install type='url'>
+      <url>http://download.devel.redhat.com/rel-eng/RHEL6.1-20110406.0/6/Server/x86_64/os/</url>
+    </install>
+  </os>
+  <description>RHEL 6</description>
+</template>
