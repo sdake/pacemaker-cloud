@@ -51,9 +51,9 @@ class Cpe(object):
       self.session.close()
       self.conn.close()
 
-    def deployable_start(self, name, uuid, config):
+    def deployable_start(self, name, uuid):
         if self.cpe_obj:
-            result = self.cpe_obj.deployable_start(name, uuid, config)
+            result = self.cpe_obj.deployable_start(name, uuid)
             for k,v in result.items():
                 print "Output Parameters: %s=%s" % (k, v)
 
@@ -100,7 +100,7 @@ class Deployable(object):
 
         self.generate_config()
 
-        self.cpe.deployable_start(self.name, self.uuid, self.xmlconfig)
+        self.cpe.deployable_start(self.name, self.uuid)
 
     def stop(self):
         # send cpe a qmf message saying this deployment is about to
