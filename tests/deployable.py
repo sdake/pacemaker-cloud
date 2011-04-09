@@ -67,7 +67,7 @@ class Cpe(object):
 class Deployable(object):
 
     def __init__(self, name):
-        self.really_start_guests = False
+        self.really_start_guests = True
         self.name = name
         self.uuid = name # TODO
         self.assemblies = {}
