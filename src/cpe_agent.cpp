@@ -23,6 +23,7 @@
 
 
 #include "config.h"
+#include <qb/qblog.h>
 #include <qpid/messaging/Connection.h>
 #include <qpid/messaging/Duration.h>
 #include <qmf/ConsoleSession.h>
@@ -121,20 +122,10 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 Manageable::status_t
 CpeAgent::dep_stop(string& name, string& uuid)
 {
-	QPID_LOG(info, "dpe stop " << name);
-/*
-	DeployableAgent *child;
+	qb_log(LOG_DEBUG, "dpe stop %s %s", name.c_str(), uuid.c_str());
 
-	Mutex::ScopedLock _lock(map_lock);
+        upstart_job_stop("dped", uuid.c_str());
 
-	child = deployments[name];
-
-	if (child) {
-		cout << "request to unstart " << name << endl;
-		deployments.erase(name);
-		delete child;
-	}
-*/
 	return Manageable::STATUS_OK;
 }
 
