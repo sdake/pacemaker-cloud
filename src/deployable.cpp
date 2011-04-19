@@ -66,7 +66,9 @@ Deployable::reload(void)
 	int32_t rc;
 	int size;
 	int i;
-	xmlChar* content;
+	string ass_name;
+	string ass_uuid;
+	string ass_ip;
 
 	rc = config_get(_uuid, &doc);
 	if (rc != 0) {
@@ -87,7 +89,7 @@ Deployable::reload(void)
 	}
 
 	/* Evaluate xpath expression */
-	xpathObj = xmlXPathEvalExpression(BAD_CAST "/configuration/nodes/*", xpathCtx);
+	xpathObj = xmlXPathEvalExpression(BAD_CAST "/deployable/assemblies/*", xpathCtx);
 	if (xpathObj == NULL) {
 		qb_log(LOG_ERR, "unable to evaluate xpath expression");
 		xmlXPathFreeContext(xpathCtx);
@@ -102,15 +104,12 @@ Deployable::reload(void)
 		assert(xpathObj->nodesetval->nodeTab[i]);
 
 		if (xpathObj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
-			content = xmlNodeGetContent(xpathObj->nodesetval->nodeTab[i]);
-			// TODO real uuid
-			string uuid = (char*)content;
-			string ass_name = (char*)content;
-
-			assembly_add(ass_name, uuid);
-
-			QPID_LOG(info, xpathObj->nodesetval->nodeTab[i]->name << " = " << content);
-			xmlFree(content);
+			ass_name = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "name");
+			//ass_uuid = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "uuid");
+			ass_uuid = ass_name;
+			ass_ip = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "ipaddr");
+			assert(ass_ip.length() > 0);
+			assembly_add(ass_name, ass_uuid, ass_ip);
 		}
 	}
 
@@ -123,7 +122,7 @@ Deployable::reload(void)
 }
 
 int32_t
-Deployable::assembly_add(string& uuid, string& name)
+Deployable::assembly_add(string& name, string& uuid, string& ip)
 {
 	Assembly *h = assemblies[uuid];
 	if (h) {
@@ -132,7 +131,7 @@ Deployable::assembly_add(string& uuid, string& name)
 	}
 
 	try {
-		h = new Assembly(uuid);
+		h = new Assembly(name, uuid, ip);
 	} catch (qpid::types::Exception e) {
 		qb_log(LOG_ERR, "Exception creating Assembly %s",
 		       e.what());

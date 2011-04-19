@@ -39,8 +39,11 @@ public:
 
 	void reload(void);
 
-	int32_t assembly_add(std::string& uuid, std::string& name);
-	int32_t assembly_remove(std::string& uuid, std::string& name);
+	int32_t assembly_add(std::string& name,
+			     std::string& uuid,
+			     std::string& ipaddr);
+	int32_t assembly_remove(std::string& name,
+			     std::string& uuid);
 };
 
 

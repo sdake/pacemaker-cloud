@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
+import os
 import time
 import random
 import unittest
@@ -50,7 +51,7 @@ def hack():
     ai1 = d.assemblies['%s-cpe-test-2' % dist]
     print "rsh'ing to assembly"
     ai1.rsh('hostname')
-    
+
     time.sleep(90)
 
     d.stop()
@@ -94,6 +95,8 @@ class TestAeolusHA(unittest.TestCase):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format="TEST %(message)s")
+
+    os.environ['CPE_CONFIG_DIR'] = os.getcwd()
 
     hack()
 

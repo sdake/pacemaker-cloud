@@ -18,17 +18,25 @@
  * You should have received a copy of the GNU General Public License
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdlib.h>
+
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
 #include "config_loader.h"
 
-
 int32_t
 config_get(std::string& uuid, xmlDoc** doc)
 {
-	std::string filename = uuid + ".xml";
+	char *config_dir = getenv("CPE_CONFIG_DIR");
+	std::string filename;
 
+	if (config_dir) {
+		filename = config_dir;
+		filename +=  "/" + uuid + ".xml";
+	} else {
+		filename = uuid + ".xml";
+	}
 	*doc = xmlParseFile(filename.c_str());
 	if (doc == NULL) {
 		return -1;
