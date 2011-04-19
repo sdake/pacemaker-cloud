@@ -29,6 +29,7 @@ class Cpe(object):
     def __init__(self):
 
         self.cpe_obj = None
+        self.dpe_obj = None
         self.conn = cqpid.Connection('localhost:49000')
         self.conn.open()
         self.session = qmf2.ConsoleSession(self.conn)
@@ -49,6 +50,20 @@ class Cpe(object):
             print ''
             sys.exit(3)
 
+    def wait_for_dpe_agent(self, timeout=6):
+        waited = 0
+        self.dpe_obj = None
+        while self.dpe_obj is None and waited < timeout:
+            time.sleep(1)
+            agents = self.session.getAgents()
+            for a in agents:
+                if 'cloudpolicyengine.org' in a.getVendor():
+                    result = a.query("{class:dpe, package:'org.cloudpolicyengine'}")
+                    if len(result) >= 1:
+                        self.dpe_obj = result[0]
+                        return True
+        return False
+
     def __del__(self):
       self.session.close()
       self.conn.close()
@@ -57,7 +72,17 @@ class Cpe(object):
         if self.cpe_obj:
             result = self.cpe_obj.deployable_start(name, uuid)
             for k,v in result.items():
-                print "Output Parameters: %s=%s" % (k, v)
+                return v
+        else:
+            return 1
+
+    def deployable_load(self, name, uuid):
+        if self.dpe_obj:
+            result = self.dpe_obj.deployable_load(name, uuid)
+            for k,v in result.items():
+                return v
+        else:
+            return 1
 
     def deployable_stop(self, name, uuid):
         if self.cpe_obj:
@@ -69,7 +94,6 @@ class Cpe(object):
 class Deployable(object):
 
     def __init__(self, name):
-        self.really_start_guests = True
         self.name = name
         self.uuid = name # TODO
         self.assemblies = {}
@@ -85,33 +109,44 @@ class Deployable(object):
 
     def generate_config(self):
         doc = libxml2.newDoc("1.0")
-        cfg = doc.newChild(None, "configuration", None)
-        nodes = cfg.newChild(None, "nodes", None)
-        resources = cfg.newChild(None, "resources", None)
-        constraints = cfg.newChild(None, 'constraints', None)
+        dep = doc.newChild(None, "deployable", None)
+        dep.setProp("name", self.name)
+        asses = dep.newChild(None, "assemblies", None)
+        constraints = dep.newChild(None, 'constraints', None)
 
         for n, a in self.assemblies.iteritems():
-            node = nodes.newChild(None, 'node', n)
+            ass = asses.newChild(None, 'assembly', None)
+            ass.setProp("name", n)
+#            ass.setProp("uuid", 'TODO')
+            ass.setProp("ipaddr", a.ipaddr_get())
 
-        self.xmlconfig = doc.serialize(None, 1)
+        open(self.name + '.xml', 'w').write(doc.serialize(None, 1))
         doc.freeDoc()
 
-    def start(self):
-        if self.really_start_guests:
-            for n, a in self.assemblies.iteritems():
-                 a.start()
+    def start(self, runonly=False):
+        self.l.info('starting Deployable %s' % self.name)
+        for n, a in self.assemblies.iteritems():
+             a.start()
+
+        if runonly:
+            return
 
         self.generate_config()
 
-        self.cpe.deployable_start(self.name, self.uuid)
+        if self.cpe.deployable_start(self.name, self.uuid) == 0:
+            if self.cpe.wait_for_dpe_agent():
+                self.cpe.deployable_load(self.name, self.uuid)
+            else:
+                self.l.error("given up waiting for dpe to start")
+        else:
+            l.error("deployable_start FAILED!!")
 
     def stop(self):
         # send cpe a qmf message saying this deployment is about to
         # be stopped
 
-        if self.really_start_guests:
-            for n, a in self.assemblies.iteritems():
-                a.stop()
+        for n, a in self.assemblies.iteritems():
+            a.stop()
 
         self.cpe.deployable_stop(self.name, self.uuid)
 
