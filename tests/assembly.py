@@ -97,3 +97,6 @@ class Assembly(FedoraGuest):
         #self.rsh('chkconfig matahari-host on')
         #self.rsh('service matahari-host restart')
 
+        self.rsh('iptables -F')
+        self.rsh('setenforce 0')
+
