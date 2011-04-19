@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -42,29 +43,36 @@
 static DBusConnection *connection;
 
 int
-upstart_init (GMainLoop *loop)
+upstart_init(GMainLoop *loop)
 {
 	DBusError error;
 
 	/* Get a connection to the session bus */
-	dbus_error_init (&error);
-	connection = dbus_bus_get (DBUS_BUS_SYSTEM, &error);
+	dbus_error_init(&error);
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (!connection) {
-		g_warning ("Failed to connect to the D-BUS daemon: %s", error.message);
-		dbus_error_free (&error);
+		g_warning("Failed to connect to the D-BUS daemon: %s", error.message);
+		dbus_error_free(&error);
 		return 1;
 	}
 
 	/* Set up this connection to work in a GLib event loop */
 	dbus_connection_setup_with_g_main(connection, NULL);
-	dbus_error_free (&error);
+	dbus_error_free(&error);
 
 	return 0;
 }
 
-int
-upstart_job_start(const char* service, const char* instance)
+void
+upstart_fini(void)
 {
+
+}
+
+static int
+_upstart_job(const char* service, const char* instance, bool start)
+{
+
 	DBusMessage *   method_call;
 	DBusMessageIter iter;
 	DBusError       error;
@@ -86,10 +94,18 @@ upstart_job_start(const char* service, const char* instance)
 	snprintf(service_path, 512, "/com/ubuntu/Upstart/jobs/%s", service);
 
 	/* Construct the method call message. */
-	method_call = dbus_message_new_method_call(DBUS_SERVICE_UPSTART,
-						   service_path,
-						   DBUS_INTERFACE_UPSTART_JOB,
-						   "Start");
+	if (start) {
+		method_call = dbus_message_new_method_call(DBUS_SERVICE_UPSTART,
+							   service_path,
+							   DBUS_INTERFACE_UPSTART_JOB,
+							   "Start");
+	} else {
+		method_call = dbus_message_new_method_call(DBUS_SERVICE_UPSTART,
+							   service_path,
+							   DBUS_INTERFACE_UPSTART_JOB,
+							   "Stop");
+	}
+
 	if (!method_call) {
 		return -ENOMEM;
 	}
@@ -175,4 +191,14 @@ upstart_job_start(const char* service, const char* instance)
 	return 0;
 }
 
+int
+upstart_job_start(const char* service, const char* instance)
+{
+	_upstart_job(service, instance, true);
+}
+
+int upstart_job_stop(const char * service, const char * instance)
+{
+	_upstart_job(service, instance, false);
+}
 

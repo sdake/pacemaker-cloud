@@ -34,12 +34,10 @@ main (int argc, char **argv)
 	upstart_init(loop);
 
 	upstart_job_start("dped", "123-456-aaa");
-//	upstart_job_start("dped", "789-012-bbb");
+	sleep(5);
+	upstart_job_stop("dped", "123-456-aaa");
 
-	/* Start the event loop */
-//	g_main_loop_run (loop);
-
-//	upstart_fini();
+	upstart_fini();
 	return 0;
 }
 
