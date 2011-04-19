@@ -34,6 +34,8 @@ private:
 	qmf::ConsoleSession *session;
 	qpid::messaging::Connection *connection;
 	uint32_t state;
+	uint32_t _last_timestamp;
+	uint32_t _last_sequence;
 
 public:
 	static const uint32_t HEARTBEAT_INIT = 1;
@@ -42,11 +44,13 @@ public:
 	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
 
 	std::string name;
+	std::string uuid;
+	std::string ipaddr;
 	bool is_connected;
 	int refcount;
 
 	Assembly();
-	Assembly(std::string& host_url);
+	Assembly(std::string& _name, std::string& _uuid, std::string& _ipaddr);
 	~Assembly();
 
 	bool nextEvent(qmf::ConsoleEvent&);
@@ -54,6 +58,9 @@ public:
 	uint32_t state_get(void) { return this->state; };
 	void state_set(uint32_t new_state);
 	void deref(void);
+	void check_heartbeat(void);
+	void check_heartbeat(uint32_t timestamp, uint32_t sequence);
+
 };
 
 
