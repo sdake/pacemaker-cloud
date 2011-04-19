@@ -32,6 +32,8 @@ private:
 	std::string connectionOptions;
 	std::string sessionOptions;
 	qmf::ConsoleSession *session;
+	qmf::Data _mh_serv_class;
+	bool _mh_serv_class_found;
 	qpid::messaging::Connection *connection;
 	uint32_t state;
 	uint32_t _last_timestamp;
@@ -61,6 +63,7 @@ public:
 	void check_heartbeat(void);
 	void check_heartbeat(uint32_t timestamp, uint32_t sequence);
 
+	void matahari_discover(void);
 };
 
 

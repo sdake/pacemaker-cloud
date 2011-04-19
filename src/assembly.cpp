@@ -70,7 +70,44 @@ static gboolean host_proxy_timeout(gpointer data)
 	if (!got_event) {
 		a->check_heartbeat();
 	}
+	a->matahari_discover();
 	return TRUE;
+}
+
+void Assembly::matahari_discover(void)
+{
+	Agent a;
+	ConsoleEvent ce;
+	int32_t ai;
+	int32_t ac;
+	qpid::types::Variant::Map in_args;
+
+	if (_mh_serv_class_found) {
+		return;
+	}
+
+	ac = session->getAgentCount();
+	for (ai = 0; ai < ac; ai++) {
+		a = session->getAgent(ai);
+		qb_log(LOG_DEBUG, "agent: %s", a.getName().c_str());
+		if (a.getVendor() == "matahariproject.org" &&
+		    a.getProduct() == "service") {
+			ce = a.query("{class:Services, package:org.matahariproject}");
+			qb_log(LOG_DEBUG, "queried agent: %s (res:%d)",
+			       a.getName().c_str(), ce.getDataCount());
+			if (ce.getDataCount() >= 1) {
+				_mh_serv_class_found = true;
+				_mh_serv_class = ce.getData(0);
+				qb_log(LOG_DEBUG, "WOOT found service class");
+				break;
+			}
+		}
+	}
+
+	if (_mh_serv_class_found) {
+		a = _mh_serv_class.getAgent();
+		ce = a.callMethod("list", in_args, _mh_serv_class.getAddr());
+	}
 }
 
 bool Assembly::nextEvent(ConsoleEvent& e)
@@ -143,6 +180,7 @@ void Assembly::stop(void)
 
 Assembly::Assembly()
 {
+	_mh_serv_class_found = false;
 	is_connected = false;
 	refcount = 1;
 	session = NULL;
