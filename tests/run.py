@@ -25,6 +25,38 @@ import manufacturer
 import deployable
 from process_monitor import ProcessMonitor
 
+def hack():
+    only_startup = False
+    dist = "rhel6"
+
+    qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
+    time.sleep(1)
+    cped = ProcessMonitor(['../src/cped', '-v', '-v', '-v'])
+    manu = manufacturer.Manufacturer(dist)
+    time.sleep(2)
+
+    print 'qpidd and cped running, moving on ...'
+    d = deployable.Deployable('test')
+    print 'assemling guest'
+    ai1 = manu.assemble('%s-cpe-test' % dist, 2)
+    print 'adding to dep'
+    d.assembly_add(ai1)
+    print 'starting dep'
+
+    d.start(only_startup)
+    while (only_startup):
+        time.sleep(1)
+
+    ai1 = d.assemblies['%s-cpe-test-2' % dist]
+    print "rsh'ing to assembly"
+    ai1.rsh('hostname')
+    
+    time.sleep(90)
+
+    d.stop()
+    cped.stop()
+    qpidd.stop()
+
 class TestAeolusHA(unittest.TestCase):
 
     def setUp(self):
@@ -62,7 +94,10 @@ class TestAeolusHA(unittest.TestCase):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format="TEST %(message)s")
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAeolusHA)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+
+    hack()
+
+    #suite = unittest.TestLoader().loadTestsFromTestCase(TestAeolusHA)
+    #unittest.TextTestRunner(verbosity=2).run(suite)
 
 
