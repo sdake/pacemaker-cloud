@@ -35,22 +35,25 @@ int use_stderr = 0;
 #include <syslog.h>
 #include <cstdlib>
 
-#include <qpid/sys/Time.h>
-#include <qpid/agent/ManagementAgent.h>
-#include <qpid/client/ConnectionSettings.h>
+#include <qpid/messaging/Connection.h>
+#include <qpid/messaging/Duration.h>
+#include <qmf/AgentSession.h>
+#include <qmf/AgentEvent.h>
+#include <qmf/Schema.h>
+#include <qmf/SchemaProperty.h>
+#include <qmf/SchemaMethod.h>
+#include <qmf/Data.h>
+#include <qmf/DataAddr.h>
+#include <qpid/types/Variant.h>
+#include <string>
+#include <iostream>
 
-#include "org/cloudpolicyengine/Package.h"
 #include "common_agent.h"
 
 
-using namespace qpid::management;
-using namespace qpid::client;
 using namespace std;
+using namespace qmf;
 namespace _qmf = qmf::org::cloudpolicyengine;
-
-// Global Variables
-ManagementAgent::Singleton* singleton;
-Logger& l = Logger::instance();
 
 void
 shutdown(int /*signal*/)
@@ -87,20 +90,19 @@ print_usage(const char *proc_name)
 static gboolean
 qpid_callback(int fd, gpointer user_data)
 {
-	ManagementAgent *agent = (ManagementAgent *)user_data;
-	QPID_LOG(trace, "Qpid message recieved");
-	agent->pollCallbacks();
+	AgentSession *agent = (AgentSession *)user_data;
+printf ("qpid message received\n");
 	return TRUE;
 }
 
 static void
 qpid_disconnect(gpointer user_data)
 {
-	QPID_LOG(error, "Qpid connection closed");
+	printf("Qpid connection closed");
 }
 
 int
-CommonAgent::init(int argc, char **argv, const char* proc_name)
+CommonAgent::init(int argc, char **argv, const char *proc_name)
 {
 	int arg;
 	int idx = 0;
@@ -112,13 +114,7 @@ CommonAgent::init(int argc, char **argv, const char* proc_name)
 	char *service = NULL;
 	int serverport = 49000;
 	int debuglevel = 0;
-
-	qpid::management::ConnectionSettings settings;
-	ManagementAgent *agent;
-
-	log_selector.enable(info);
-	log_selector.enable(warning);
-	log_selector.enable(error);
+	string url = "localhost:49000";
 
 	// Get args
 	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
@@ -184,13 +180,6 @@ CommonAgent::init(int argc, char **argv, const char* proc_name)
 			break;
 		}
 	}
-	if (debuglevel == 1) {
-		log_selector.enable(debug);
-	}
-	if (debuglevel == 2) {
-		log_selector.enable(trace);
-	}
-	l.select(log_selector);
 
 	if (daemonize == true) {
 		if (daemon(0, 0) < 0) {
@@ -199,49 +188,29 @@ CommonAgent::init(int argc, char **argv, const char* proc_name)
 		}
 	}
 
-	// Get our management agent
-	singleton = new ManagementAgent::Singleton();
-	agent = singleton->getInstance();
-	_qmf::Package packageInit(agent);
+	agent_connection = qpid::messaging::Connection(url, "{reconnect:True}");
+	agent_connection.open();
+
+	agent_session = AgentSession(agent_connection, "{interval:30}");
+	agent_session.setVendor("cloudpolicyengine.org");
+	agent_session.setProduct(proc_name);
+
+	package.configure(agent_session);
+	agent_session.open();
 
 	// Set up the cleanup handler for sigint
 	signal(SIGINT, shutdown);
 
-	// Connect to the broker
-	settings.host = servername;
-	settings.port = serverport;
-
-	if (username != NULL) {
-		settings.username = username;
-	}
-	if (password != NULL) {
-		settings.password = password;
-	}
-	if (service != NULL) {
-		settings.service = service;
-	}
-	if (gssapi == true) {
-		settings.mechanism = "GSSAPI";
-	}
-
 	syslog(LOG_INFO, "Connecting to Qpid broker at %s on port %d", servername, serverport);
-	agent->setName("cloudpolicyengine.org", proc_name);
-	string dataFile(".cloudpolicyengine-data-");
-	agent->init(settings, 5, true, dataFile + proc_name);
-
-	/* Do any setup required by our agent */
-	if (this->setup(agent) < 0) {
-		fprintf(stderr, "Failed to set up broker connection to %s on %d for %s\n",
-			servername, serverport, proc_name);
-		return -1;
-	}
 
 	mainloop = g_main_new(FALSE);
+/*
 	qpid_source = mainloop_add_fd(G_PRIORITY_HIGH,
-				      agent->getSignalFd(),
+				      agent_session.getSignalFd(),
 				      qpid_callback,
 				      qpid_disconnect,
-				      agent);
+				      agent_session);
+*/
 
 	return 0;
 }

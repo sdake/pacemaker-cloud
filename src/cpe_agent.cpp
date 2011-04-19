@@ -39,13 +39,6 @@
 using namespace std;
 using namespace qmf;
 
-static gboolean host_proxy_timeout(gpointer data)
-{
-        CpeAgent *a = (CpeAgent *)data;
-
-	return(a->console_handler());
-}
-
 int
 CpeAgent::console_handler(void)
 {
@@ -80,6 +73,8 @@ main(int argc, char **argv)
 	return rc;
 }
 
+#ifdef OUTA
+/*
 int
 CpeAgent::setup(ManagementAgent* agent)
 {
@@ -168,3 +163,4 @@ CpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 
 	return rc;
 }
+#endif

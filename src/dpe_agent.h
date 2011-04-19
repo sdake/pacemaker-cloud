@@ -22,12 +22,18 @@
 #ifndef _DPE_H_
 #define _DPE_H_
 
-#include "org/cloudpolicyengine/Dpe.h"
-#include "org/cloudpolicyengine/ArgsDpeDeployable_load.h"
-#include "org/cloudpolicyengine/ArgsDpeDeployable_unload.h"
-#include "org/cloudpolicyengine/ArgsDpeDeployables_list.h"
+#include <qpid/messaging/Connection.h>
+#include <qpid/messaging/Duration.h>
+#include <qmf/ConsoleSession.h>
+#include <qmf/ConsoleEvent.h>
+#include <qmf/Agent.h>
+#include <qpid/types/Variant.h>
+
 
 #include <qpid/agent/ManagementAgent.h>
+
+#include "org/cloudpolicyengine/QmfPackage.h"
+
 #include "common_agent.h"
 
 class DeployableAgent;
@@ -35,10 +41,8 @@ class DeployableAgent;
 class DpeAgent : public CommonAgent
 {
 private:
-	ManagementAgent* _agent;
-	_qmf::Dpe* _management_object;
+/*
 	std::map<std::string, DeployableAgent*> deployments;
-	Mutex map_lock;
 	uint32_t num_deps;
 	uint32_t num_ass;
 
@@ -46,11 +50,9 @@ private:
 	uint32_t dep_unload(std::string& name, std::string& uuid);
 
 	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
+*/
 
 public:
-	int setup(ManagementAgent* agent);
-	ManagementObject* GetManagementObject() const { return _management_object; }
-	status_t ManagementMethod(uint32_t method, Args& arguments, string& text);
 };
 #endif /* _DPE_H_ */
 

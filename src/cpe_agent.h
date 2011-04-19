@@ -29,24 +29,21 @@
 #include <qmf/Agent.h>
 #include <qpid/types/Variant.h>
 
-#include "org/cloudpolicyengine/Cpe.h"
-#include "org/cloudpolicyengine/ArgsCpeDeployable_start.h"
-#include "org/cloudpolicyengine/ArgsCpeDeployable_stop.h"
 
 #include <qpid/agent/ManagementAgent.h>
+
+#include "org/cloudpolicyengine/QmfPackage.h"
+
 #include "common_agent.h"
 
 class CpeAgent : public CommonAgent
 {
 private:
-	ManagementAgent* _agent;
-	_qmf::Cpe* _management_object;
 	std::string connectionOptions;
 	std::string sessionOptions;
         qpid::messaging::Connection *console_connection;
 	qmf::ConsoleSession *console_session;
 
-	Mutex map_lock;
 	uint32_t num_deps;
 	uint32_t num_ass;
 
@@ -55,9 +52,6 @@ private:
 
 public:
 	int console_handler(void);
-	int setup(ManagementAgent* agent);
-	ManagementObject* GetManagementObject() const { return _management_object; }
-	status_t ManagementMethod(uint32_t method, Args& arguments, string& text);
 };
 #endif /* _CPE_H_ */
 

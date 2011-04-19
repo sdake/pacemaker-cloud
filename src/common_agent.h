@@ -20,36 +20,41 @@
 #ifndef __COMMON_AGENT_H
 #define __COMMON_AGENT_H
 
+#include <qpid/messaging/Connection.h>
+#include <qpid/messaging/Duration.h>
+#include <qmf/AgentSession.h>
+#include <qmf/AgentEvent.h>
+#include <qmf/Schema.h>
+#include <qmf/SchemaProperty.h>
+#include <qmf/SchemaMethod.h>
+#include <qmf/Data.h>
+#include <qmf/DataAddr.h>
+#include <qpid/types/Variant.h>
 #include <string>
-#include <qpid/sys/Time.h>
-#include <qpid/agent/ManagementAgent.h>
-#include <qpid/management/Manageable.h>
-#include <qpid/log/Logger.h>
-#include <qpid/log/Options.h>
+#include <iostream>
 
 extern "C" {
 #include "mainloop.h"
 }
 
-using namespace qpid::management;
-using namespace qpid::log;
 using namespace std;
+using namespace qmf;
 
-#include "org/cloudpolicyengine/Package.h"
-namespace _qmf = qmf::org::cloudpolicyengine;
+#include "org/cloudpolicyengine/QmfPackage.h"
 
-class CommonAgent : public Manageable
+class CommonAgent
 {
 	mainloop_fd_t *qpid_source;
-	Selector log_selector;
 
 public:
 	GMainLoop *mainloop;
 	CommonAgent() {};
 	~CommonAgent() {};
+	AgentSession agent_session;
+	qpid::messaging::Connection agent_connection;
+	qmf::org::cloudpolicyengine::PackageDefinition package;
 
-	virtual int setup(ManagementAgent *agent) { return 0; };
-	int init(int argc, char **argv, const char* proc_name);
+	int init(int argc, char **argv, const char *proc_name);
 	void run();
 };
 

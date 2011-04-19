@@ -22,15 +22,16 @@
 #include "config.h"
 #include <string>
 #include <iostream>
-#include "deployable_agent.h"
+
+#include "dpe_agent.h"
 
 using namespace std;
 
 int
 main(int argc, char **argv)
 {
+	int rc;
 	DpeAgent agent;
-	int32_t rc;
 
 	rc = agent.init(argc, argv, "dpe");
 	if (rc == 0) {
@@ -39,6 +40,7 @@ main(int argc, char **argv)
 	return rc;
 }
 
+#ifdef OUTA
 void
 DpeAgent::update_stats(uint32_t deployables, uint32_t assemblies)
 {
@@ -154,3 +156,4 @@ DpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 
 	return rc;
 }
+#endif
