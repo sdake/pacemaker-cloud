@@ -41,7 +41,7 @@ class Deployable;
 class DpeAgent : public CommonAgent
 {
 private:
-	std::map<std::string, DeployableAgent*> deployments;
+	std::map<std::string, Deployable*> deployments;
 	uint32_t num_deps;
 	uint32_t num_ass;
 
