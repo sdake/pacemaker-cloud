@@ -39,24 +39,23 @@ qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
-
 cped_SOURCES  = libupstart.c mainloop.c $(qmfauto_c) common_agent.cpp \
 	        cpe_agent.cpp
 
-cped_CPPFLAGS = $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
+cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
 		  -I$(qmfauto_path)
 
-cped_LDFLAGS  = $(dbus_glib_1_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes \
+cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes \
 	        -lqpidcommon -lqmf2 $(glib_LIBS)
 
 
 dped_SOURCES  = mainloop.c $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
 	        deployable.cpp assembly.cpp config_loader.cpp
 
-dped_CPPFLAGS = $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \
+dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \
 		-I$(qmfauto_path)
 
-dped_LDFLAGS  = $(qpid_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 \
+dped_LDFLAGS  = $(libqb_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 \
 		-lqpidmessaging $(glib_LIBS) $(libxml2_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
@@ -64,7 +63,7 @@ cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
 cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS)
 
 pe_test_SOURCES = pe_test.c
-pe_test_CPPFLAGS = -Wall $(GLIB_CFLAGS) $(LIBXML2_CFLAGS) \
+pe_test_CPPFLAGS = -Wall $(glib_CFLAGS) $(libxml2_CFLAGS) \
 		   -I/usr/include/pacemaker \
 		   -I/usr/include/heartbeat
 
@@ -74,5 +73,5 @@ pe_test_LDADD = -lcrmcommon \
 		-lcib \
 		-ltransitioner \
 		-lplumb \
-		$(GLIB_LIBS) \
-		$(LIBXML2_LIBS)
+		$(glib_LIBS) \
+		$(libxml2_LIBS)

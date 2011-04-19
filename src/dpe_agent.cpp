@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+#include <qb/qblog.h>
 #include <string>
 #include <iostream>
 #include "dpe_agent.h"
@@ -74,15 +75,17 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
         Deployable *child;
 
 	Mutex::ScopedLock _lock(map_lock);
+	qb_log(LOG_DEBUG, "loading deployment: %s:%s",
+	       dep_name.c_str(), dep_uuid.c_str());
 
 	child = deployments[dep_uuid];
 	if (child != NULL) {
+		qb_log(LOG_ERR, "deployment: %s already loaded",
+		       dep_uuid.c_str());
 		return Manageable::STATUS_PARAMETER_INVALID;
 	}
 
 	child = new Deployable(dep_uuid);
-
-	QPID_LOG(debug, "new deployment: " << dep_name << ", ptr: "<< child);
 
 	deployments[dep_uuid] = child;
 
@@ -101,7 +104,7 @@ DpeAgent::dep_unload(string& name, string& uuid)
 	child = deployments[uuid];
 
 	if (child) {
-		cout << "request to unload " << name << endl;
+		qb_log(LOG_DEBUG, "request to unload %s", name.c_str());
 		update_stats(num_deps - 1, num_ass);
 		deployments.erase(uuid);
 		delete child;

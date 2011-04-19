@@ -21,6 +21,7 @@ import time
 import re
 import random
 import unittest
+import logging
 import libxml2
 import libvirt
 import ConfigParser
@@ -34,6 +35,7 @@ class Manufacturer(object):
     def __init__(self, dist):
         self.assemblies = {}
         self.dist = dist
+        self.l = logging.getLogger()
 
     def get_conf(self, config, section, key, default):
         if config is not None and config.has_section(section) \
@@ -82,14 +84,10 @@ class Manufacturer(object):
                                          'qemu:///system')
         libvirt_conn = libvirt.open(libvirt_uri)
 
-        print 'guest factory...'
         try:
             guest = oz.GuestFactory.guest_factory(tdl, oz_config, kickstart_filename)
-
         except oz.OzException, exc:
-                print ""
-                print "ERROR: %s" % (str(exc))
-                print ""
+                self.l.error(str(exc))
                 raise
     
         guest = oz.GuestFactory.guest_factory(tdl, oz_config, kickstart_filename)
@@ -100,18 +98,18 @@ class Manufacturer(object):
             libvirt_xml = libxml2.parseFile(libvirt_filename).serialize(None, 1)
 
         if libvirt_xml is None:
-            print 'installing media...'
+            self.l.info('installing media...')
             guest.generate_install_media(False)
             try:
-                print 'generating disk image...'
+                self.l.info('generating disk image...')
                 guest.generate_diskimage()
-                print 'installing fedora onto guest...'
+                self.l.info('installing fedora onto guest...')
                 libvirt_xml = guest.install(50000)
                 open(libvirt_filename, 'w').write(libvirt_xml)
             finally:
                 guest.cleanup_install()
         else:
-            print 'already installed'
+            self.l.info('already installed')
 
         self.assemblies[instname] = assembly.Assembly(name, number, oz_config, tdl)
         return self.assemblies[instname] 

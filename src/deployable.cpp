@@ -26,7 +26,8 @@
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 
-#include <qpid/log/Logger.h>
+#include <assert.h>
+#include <qb/qblog.h>
 
 #include "config_loader.h"
 #include "deployable.h"
@@ -69,7 +70,7 @@ Deployable::reload(void)
 
 	rc = config_get(_uuid, &doc);
 	if (rc != 0) {
-		QPID_LOG(error, "Error: unable to load XML config file");
+		qb_log(LOG_ERR, "unable to load XML config file");
 		// O, crap
 		// try again later?
 		return;
@@ -80,7 +81,7 @@ Deployable::reload(void)
 	/* Create xpath evaluation context */
 	xpathCtx = xmlXPathNewContext(doc);
 	if (xpathCtx == NULL) {
-		QPID_LOG(error, "Error: unable to create new XPath context");
+		qb_log(LOG_ERR, "unable to create new XPath context");
 		xmlFreeDoc(doc);
 		return;
 	}
@@ -88,14 +89,14 @@ Deployable::reload(void)
 	/* Evaluate xpath expression */
 	xpathObj = xmlXPathEvalExpression(BAD_CAST "/configuration/nodes/*", xpathCtx);
 	if (xpathObj == NULL) {
-		QPID_LOG(error, "Error: unable to evaluate xpath expression");
+		qb_log(LOG_ERR, "unable to evaluate xpath expression");
 		xmlXPathFreeContext(xpathCtx);
 		xmlFreeDoc(doc);
 		return;
 	}
 
 	size = (xpathObj->nodesetval) ? xpathObj->nodesetval->nodeNr : 0;
-	QPID_LOG(info, "Result (" << size << " nodes)");
+	qb_log(LOG_DEBUG, "parsed config for %s and found %d nodes", _uuid.c_str(), size);
 
 	for (i = 0; i < size; ++i) {
 		assert(xpathObj->nodesetval->nodeTab[i]);
@@ -133,7 +134,8 @@ Deployable::assembly_add(string& uuid, string& name)
 	try {
 		h = new Assembly(uuid);
 	} catch (qpid::types::Exception e) {
-		cout << "Error: " << e.what() << endl;
+		qb_log(LOG_ERR, "Exception creating Assembly %s",
+		       e.what());
 		delete h;
 		return -1;
 	}

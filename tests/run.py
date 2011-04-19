@@ -61,7 +61,7 @@ class TestAeolusHA(unittest.TestCase):
         pass
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="TEST %(message)s")
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAeolusHA)
     unittest.TextTestRunner(verbosity=2).run(suite)
 

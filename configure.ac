@@ -37,6 +37,7 @@ PKG_CHECK_MODULES(glib, glib-2.0 >= 2.0)
 PKG_CHECK_MODULES(qpid, qpid >= 0.9)
 PKG_CHECK_MODULES(dbus_glib_1, dbus-glib-1 >= 0.25)
 PKG_CHECK_MODULES(libxml2, libxml-2.0 >= 2.7.7)
+PKG_CHECK_MODULES(libqb, libqb)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

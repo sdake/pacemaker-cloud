@@ -21,7 +21,6 @@
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "config.h"
 #include <qb/qblog.h>
 #include <qpid/messaging/Connection.h>
@@ -75,7 +74,6 @@ main(int argc, char **argv)
 }
 
 #ifdef OUTA
-/*
 int
 CpeAgent::setup(ManagementAgent* agent)
 {
@@ -85,7 +83,7 @@ CpeAgent::setup(ManagementAgent* agent)
 	string sessionOptions;
 	string url("localhost:49000");
 
-	QPID_LOG(info, "setup()");
+	qb_log(LOG_INFO, "setting up agent");
         console_connection = new qpid::messaging::Connection(url, connectionOptions);
         console_connection->open();
 
@@ -109,12 +107,10 @@ Manageable::status_t
 CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 {
 	GMainLoop *loop;
-	const char *uuid;
 
-	uuid = dep_uuid.c_str();
+	qb_log(LOG_DEBUG, "starting dped instance=%s", dep_uuid.c_str());
 
-	QPID_LOG(info, "dpe start " << dep_name);
-        upstart_job_start("dped", (char *)uuid);
+        upstart_job_start("dped", dep_uuid.c_str());
 
 	return Manageable::STATUS_OK;
 }
@@ -122,7 +118,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 Manageable::status_t
 CpeAgent::dep_stop(string& name, string& uuid)
 {
-	qb_log(LOG_DEBUG, "dpe stop %s %s", name.c_str(), uuid.c_str());
+	qb_log(LOG_DEBUG, "stopping dped instance=%s", uuid.c_str());
 
         upstart_job_stop("dped", uuid.c_str());
 

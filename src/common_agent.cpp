@@ -20,19 +20,23 @@
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+extern "C" {
 #include "config.h"
 #include <getopt.h>
-int use_stderr = 0;
-
-#include <iostream>
-#include <fstream>
 #include <string.h>
 #include <errno.h>
-#include <vector>
-#include <exception>
-
 #include <signal.h>
 #include <syslog.h>
+#include <glib.h>
+#include <qb/qbdefs.h>
+#include <qb/qblog.h>
+};
+
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <exception>
 #include <cstdlib>
 
 #include <qpid/messaging/Connection.h>
@@ -45,15 +49,36 @@ int use_stderr = 0;
 #include <qmf/Data.h>
 #include <qmf/DataAddr.h>
 #include <qpid/types/Variant.h>
-#include <string>
-#include <iostream>
 
 #include "common_agent.h"
-
 
 using namespace std;
 using namespace qmf;
 namespace _qmf = qmf::org::cloudpolicyengine;
+
+static char* program_name;
+
+int32_t qpid_level[8] = { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_NOTICE, LOG_WARNING,
+	LOG_ERR, LOG_CRIT };
+
+struct LibqbLogger : public Logger::Output {
+
+	LibqbLogger(Logger& l) {
+		l.output(std::auto_ptr<Logger::Output>(this));
+	}
+
+	void log(const Statement& s, const string& m) {
+		uint8_t priority = qpid_level[s.level];
+		assert(priority <= LOG_TRACE);
+		qb_log_from_external_source(s.function, s.file, "%s",
+					    priority, s.line,
+					    1, m.c_str());
+	}
+};
+
+// Global Variables
+Logger& l = Logger::instance();
+LibqbLogger* out;
 
 void
 shutdown(int /*signal*/)
@@ -91,14 +116,63 @@ static gboolean
 qpid_callback(int fd, gpointer user_data)
 {
 	AgentSession *agent = (AgentSession *)user_data;
-printf ("qpid message received\n");
+	qb_log(LOG_DEBUG, "Qpid message recieved");
 	return TRUE;
 }
 
 static void
 qpid_disconnect(gpointer user_data)
 {
-	printf("Qpid connection closed");
+	qb_log(LOG_ERR, "Qpid connection closed");
+}
+
+static void
+my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *message, gpointer user_data)
+{
+	uint32_t log_level = LOG_WARNING;
+	GLogLevelFlags msg_level = (GLogLevelFlags)(flags & G_LOG_LEVEL_MASK);
+
+	switch (msg_level) {
+	case G_LOG_LEVEL_CRITICAL:
+	case G_LOG_FLAG_FATAL:
+		log_level = LOG_CRIT;
+		break;
+	case G_LOG_LEVEL_ERROR:
+		log_level = LOG_ERR;
+		break;
+	case G_LOG_LEVEL_MESSAGE:
+		log_level = LOG_NOTICE;
+		break;
+	case G_LOG_LEVEL_INFO:
+		log_level = LOG_INFO;
+		break;
+	case G_LOG_LEVEL_DEBUG:
+		log_level = LOG_DEBUG;
+		break;
+
+	case G_LOG_LEVEL_WARNING:
+	case G_LOG_FLAG_RECURSION:
+	case G_LOG_LEVEL_MASK:
+		log_level = LOG_WARNING;
+		break;
+	}
+
+	qb_log_from_external_source(__FUNCTION__, __FILE__, "%s",
+				    log_level, __LINE__,
+				    1 << 1, message);
+}
+
+static const char *my_tags_stringify(uint32_t tags)
+{
+	if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT)) {
+		return "libqb ";
+	} else if (qb_bit_is_set(tags, 0)) {
+		return "qpid ";
+	} else if (qb_bit_is_set(tags, 1)) {
+		return "glib ";
+	} else {
+		return "MAIN ";
+	}
 }
 
 int
@@ -113,8 +187,27 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	char *password = NULL;
 	char *service = NULL;
 	int serverport = 49000;
-	int debuglevel = 0;
 	string url = "localhost:49000";
+	int loglevel = LOG_INFO;
+	const char* log_argv[]={
+		0,
+		"--log-to-stderr", "no"
+	};
+	program_name = (char*)proc_name;
+	qpid::log::Options opts(proc_name);
+	opts.parse(sizeof(log_argv)/sizeof(char*), const_cast<char**>(log_argv));
+	opts.time = false;
+	opts.level = false;
+
+	l.configure(opts);
+
+	log_selector.enable(error);
+	log_selector.enable(warning);
+	log_selector.enable(info);
+	log_selector.enable(debug);
+	l.select(log_selector);
+
+	out = new LibqbLogger(l);
 
 	// Get args
 	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
@@ -128,7 +221,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			daemonize = true;
 			break;
 		case 'v':
-			debuglevel++;
+			loglevel++;
 			break;
 		case 's':
 			if (optarg) {
@@ -181,7 +274,23 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 		}
 	}
 
-	if (daemonize == true) {
+	if (loglevel > LOG_DEBUG) {
+	       	loglevel = LOG_DEBUG;
+	}
+	qb_log_init(proc_name, LOG_DAEMON, loglevel);
+	qb_log_format_set(QB_LOG_SYSLOG, "%g[%p] %b");
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - loglevel);
+	if (!daemonize) {
+		qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+				  QB_LOG_FILTER_FILE, "*", loglevel);
+		qb_log_format_set(QB_LOG_STDERR, "%g[%p] %b");
+		qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
+	}
+	qb_log_tags_stringify_fn_set(my_tags_stringify);
+
+	g_log_set_default_handler(my_glib_handler, NULL);
+
+	if (daemonize) {
 		if (daemon(0, 0) < 0) {
 			fprintf(stderr, "Error daemonizing: %s\n", strerror(errno));
 			exit(1);
@@ -201,7 +310,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	// Set up the cleanup handler for sigint
 	signal(SIGINT, shutdown);
 
-	syslog(LOG_INFO, "Connecting to Qpid broker at %s on port %d", servername, serverport);
+	qb_log(LOG_INFO, "Connecting to Qpid broker at %s on port %d", servername, serverport);
 
 	mainloop = g_main_new(FALSE);
 /*

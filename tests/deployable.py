@@ -34,11 +34,13 @@ class Cpe(object):
         self.session = qmf2.ConsoleSession(self.conn)
         self.session.setAgentFilter('[]')
         self.session.open()
+        self.l = logging.getLogger()
         time.sleep(3)
 
         agents = self.session.getAgents()
         for a in agents:
-            if 'cloudpolicyengine.org' in a.getVendor() and 'cpe' in a.getProduct():
+            self.l.debug('agent: %s' % str(a))
+            if 'cloudpolicyengine.org' in a.getVendor():
                 self.cpe_obj = a.query("{class:cpe, package:'org.cloudpolicyengine'}")[0]
 
         if self.cpe_obj is None:
@@ -72,6 +74,7 @@ class Deployable(object):
         self.uuid = name # TODO
         self.assemblies = {}
         self.cpe = Cpe()
+        self.l = logging.getLogger()
 
     def __del__(self):
         self.stop()

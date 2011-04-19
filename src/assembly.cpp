@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+#include <qb/qblog.h>
 #include <iostream>
 #include <map>
 #include <assert.h>
@@ -71,7 +72,7 @@ void Assembly::state_set(uint32_t new_state)
 {
 	if (new_state == Assembly::HEARTBEAT_NOT_RECEIVED &&
 	    this->state == Assembly::HEARTBEAT_INIT) {
-		cout << "Still waiting for the first heartbeat." << endl;
+		qb_log(LOG_INFO, "Still waiting for the first heartbeat.");
 		return;
 	}
 	if (new_state == this->state) {
@@ -92,20 +93,20 @@ void Assembly::stop(void)
 
 Assembly::Assembly()
 {
-	this->is_connected = false;
-	this->refcount = 1;
-	this->session = NULL;
-	this->connection = NULL;
-	this->name = "";
+	is_connected = false;
+	refcount = 1;
+	session = NULL;
+	connection = NULL;
+	name = "";
 }
 
 
 Assembly::~Assembly()
 {
-	cout << "~Assembly() " << this->name << endl;
-	if (this->is_connected) {
-		this->session->close();
-		this->connection->close();
+	qb_log(LOG_DEBUG, "~Assembly(%s)", name.c_str());
+	if (is_connected) {
+		session->close();
+		connection->close();
 	}
 }
 

@@ -33,19 +33,24 @@
 #include <string>
 #include <iostream>
 
+#include <qpid/log/Logger.h>
+#include <qpid/log/Options.h>
+#include <qpid/log/SinkOptions.h>
+
 extern "C" {
 #include "mainloop.h"
 }
 
 using namespace std;
 using namespace qmf;
+using namespace qpid::log;
 
 #include "org/cloudpolicyengine/QmfPackage.h"
 
 class CommonAgent
 {
 	mainloop_fd_t *qpid_source;
-
+	Selector log_selector;
 public:
 	GMainLoop *mainloop;
 	CommonAgent() {};
