@@ -1,27 +1,70 @@
-user% qpidd -p 49000 --auth no
-user# ./src/cped
 
-# in another shell
-qpid-tool localhost:49000
-qpid: list cpe
-Object Summary:
-    ID   Created   Destroyed  Index
-    ======================================================
-    144  23:27:08  -          org.cloudpolicyengine:cpe:
+Assembly = user defined guest (VM + os)
 
-qpid: call 144 deployable_start name0 UUID0
-qpid: OK (0) - {u'rc': 0}
+Deployable = user defined set of assemblies and services
 
-qpid: call 144 deployable_start name1 UUID1
-qpid: OK (0) - {u'rc': 0}
+CPE = Clould Policy Engine
+      starts and stops DPE's
 
-qpid: call 144 deployable_start name2 UUID2
-qpid: OK (0) - {u'rc': 0}
+DPE = Deployable Policy Engine
+      controls the services in a customer deployment
 
-qpid: quit
 
-user% ps -ef | grep dped
-root     12296     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID0
-root     12300     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID1
-root     12304     1  0 16:28 ?        00:00:00 /usr/sbin/dped UUID2
-sdake    12321 12261  0 16:29 pts/48   00:00:00 grep --color=auto dped
+Description of the program flow given some different scenarios
+==============================================================
+
+Create new deployment
+---------------------
+1) Cloud management software sends cpe the assembly & service config
+   in XML (via QMF). Note very simerlar to what pacemaker PE wants.
+2) CPE asks upstart/systemd to start a new DPE.
+3) CPE stores the config somewhere (DB or file)
+4) CPE waits for the DPE QMF agent to be available, then asks it to
+   load the config and managemt the deployment.
+5) DPE gathers config + state and sends it to the PE
+6) DPE performs the actions (using matahari) as instructed by PE
+
+
+Destroy deployment
+------------------
+1) Cloud managemt software tells CPE to destroy a deployment
+2) CPE asks upstart/systemd to stop the DPE and deletes the config
+
+
+DPE dies or gets restarted
+--------------------------
+1) CPE notices death of CPE and starts a new one
+2) CPE waits for the DPE QMF agent to be available, then asks it to
+   load the config and managemt the deployment.
+3) DPE gathers config + state and sends it to the PE
+4) DPE performs the actions (using matahari) as instructed by PE
+
+
+Assembly Instance misses heartbeat
+----------------------------------
+1) DPE notices the Assembly has missed a heartbeat.
+2) send a QMF event (assembly failure)
+3) DPE gathers config + state and sends it to the PE
+4) DPE performs the actions (using matahari) as instructed by PE
+   (move services to other assemblies)
+
+
+User modifies the deployment configuration
+------------------------------------------
+1) Cloud management software sends cpe the assembly & service config
+   in XML (via QMF). Note very simerlar to what pacemaker PE wants.
+2) CPE sees the DPE is already running.
+3) CPE stores the config somewhere (DB or file)
+4) CPE then notifys the DPE that the config has changed.
+5) DPE gathers config + state and sends it to the PE
+6) DPE performs the actions (using matahari) as instructed by PE
+
+
+User accesses the event log.
+---------------------------
+1) cloud management software accesses event log
+   Since CPE/DPE is only one part of the cloud software the logs
+   need to be inserted into a larger picture.
+   So we need an API to log important events.
+
+

@@ -22,8 +22,8 @@
 #include "config.h"
 #include <string>
 #include <iostream>
-
 #include "dpe_agent.h"
+#include "deployable.h"
 
 using namespace std;
 
@@ -71,38 +71,39 @@ DpeAgent::setup(ManagementAgent* agent)
 Manageable::status_t
 DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 {
-        DeployableAgent *child;
+        Deployable *child;
 
 	Mutex::ScopedLock _lock(map_lock);
 
-	child = deployments[dep_name];
+	child = deployments[dep_uuid];
 	if (child != NULL) {
 		return Manageable::STATUS_PARAMETER_INVALID;
 	}
 
-	child = new DeployableAgent(_agent, dep_name, dep_uuid);
+	child = new Deployable(dep_uuid);
 
 	QPID_LOG(debug, "new deployment: " << dep_name << ", ptr: "<< child);
 
-	deployments[dep_name] = child;
+	deployments[dep_uuid] = child;
 
 	update_stats(num_deps + 1, num_ass);
+
 	return Manageable::STATUS_OK;
 }
 
 Manageable::status_t
 DpeAgent::dep_unload(string& name, string& uuid)
 {
-	DeployableAgent *child;
+	Deployable *child;
 
 	Mutex::ScopedLock _lock(map_lock);
 
-	child = deployments[name];
+	child = deployments[uuid];
 
 	if (child) {
 		cout << "request to unload " << name << endl;
 		update_stats(num_deps - 1, num_ass);
-		deployments.erase(name);
+		deployments.erase(uuid);
 		delete child;
 	}
 	return Manageable::STATUS_OK;
@@ -136,7 +137,7 @@ DpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 		{
 			Mutex::ScopedLock _lock(map_lock);
 
-			for (map<string, DeployableAgent*>::iterator iter = deployments.begin();
+			for (map<string, Deployable*>::iterator iter = deployments.begin();
 			     iter != deployments.end();  iter++) {
 
 				cout << "listing(active) " << iter->first <<
@@ -144,8 +145,8 @@ DpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
 					", uuid " <<
 					iter->second->get_uuid() << endl;
 
-				list_args->o_deployables.push_back(iter->second->get_name());
-				}
+				list_args->o_deployables.push_back(iter->second->get_uuid());
+			}
 
 			break;
 		}

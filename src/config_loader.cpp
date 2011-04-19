@@ -18,39 +18,21 @@
  * You should have received a copy of the GNU General Public License
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
-#ifndef _DPE_H_
-#define _DPE_H_
-
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
-#include <qmf/ConsoleSession.h>
-#include <qmf/ConsoleEvent.h>
-#include <qmf/Agent.h>
-#include <qpid/types/Variant.h>
+#include "config_loader.h"
 
 
-#include <qpid/agent/ManagementAgent.h>
-
-#include "org/cloudpolicyengine/QmfPackage.h"
-
-#include "common_agent.h"
-
-class Deployable;
-
-class DpeAgent : public CommonAgent
+int32_t
+config_get(std::string& uuid, xmlDoc** doc)
 {
-private:
-	std::map<std::string, DeployableAgent*> deployments;
-	uint32_t num_deps;
-	uint32_t num_ass;
+	std::string filename = uuid + ".xml";
 
-	uint32_t dep_load(std::string& name, std::string& uuid);
-	uint32_t dep_unload(std::string& name, std::string& uuid);
-
-	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
-
-public:
-};
-#endif /* _DPE_H_ */
+	*doc = xmlParseFile(filename.c_str());
+	if (doc == NULL) {
+		return -1;
+	}
+	return 0;
+}
 

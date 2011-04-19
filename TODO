@@ -1,45 +1,38 @@
+TODO list
+=========
 
-#
-# for now all on the same broker
-#
-QPID_MANAGER_HOST="localhost"
-QPID_MANAGER_PORT=49000
-QPID_DEPLOY_HOST="localhost"
-QPID_DEPLOY_PORT=49000
+CPE
+---
+c1) extend upstart client code to include stopping a process and
+    getting events on failure.
+c2) write the code to talk to the dpe (load/unload config)
+c3) at startup use config_list() to get initial deployables
+c4) add systemd support
 
-# start broker
-#
-qpidd -p $QPID_MANAGER_PORT --auth no
 
-#
-# start Policy Engine
-#
-cped -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT
+DPE
+---
+d1) load config using config_get()
+d2) link in pacemaker PE
+d3) convert given config into PE palatable config
+d4) pass config into PE and execute commands
+d5) read config and discover state of services/assemblies
 
-add_host() {
-	if [ $1 = "localhost" ]
-	then
-		SSH_CMD=""
-	else
-		SSH_CMD="ssh $1 "
-	fi
-	$SSH_CMD "matahari-hostd -b $QPID_DEPLOY_HOST -p $QPID_DEPLOY_PORT -d"
-	sleep 1
-	conductor-dummy -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT --add $1
-}
 
-del_host() {
-	if [ $1 = "localhost" ]
-	then
-		SSH_CMD=""
-	else
-		SSH_CMD="ssh $1 "
-	fi
-	conductor-dummy -b $QPID_MANAGER_HOST -p $QPID_MANAGER_PORT --del $1
-	$SSH_CMD "killall matahari-hostd"
-}
+TESTS
+-----
+t1) cover basic use cases
+t2) get better coverage as functionality is extended
 
-add_host localhost
-del_host localhost
+
+Common lib
+----------
+l1) add API to access deployable config from exteranl API (cloud specific managemnt DB)
+        config_get(deployment_uuid)
+        config_list()
+
+General
+-------
+g1) Change QMF code the QMFv2
 
 

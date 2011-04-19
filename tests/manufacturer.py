@@ -99,7 +99,8 @@ class Manufacturer(object):
                 open(libvirt_filename, 'w').write(libvirt_xml)
             finally:
                 guest.cleanup_install()
-
+        else:
+            print 'already installed'
 
         self.assemblies[instname] = assembly.Assembly(name, number, oz_config, tdl)
         return self.assemblies[instname] 

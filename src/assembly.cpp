@@ -132,44 +132,4 @@ Assembly::Assembly(string& host_url)
 	this->refcount++;
 }
 
-static map<string, Assembly*> hosts;
-
-int assembly_monitor_start(string& host_url)
-{
-	Assembly *h = hosts[host_url];
-	if (h) {
-		// don't want duplicates
-		return -1;
-	}
-
-	try {
-		h = new Assembly(host_url);
-	} catch (qpid::types::Exception e) {
-		cout << "Error: " << e.what() << endl;
-		delete h;
-		return -1;
-	}
-	hosts[host_url] = h;
-	return 0;
-}
-
-int assembly_monitor_stop(string& host_url)
-{
-	Assembly *h = hosts[host_url];
-	if (h) {
-		h->stop();
-		hosts.erase (host_url);
-	}
-	return 0;
-}
-
-int assembly_monitor_status(string& host_url)
-{
-	Assembly *h = hosts[host_url];
-	if (h) {
-		return h->state_get();
-	} else {
-		return -1;
-	}
-}
 
