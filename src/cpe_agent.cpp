@@ -85,8 +85,12 @@ CpeAgent::setup(ManagementAgent* agent)
 
 	qb_log(LOG_INFO, "setting up agent");
         console_connection = new qpid::messaging::Connection(url, connectionOptions);
-        console_connection->open();
-
+	try {
+		console_connection->open();
+	} catch (qpid::messaging::TransportFailure& e) {
+		qb_log(LOG_ERR, e.what());
+		return 0;
+	}
         console_session = new ConsoleSession(*console_connection, sessionOptions);
 	console_session->setAgentFilter("");
 
