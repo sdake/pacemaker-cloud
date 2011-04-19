@@ -29,7 +29,7 @@ upstartconfdir = $(sysconfdir)/init
 upstartconf_DATA = dped.conf
 
 sbin_PROGRAMS = cped dped
-noinst_PROGRAMS = cpe-tool2
+noinst_PROGRAMS = cpe-tool2 pe_test
 
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -62,3 +62,17 @@ dped_LDFLAGS  = $(qpid_LIBS) -lqmf -lqpidtypes -lqpidcommon -lqmf2 \
 cpe_tool2_SOURCES = cpe-tool2.c libupstart.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
 cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS)
+
+pe_test_SOURCES = pe_test.c
+pe_test_CPPFLAGS = $(GLIB_CFLAGS) $(LIBXML2_CFLAGS) \
+		   -I/usr/include/pacemaker \
+		   -I/usr/include/heartbeat
+
+pe_test_LDADD = -lcrmcommon \
+		-lpe_status \
+		-lpengine \
+		-lcib \
+		-ltransitioner \
+		-lplumb \
+		$(GLIB_LIBS) \
+		$(LIBXML2_LIBS)
