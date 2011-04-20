@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <glib.h>
+#include <unistd.h>
 #include "upstart-dbus.h"
 
 int
