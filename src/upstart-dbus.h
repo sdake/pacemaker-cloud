@@ -24,7 +24,8 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
-
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-lowlevel.h>
 
 #ifdef __cplusplus
 extern "C" {
