@@ -22,35 +22,28 @@
 #ifndef _CPE_H_
 #define _CPE_H_
 
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
 #include <qmf/Agent.h>
-#include <qpid/types/Variant.h>
 
-
-#include <qpid/agent/ManagementAgent.h>
+#include <qpid/sys/Mutex.h>
 
 #include "org/cloudpolicyengine/QmfPackage.h"
-
 #include "common_agent.h"
 
 class CpeAgent : public CommonAgent
 {
 private:
-	std::string connectionOptions;
-	std::string sessionOptions;
+	qmf::Data _cpe;
         qpid::messaging::Connection *console_connection;
 	qmf::ConsoleSession *console_session;
-
-	uint32_t num_deps;
-	uint32_t num_ass;
 
 	uint32_t dep_start(std::string& name, std::string& uuid);
 	uint32_t dep_stop(std::string& name, std::string& uuid);
 
 public:
+	void setup(void);
+	gboolean event_dispatch(AgentEvent *event);
 	int console_handler(void);
 };
 #endif /* _CPE_H_ */

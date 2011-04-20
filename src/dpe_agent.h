@@ -22,18 +22,13 @@
 #ifndef _DPE_H_
 #define _DPE_H_
 
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
 #include <qmf/Agent.h>
-#include <qpid/types/Variant.h>
 
-
-#include <qpid/agent/ManagementAgent.h>
+#include <qpid/sys/Mutex.h>
 
 #include "org/cloudpolicyengine/QmfPackage.h"
-
 #include "common_agent.h"
 
 class Deployable;
@@ -41,6 +36,8 @@ class Deployable;
 class DpeAgent : public CommonAgent
 {
 private:
+	qmf::Data _dpe;
+	qpid::sys::Mutex map_lock;
 	std::map<std::string, Deployable*> deployments;
 	uint32_t num_deps;
 	uint32_t num_ass;
@@ -51,6 +48,8 @@ private:
 	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
 
 public:
+	void setup(void);
+	gboolean event_dispatch(AgentEvent *event);
 };
 #endif /* _DPE_H_ */
 

@@ -21,29 +21,15 @@
 #include <glib.h>
 #include <sys/types.h>
 
-extern gboolean mainloop_signal(int sig, void (*dispatch)(int sig));
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <exception>
+#include <cstdlib>
 
-extern gboolean mainloop_add_signal(int sig, void (*dispatch)(int sig));
-
-extern gboolean mainloop_destroy_signal(int sig);
-
-
-typedef struct trigger_s
-{
-	GSource source;
-	GDestroyNotify dnotify;
-	gboolean trigger;
-	void *user_data;
-	guint id;
-
-} mainloop_trigger_t;
-
-extern mainloop_trigger_t *mainloop_add_trigger(
-		int priority, gboolean (*dispatch)(gpointer user_data), gpointer userdata);
-
-extern void mainloop_set_trigger(mainloop_trigger_t* source);
-
-extern gboolean mainloop_destroy_trigger(mainloop_trigger_t* source);
+#include <qmf/AgentSession.h>
+#include <qmf/AgentEvent.h>
 
 typedef struct mainloop_fd_s
 {
@@ -56,35 +42,30 @@ typedef struct mainloop_fd_s
 
 } mainloop_fd_t;
 
-extern mainloop_fd_t *mainloop_add_fd(int priority, int fd,
-									  gboolean (*dispatch)(int fd, gpointer userdata),
-									  GDestroyNotify notify, gpointer userdata);
 
-extern gboolean mainloop_destroy_fd(mainloop_fd_t* source);
+typedef struct mainloop_qmf_session_s
+{
+	GSource source;
+	guint id;
+	void *user_data;
+	GDestroyNotify dnotify;
+	qmf::AgentEvent event;
+	qmf::AgentSession *asession;
+	gboolean ready;
+	gboolean (*dispatch)(qmf::AgentEvent *event, gpointer user_data);
 
-typedef struct mainloop_child_s mainloop_child_t;
-struct mainloop_child_s {
-	pid_t	  pid;
-	char     *desc;
-	unsigned  timerid;
-	gboolean  timeout;
-	void     *privatedata;
+} mainloop_qmf_session_t;
 
-	/* Called when a process dies */
-	void (*callback)(mainloop_child_t* p, int status, int signo, int exitcode);
 
-};
+mainloop_fd_t *mainloop_add_fd(int priority, int fd,
+			       gboolean (*dispatch)(int fd, gpointer userdata),
+			       GDestroyNotify notify, gpointer userdata);
 
-extern void mainloop_track_children(int priority);
+gboolean mainloop_destroy_fd(mainloop_fd_t* source);
 
-/*
- * Create a new tracked process
- * To track a process group, use -pid
- */
-extern void mainloop_add_child(pid_t pid,
-							   int timeout,
-							   const char *desc,
-							   void * privatedata,
-		void (*callback)(mainloop_child_t* p, int status, int signo, int exitcode));
+mainloop_qmf_session_t*
+mainloop_add_qmf_session(qmf::AgentSession *asession,
+			 gboolean (*dispatch)(qmf::AgentEvent *event, gpointer userdata),
+			 GDestroyNotify notify, gpointer userdata);
 
 #endif

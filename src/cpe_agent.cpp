@@ -23,12 +23,8 @@
 
 #include "config.h"
 #include <qb/qblog.h>
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
-#include <qmf/Agent.h>
-#include <qpid/types/Variant.h>
 #include <string>
 #include <iostream>
 #include "mainloop.h"
@@ -45,10 +41,10 @@ CpeAgent::console_handler(void)
 	ConsoleEvent event;
 
 	if (console_session->nextEvent(event)) {
-cout << "event" <<endl;
+		cout << "event" <<endl;
 		if (event.getType() == CONSOLE_AGENT_ADD) {
 			string extra;
-cout << "agent added" <<endl;
+			cout << "agent added" <<endl;
 			if (event.getAgent().getName() == console_session->getConnectedBrokerAgent().getName()) {
 				extra = "  [Connected Broker]";
 				cout << "Agent Added: " << event.getAgent().getName() << extra << endl;
@@ -56,7 +52,7 @@ cout << "agent added" <<endl;
 		}
 	}
 
-        return TRUE;
+	return TRUE;
 }
 
 int
@@ -69,21 +65,18 @@ main(int argc, char **argv)
 	if (rc == 0) {
 		agent.run();
 	}
-
 	return rc;
 }
 
-#ifdef OUTA
-int
-CpeAgent::setup(ManagementAgent* agent)
+void
+CpeAgent::setup(void)
 {
-	_agent = agent;
-	_management_object = new _qmf::Cpe(agent, this);
-	string connectionOptions;
-	string sessionOptions;
-	string url("localhost:49000");
+        _cpe = qmf::Data(package.data_cpe);
+	agent_session.addData(_cpe, "cpe");
 
-	qb_log(LOG_INFO, "setting up agent");
+        upstart_init(mainloop);
+
+#if 0
         console_connection = new qpid::messaging::Connection(url, connectionOptions);
 	try {
 		console_connection->open();
@@ -94,66 +87,79 @@ CpeAgent::setup(ManagementAgent* agent)
         console_session = new ConsoleSession(*console_connection, sessionOptions);
 	console_session->setAgentFilter("");
 
-        upstart_init(mainloop);
-
 	g_timeout_add(5000,
 		host_proxy_timeout,
 		this);
-
-	agent->addObject(this->_management_object);
-	num_ass = 1;
-	num_deps = 1;
-
-	return 1;
+#endif
 }
 
-Manageable::status_t
-CpeAgent::dep_start(string& dep_name, string& dep_uuid)
+
+gboolean
+CpeAgent::event_dispatch(AgentEvent *event)
 {
-	GMainLoop *loop;
+	const string& methodName(event->getMethodName());
+	uint32_t rc = 0;
+	string name;
+	string uuid;
 
-	qb_log(LOG_DEBUG, "starting dped instance=%s", dep_uuid.c_str());
+	switch (event->getType()) {
+	case qmf::AGENT_METHOD:
+		if (methodName == "deployable_start") {
+			name = event->getArguments()["name"].asString();
+			uuid = event->getArguments()["uuid"].asString();
+			
+			rc = dep_start(name, uuid);
+			
+			event->addReturnArgument("rc", rc);
 
-        upstart_job_start("dped", dep_uuid.c_str());
+		} else if (methodName == "deployable_stop") {
+			name = event->getArguments()["name"].asString();
+			uuid = event->getArguments()["uuid"].asString();
 
-	return Manageable::STATUS_OK;
-}
-
-Manageable::status_t
-CpeAgent::dep_stop(string& name, string& uuid)
-{
-	qb_log(LOG_DEBUG, "stopping dped instance=%s", uuid.c_str());
-
-        upstart_job_stop("dped", uuid.c_str());
-
-	return Manageable::STATUS_OK;
-}
-
-Manageable::status_t
-CpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
-{
-	Manageable::status_t rc;
-	_qmf::ArgsCpeDeployable_start *start_args;
-	_qmf::ArgsCpeDeployable_stop *stop_args;
-
-	switch(method)
-	{
-	case _qmf::Cpe::METHOD_DEPLOYABLE_START:
-		start_args = (_qmf::ArgsCpeDeployable_start*) &arguments;
-		rc = dep_start(start_args->i_name, start_args->i_uuid);
-		start_args->o_rc = rc;
+			rc = dep_stop(name, uuid);
+			
+			event->addReturnArgument("rc", rc);
+		}
+		if (rc == 0) {
+			agent_session.methodSuccess(*event);
+		} else {
+			agent_session.raiseException(*event, "oops");
+		}
 		break;
 
-	case _qmf::Cpe::METHOD_DEPLOYABLE_STOP:
-		stop_args = (_qmf::ArgsCpeDeployable_stop*)&arguments;
-		rc = dep_stop(stop_args->i_name, stop_args->i_uuid);
-		stop_args->o_rc = rc;
-		break;
-	default:
-		rc = Manageable::STATUS_NOT_IMPLEMENTED;
+	default:	
 		break;
 	}
-
-	return rc;
+	return TRUE;
 }
-#endif
+
+uint32_t
+CpeAgent::dep_start(string& dep_name, string& dep_uuid)
+{
+	int32_t rc = upstart_job_start("dped", dep_uuid.c_str());
+
+	if (rc == 0) {
+		qb_log(LOG_DEBUG, "started dped instance=%s", dep_uuid.c_str());
+		return 0;
+	} else {
+		errno = -rc;
+		qb_perror(LOG_ERR, "Failed to start dped instance=%s", dep_uuid.c_str());
+		return -rc;
+	}
+}
+
+uint32_t
+CpeAgent::dep_stop(string& dep_name, string& dep_uuid)
+{
+	int32_t rc = upstart_job_stop("dped", dep_uuid.c_str());
+
+	if (rc == 0) {
+		qb_log(LOG_DEBUG, "stopped dped instance=%s", dep_uuid.c_str());
+		return 0;
+	} else {
+		errno = -rc;
+		qb_perror(LOG_ERR, "Failed to stop dped instance=%s", dep_uuid.c_str());
+		return -rc;
+	}
+}
+

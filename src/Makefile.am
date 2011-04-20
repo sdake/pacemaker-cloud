@@ -25,6 +25,8 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 
 EXTRA_DIST		= autogen.sh
 
+AM_CFLAGS = -Wall
+
 upstartconfdir = $(sysconfdir)/init
 upstartconf_DATA = dped.conf
 
@@ -39,7 +41,7 @@ qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
-cped_SOURCES  = libupstart.c mainloop.c $(qmfauto_c) common_agent.cpp \
+cped_SOURCES  = libupstart.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 	        cpe_agent.cpp
 
 cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
@@ -49,7 +51,7 @@ cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qpid_LIBS) -lqmf -lqpidtypes
 	        -lqpidcommon -lqmf2 $(glib_LIBS)
 
 
-dped_SOURCES  = mainloop.c $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
+dped_SOURCES  = mainloop.cpp $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
 	        deployable.cpp assembly.cpp config_loader.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \

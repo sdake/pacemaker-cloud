@@ -31,8 +31,8 @@ using namespace std;
 int
 main(int argc, char **argv)
 {
-	int rc;
 	DpeAgent agent;
+	int32_t rc;
 
 	rc = agent.init(argc, argv, "dpe");
 	if (rc == 0) {
@@ -41,40 +41,91 @@ main(int argc, char **argv)
 	return rc;
 }
 
-#ifdef OUTA
+void
+DpeAgent::setup(void)
+{
+        _dpe = qmf::Data(package.data_dpe);
+
+	num_ass = 1;
+	num_deps = 1;
+	update_stats(0, 0);
+
+	agent_session.addData(_dpe, "dpe");
+}
+
+
+gboolean
+DpeAgent::event_dispatch(AgentEvent *event)
+{
+	const string& methodName(event->getMethodName());
+	uint32_t rc = 0;
+	string name;
+	string uuid;
+
+	switch (event->getType()) {
+	case qmf::AGENT_METHOD:
+		if (methodName == "deployable_load") {
+			name = event->getArguments()["name"].asString();
+			uuid = event->getArguments()["uuid"].asString();
+
+			rc = dep_load(name, uuid);
+
+			event->addReturnArgument("rc", rc);
+
+		} else if (methodName == "deployable_unload") {
+			name = event->getArguments()["name"].asString();
+			uuid = event->getArguments()["uuid"].asString();
+
+			rc = dep_unload(name, uuid);
+
+			event->addReturnArgument("rc", rc);
+		} else if (methodName == "deployable_list") {
+			::qpid::sys::Mutex::ScopedLock _lock(map_lock);
+			::qpid::types::Variant::List d_list;
+
+			for (map<string, Deployable*>::iterator iter = deployments.begin();
+			     iter != deployments.end();  iter++) {
+
+				d_list.push_back(iter->second->get_uuid());
+
+				cout << "listing(active) " << iter->first <<
+					iter->second->get_name() <<
+					", uuid " <<
+					iter->second->get_uuid() << endl;
+			}
+		}
+		if (rc == 0) {
+			agent_session.methodSuccess(*event);
+		} else {
+			agent_session.raiseException(*event, "oops");
+		}
+		break;
+
+	default:
+		break;
+	}
+	return TRUE;
+}
+
 void
 DpeAgent::update_stats(uint32_t deployables, uint32_t assemblies)
 {
 	if (deployables != num_deps) {
 		num_deps = deployables;
-		_management_object->set_deployables(num_deps);
+		_dpe.setProperty("deployables", num_deps);
 	}
 	if (assemblies != num_ass) {
 		num_ass = assemblies;
-		_management_object->set_assemblies(num_ass);
+		_dpe.setProperty("assemblies", num_ass);
 	}
 }
 
-int
-DpeAgent::setup(ManagementAgent* agent)
-{
-	_agent = agent;
-	_management_object = new _qmf::Dpe(agent, this);
-
-	agent->addObject(this->_management_object);
-	num_ass = 1;
-	num_deps = 1;
-	update_stats(0, 0);
-
-	return 1;
-}
-
-Manageable::status_t
+uint32_t
 DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 {
         Deployable *child;
 
-	Mutex::ScopedLock _lock(map_lock);
+	::qpid::sys::Mutex::ScopedLock _lock(map_lock);
 	qb_log(LOG_DEBUG, "loading deployment: %s:%s",
 	       dep_name.c_str(), dep_uuid.c_str());
 
@@ -82,7 +133,7 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 	if (child != NULL) {
 		qb_log(LOG_ERR, "deployment: %s already loaded",
 		       dep_uuid.c_str());
-		return Manageable::STATUS_PARAMETER_INVALID;
+		return EEXIST;
 	}
 
 	child = new Deployable(dep_uuid);
@@ -91,15 +142,15 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 
 	update_stats(num_deps + 1, num_ass);
 
-	return Manageable::STATUS_OK;
+	return 0;
 }
 
-Manageable::status_t
+uint32_t
 DpeAgent::dep_unload(string& name, string& uuid)
 {
 	Deployable *child;
 
-	Mutex::ScopedLock _lock(map_lock);
+	::qpid::sys::Mutex::ScopedLock _lock(map_lock);
 
 	child = deployments[uuid];
 
@@ -109,55 +160,6 @@ DpeAgent::dep_unload(string& name, string& uuid)
 		deployments.erase(uuid);
 		delete child;
 	}
-	return Manageable::STATUS_OK;
+	return 0;
 }
 
-Manageable::status_t
-DpeAgent::ManagementMethod(uint32_t method, Args& arguments, string& text)
-{
-	Manageable::status_t rc;
-	_qmf::ArgsDpeDeployable_load *load_args;
-	_qmf::ArgsDpeDeployable_unload *unload_args;
-	_qmf::ArgsDpeDeployables_list *list_args;
-
-	switch(method)
-	{
-	case _qmf::Dpe::METHOD_DEPLOYABLE_LOAD:
-		load_args = (_qmf::ArgsDpeDeployable_load*) &arguments;
-		rc = dep_load(load_args->i_name, load_args->i_uuid);
-		load_args->o_rc = rc;
-		break;
-
-	case _qmf::Dpe::METHOD_DEPLOYABLE_UNLOAD:
-		unload_args = (_qmf::ArgsDpeDeployable_unload*)&arguments;
-		rc = dep_unload(unload_args->i_name, unload_args->i_uuid);
-		unload_args->o_rc = rc;
-		break;
-
-	case _qmf::Dpe::METHOD_DEPLOYABLES_LIST:
-		list_args = (_qmf::ArgsDpeDeployables_list*)&arguments;
-		cout << "request for listing " << endl;
-		{
-			Mutex::ScopedLock _lock(map_lock);
-
-			for (map<string, Deployable*>::iterator iter = deployments.begin();
-			     iter != deployments.end();  iter++) {
-
-				cout << "listing(active) " << iter->first <<
-					iter->second->get_name() <<
-					", uuid " <<
-					iter->second->get_uuid() << endl;
-
-				list_args->o_deployables.push_back(iter->second->get_uuid());
-			}
-
-			break;
-		}
-	default:
-		rc = Manageable::STATUS_NOT_IMPLEMENTED;
-		break;
-	}
-
-	return rc;
-}
-#endif

@@ -20,26 +20,17 @@
 #ifndef __COMMON_AGENT_H
 #define __COMMON_AGENT_H
 
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
-#include <qmf/AgentSession.h>
-#include <qmf/AgentEvent.h>
-#include <qmf/Schema.h>
-#include <qmf/SchemaProperty.h>
-#include <qmf/SchemaMethod.h>
-#include <qmf/Data.h>
-#include <qmf/DataAddr.h>
-#include <qpid/types/Variant.h>
 #include <string>
 #include <iostream>
+
+#include <qmf/AgentSession.h>
+#include <qmf/AgentEvent.h>
 
 #include <qpid/log/Logger.h>
 #include <qpid/log/Options.h>
 #include <qpid/log/SinkOptions.h>
 
-extern "C" {
 #include "mainloop.h"
-}
 
 using namespace std;
 using namespace qmf;
@@ -49,8 +40,10 @@ using namespace qpid::log;
 
 class CommonAgent
 {
-	mainloop_fd_t *qpid_source;
+private:
+	mainloop_qmf_session_t *qmf_source;
 	Selector log_selector;
+
 public:
 	GMainLoop *mainloop;
 	CommonAgent() {};
@@ -59,6 +52,8 @@ public:
 	qpid::messaging::Connection agent_connection;
 	qmf::org::cloudpolicyengine::PackageDefinition package;
 
+	virtual void setup(void) {};
+	virtual gboolean event_dispatch(AgentEvent *event) { return FALSE; };
 	int init(int argc, char **argv, const char *proc_name);
 	void run();
 };

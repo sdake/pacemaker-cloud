@@ -26,11 +26,10 @@ extern "C" {
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
-#include <syslog.h>
+};
 #include <glib.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
-};
 
 #include <string>
 #include <iostream>
@@ -39,8 +38,6 @@ extern "C" {
 #include <exception>
 #include <cstdlib>
 
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
 #include <qmf/AgentSession.h>
 #include <qmf/AgentEvent.h>
 #include <qmf/Schema.h>
@@ -113,11 +110,11 @@ print_usage(const char *proc_name)
 }
 
 static gboolean
-qpid_callback(int fd, gpointer user_data)
+qpid_callback(AgentEvent *event, gpointer user_data)
 {
-	AgentSession *agent = (AgentSession *)user_data;
-	qb_log(LOG_DEBUG, "Qpid message recieved");
-	return TRUE;
+	CommonAgent *agent = (CommonAgent *)user_data;
+	qb_log(LOG_NOTICE, "QMF callback");
+	return agent->event_dispatch(event);
 }
 
 static void
@@ -297,6 +294,9 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 		}
 	}
 
+	qb_log(LOG_INFO, "Connecting to Qpid broker at %s on port %d",
+	       servername, serverport);
+
 	agent_connection = qpid::messaging::Connection(url, "{reconnect:True}");
 	agent_connection.open();
 
@@ -307,19 +307,14 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	package.configure(agent_session);
 	agent_session.open();
 
-	// Set up the cleanup handler for sigint
+	setup();
+
 	signal(SIGINT, shutdown);
-
-	qb_log(LOG_INFO, "Connecting to Qpid broker at %s on port %d", servername, serverport);
-
 	mainloop = g_main_new(FALSE);
-/*
-	qpid_source = mainloop_add_fd(G_PRIORITY_HIGH,
-				      agent_session.getSignalFd(),
-				      qpid_callback,
-				      qpid_disconnect,
-				      agent_session);
-*/
+	qmf_source = mainloop_add_qmf_session(&agent_session,
+					      qpid_callback,
+					      qpid_disconnect,
+					      this);
 
 	return 0;
 }

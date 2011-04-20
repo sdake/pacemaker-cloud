@@ -194,11 +194,11 @@ _upstart_job(const char* service, const char* instance, bool start)
 int
 upstart_job_start(const char* service, const char* instance)
 {
-	_upstart_job(service, instance, true);
+	return _upstart_job(service, instance, true);
 }
 
 int upstart_job_stop(const char * service, const char * instance)
 {
-	_upstart_job(service, instance, false);
+	return _upstart_job(service, instance, false);
 }
 
