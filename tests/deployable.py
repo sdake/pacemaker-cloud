@@ -42,7 +42,9 @@ class Cpe(object):
         for a in agents:
             self.l.debug('agent: %s' % str(a))
             if 'cloudpolicyengine.org' in a.getVendor():
-                self.cpe_obj = a.query("{class:cpe, package:'org.cloudpolicyengine'}")[0]
+                    result = a.query("{class:cpe, package:'org.cloudpolicyengine'}")
+                    if len(result) >= 1:
+                        self.cpe_obj = result[0]
 
         if self.cpe_obj is None:
             print ''
@@ -69,26 +71,43 @@ class Cpe(object):
       self.conn.close()
 
     def deployable_start(self, name, uuid):
+        result = None
         if self.cpe_obj:
-            result = self.cpe_obj.deployable_start(name, uuid)
+            try:
+                result = self.cpe_obj.deployable_start(name, uuid)
+            except:
+                return 1
+
             for k,v in result.items():
                 return v
         else:
             return 1
 
     def deployable_load(self, name, uuid):
+        result = None
         if self.dpe_obj:
-            result = self.dpe_obj.deployable_load(name, uuid)
+            try:
+                result = self.dpe_obj.deployable_load(name, uuid)
+            except:
+                return 1
+
             for k,v in result.items():
                 return v
         else:
             return 1
 
     def deployable_stop(self, name, uuid):
+        result = None
         if self.cpe_obj:
-            result = self.cpe_obj.deployable_stop(name, uuid)
+            try:
+                result = self.cpe_obj.deployable_stop(name, uuid)
+            except:
+                return 1
+
             for k,v in result.items():
                 print "Output Parameters: %s=%s" % (k, v)
+        else:
+            return 1
 
 
 class Deployable(object):
