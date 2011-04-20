@@ -70,7 +70,7 @@ upstart_fini(void)
 }
 
 static int
-_upstart_job(const char* service, const char* instance, bool start)
+_upstart_job(const char* service, const char* instance, bool start_it)
 {
 
 	DBusMessage *   method_call;
@@ -94,7 +94,7 @@ _upstart_job(const char* service, const char* instance, bool start)
 	snprintf(service_path, 512, "/com/ubuntu/Upstart/jobs/%s", service);
 
 	/* Construct the method call message. */
-	if (start) {
+	if (start_it) {
 		method_call = dbus_message_new_method_call(DBUS_SERVICE_UPSTART,
 							   service_path,
 							   DBUS_INTERFACE_UPSTART_JOB,
@@ -163,22 +163,25 @@ _upstart_job(const char* service, const char* instance, bool start)
 	/* Iterate the arguments of the reply */
 	dbus_message_iter_init(reply, &iter);
 
-	do {
-		/* Demarshal a char * from the message */
-		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH) {
-			dbus_message_unref(reply);
-			return -EINVAL;
-		}
+	if (start_it) {
+		/* Only the start returns the instance */
+		do {
+			/* Demarshal a char * from the message */
+			if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH) {
+				dbus_message_unref(reply);
+				return -EINVAL;
+			}
 
-		dbus_message_iter_get_basic (&iter, &instance_local_dbus);
+			dbus_message_iter_get_basic (&iter, &instance_local_dbus);
 
-		instance_local = strdup(instance_local_dbus);
-		if (!instance_local) {
-			return -ENOMEM;
-		}
+			instance_local = strdup(instance_local_dbus);
+			if (!instance_local) {
+				return -ENOMEM;
+			}
 
-		dbus_message_iter_next (&iter);
-	} while (! *instance);
+			dbus_message_iter_next (&iter);
+		} while (! *instance);
+	}
 
 	if (dbus_message_iter_get_arg_type (&iter) != DBUS_TYPE_INVALID) {
 		free (instance_local);
