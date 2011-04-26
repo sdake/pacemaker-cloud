@@ -30,7 +30,7 @@
 #include "mainloop.h"
 
 #include "cpe_agent.h"
-#include "upstart-dbus.h"
+#include "init-dbus.h"
 
 using namespace std;
 using namespace qmf;
@@ -74,7 +74,7 @@ CpeAgent::setup(void)
         _cpe = qmf::Data(package.data_cpe);
 	agent_session.addData(_cpe, "cpe");
 
-        upstart_init(mainloop);
+        dbus_init();
 
 #if 0
         console_connection = new qpid::messaging::Connection(url, connectionOptions);
@@ -136,7 +136,7 @@ CpeAgent::event_dispatch(AgentEvent *event)
 uint32_t
 CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 {
-	int32_t rc = upstart_job_start("dped", dep_uuid.c_str());
+	int32_t rc = init_job_start("dped", dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_DEBUG, "started dped instance=%s", dep_uuid.c_str());
@@ -151,7 +151,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 uint32_t
 CpeAgent::dep_stop(string& dep_name, string& dep_uuid)
 {
-	int32_t rc = upstart_job_stop("dped", dep_uuid.c_str());
+	int32_t rc = init_job_stop("dped", dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_DEBUG, "stopped dped instance=%s", dep_uuid.c_str());

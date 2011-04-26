@@ -1,0 +1,6 @@
+[Unit]
+Description=Deployable Policy Engine
+
+[Service]
+ExecStart=/usr/sbin/dped -v -v %i
+Type=simple

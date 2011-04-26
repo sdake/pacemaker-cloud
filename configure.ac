@@ -52,6 +52,15 @@ AC_TYPE_UINT8_T
 AC_CHECK_FUNCS([select strdup strerror])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
+
+AC_ARG_WITH([systemd],
+	    [  --with-systemd          compile systemd support ],
+	    [ default=no ])
+
+if test "x${with_systemd}" = xyes ; then
+	AC_DEFINE([WITH_SYSTEMD], 1, [with systemd])
+fi
+
 AC_OUTPUT
 
 AC_MSG_RESULT([])

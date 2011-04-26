@@ -22,23 +22,23 @@
 #include <assert.h>
 #include <glib.h>
 #include <unistd.h>
-#include "upstart-dbus.h"
+#include <qb/qblog.h>
+
+#include "init-dbus.h"
 
 int
 main (int argc, char **argv)
 {
-	GMainLoop *loop;
+	(void)g_main_loop_new (NULL, FALSE);
 
-	/* Create a new event loop to run in */
-	loop = g_main_loop_new (NULL, FALSE);
+	qb_log_init("cpe-tool", LOG_USER, LOG_DEBUG);
+	dbus_init();
 
-	upstart_init(loop);
-
-	upstart_job_start("dped", "123-456-aaa");
+	init_job_start("dped", "123-456-aaa");
 	sleep(5);
-	upstart_job_stop("dped", "123-456-aaa");
+	init_job_stop("dped", "123-456-aaa");
 
-	upstart_fini();
+	dbus_fini();
 	return 0;
 }
 
