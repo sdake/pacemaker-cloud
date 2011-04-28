@@ -206,7 +206,16 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 
 	out = new LibqbLogger(l);
 
-	// Get args
+	/* disable glib's fancy allocators that can't be free'd */
+	GMemVTable vtable;
+	vtable.malloc = malloc;
+	vtable.realloc = realloc;
+	vtable.free = free;
+	vtable.calloc = calloc;
+	vtable.try_malloc = malloc;
+	vtable.try_realloc = realloc;
+	g_mem_set_vtable(&vtable);
+
 	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
 		switch (arg) {
 		case 'h':

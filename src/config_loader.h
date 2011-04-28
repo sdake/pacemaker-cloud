@@ -22,6 +22,8 @@
 #define _CONFIG_LOADER_H_
 
 #include <string>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 /**
  * get the list of deployable to be managed by cpe

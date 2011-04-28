@@ -42,12 +42,12 @@ private:
 	uint32_t num_deps;
 	uint32_t num_ass;
 
-	uint32_t dep_load(std::string& name, std::string& uuid);
-	uint32_t dep_unload(std::string& name, std::string& uuid);
-
 	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
 
 public:
+	uint32_t dep_load(std::string& name, std::string& uuid);
+	uint32_t dep_unload(std::string& name, std::string& uuid);
+
 	void setup(void);
 	gboolean event_dispatch(AgentEvent *event);
 };

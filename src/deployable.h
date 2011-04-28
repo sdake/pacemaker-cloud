@@ -21,13 +21,34 @@
 #include <string>
 #include <map>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
+
+#include <qpid/sys/Mutex.h>
+
 class Assembly;
 
 class Deployable {
 private:
 	std::string _name;
 	std::string _uuid;
-	std::map<std::string, Assembly*> assemblies;
+	std::map<std::string, Assembly*> _assemblies;
+	xmlDocPtr _config;
+	xmlDocPtr _pe;
+	qpid::sys::Mutex xml_lock;
+	int _resource_counter;
+	bool _status_changed;
+
+	void services2resources(xmlNode * pcmk_config, xmlNode * services);
+	void assemblies2nodes(xmlNode * pcmk_config, xmlNode * nodes);
+
+	int32_t assembly_add(std::string& name,
+			     std::string& uuid,
+			     std::string& ipaddr);
+	int32_t assembly_remove(std::string& name,
+				std::string& uuid);
 
 public:
 
@@ -38,12 +59,9 @@ public:
 	std::string get_uuid() const { return _uuid; }
 
 	void reload(void);
-
-	int32_t assembly_add(std::string& name,
-			     std::string& uuid,
-			     std::string& ipaddr);
-	int32_t assembly_remove(std::string& name,
-			     std::string& uuid);
+	void process(void);
+	void status_changed(void);
+	Assembly* assembly_get(std::string& hostname);
 };
 
 

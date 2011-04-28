@@ -126,7 +126,7 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
         Deployable *child;
 
 	::qpid::sys::Mutex::ScopedLock _lock(map_lock);
-	qb_log(LOG_DEBUG, "loading deployment: %s:%s",
+	qb_log(LOG_INFO, "loading deployment: %s:%s",
 	       dep_name.c_str(), dep_uuid.c_str());
 
 	child = deployments[dep_uuid];
@@ -155,7 +155,7 @@ DpeAgent::dep_unload(string& name, string& uuid)
 	child = deployments[uuid];
 
 	if (child) {
-		qb_log(LOG_DEBUG, "request to unload %s", name.c_str());
+		qb_log(LOG_INFO, "request to unload %s", name.c_str());
 		update_stats(num_deps - 1, num_ass);
 		deployments.erase(uuid);
 		delete child;

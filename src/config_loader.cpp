@@ -19,9 +19,7 @@
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdlib.h>
-
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#include <qb/qblog.h>
 
 #include "config_loader.h"
 
@@ -37,10 +35,13 @@ config_get(std::string& uuid, xmlDoc** doc)
 	} else {
 		filename = uuid + ".xml";
 	}
+
 	*doc = xmlParseFile(filename.c_str());
 	if (doc == NULL) {
+		qb_log(LOG_ERR, "failed to load %s", filename.c_str());
 		return -1;
 	}
+	qb_log(LOG_INFO, "loaded %s", filename.c_str());
 	return 0;
 }
 

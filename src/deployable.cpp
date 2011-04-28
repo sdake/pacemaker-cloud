@@ -18,16 +18,17 @@
  * You should have received a copy of the GNU General Public License
  * along with cpe.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h>
+#include <glib.h>
+#include <libxml/parser.h>
+#include "pcmk_pe.h"
+#include <qb/qblog.h>
+
 #include <string>
 #include <map>
-
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
-#include <libxml/xpathInternals.h>
-
-#include <assert.h>
-#include <qb/qblog.h>
 
 #include "config_loader.h"
 #include "deployable.h"
@@ -39,6 +40,10 @@ Deployable::Deployable(std::string& uuid)
 {
 	_name = "";
 	_uuid = uuid;
+	_config = NULL;
+	_pe = NULL;
+	_status_changed = false;
+	xmlInitParser();
 	reload();
 }
 
@@ -48,120 +53,290 @@ Deployable::~Deployable()
 	map<string, Assembly*>::iterator iter;
 	Assembly *a;
 
-	for (iter = assemblies.begin(); iter != assemblies.end(); ) {
+	for (iter = _assemblies.begin(); iter != _assemblies.end(); ) {
 		kill = iter;
 		a = kill->second;
 		iter++;
-		assemblies.erase(kill);
+		_assemblies.erase(kill);
 		a->stop();
+	}
+	/* Shutdown libxml */
+	xmlCleanupParser();
+}
+
+
+/*
+   <nodes>
+   <node id="node1" uname="node1" type="member"/>
+   <node id="node2" uname="node2" type="member"/>
+   </nodes>
+   */
+void
+Deployable::assemblies2nodes(xmlNode * pcmk_config, xmlNode * assemblies)
+{
+	string ass_name;
+	string ass_uuid;
+	string ass_ip;
+	xmlNode *cur_node = NULL;
+	xmlNode *nodes = xmlNewChild(pcmk_config, NULL, BAD_CAST "nodes", NULL);
+	xmlNode *node = NULL;
+
+	for (cur_node = assemblies; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
+			qb_log(LOG_DEBUG, "node name: %s", cur_node->name);
+			ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
+			ass_uuid = ass_name/* FIXME (char*)xmlGetProp(cur_node, BAD_CAST "uuid")*/;
+			ass_ip = (char*)xmlGetProp(cur_node, BAD_CAST "ipaddr");
+			assert(ass_ip.length() > 0);
+
+			node = xmlNewChild(nodes, NULL, BAD_CAST "node", NULL);
+			xmlNewProp(node, BAD_CAST "id", BAD_CAST ass_name.c_str());
+			xmlNewProp(node, BAD_CAST "uname", BAD_CAST ass_name.c_str());
+			xmlNewProp(node, BAD_CAST "type", BAD_CAST "member");
+
+			assembly_add(ass_name, ass_uuid, ass_ip);
+		}
+	}
+}
+
+/*
+   <resources>
+   <primitive id="rsc1" class="heartbeat" type="apache"/>
+   <primitive id="rsc2" class="heartbeat" type="apache"/>
+   </resources>
+   */
+void
+Deployable::services2resources(xmlNode * pcmk_config, xmlNode * services)
+{
+	xmlNode *cur_node = NULL;
+	xmlNode *resource = NULL;
+	xmlChar *name = NULL;
+	xmlChar *ha = NULL;
+	xmlChar res_id[128];
+	xmlNode *resources;
+	xmlNode *operations = NULL;
+	xmlNode *op = NULL;
+	xmlChar op_id[128];
+
+	resources = xmlNewChild(pcmk_config, NULL, BAD_CAST "resources", NULL);
+
+	for (cur_node = services; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
+			name = xmlGetProp(cur_node, BAD_CAST "name");
+			ha = xmlGetProp(cur_node, BAD_CAST "HA");
+			snprintf((char*)res_id, 128, "res-%d", _resource_counter);
+			_resource_counter++;
+
+			resource = xmlNewChild(resources, NULL, BAD_CAST "primitive", NULL);
+			xmlNewProp(resource, BAD_CAST "id", res_id);
+			xmlNewProp(resource, BAD_CAST "class", BAD_CAST "lsb");
+			xmlNewProp(resource, BAD_CAST "type", name);
+			if (ha && strcmp((char*)ha, "True") == 0) {
+				operations = xmlNewChild(resource, NULL, BAD_CAST "operations", NULL);
+				op = xmlNewChild(operations, NULL, BAD_CAST "op", NULL);
+				snprintf((char*)op_id, 128, "monitor-%s", (char*)res_id);
+
+				xmlNewProp(op, BAD_CAST "id", op_id);
+				xmlNewProp(op, BAD_CAST "name", BAD_CAST "monitor");
+				xmlNewProp(op, BAD_CAST "interval", BAD_CAST "10s");
+			}
+		}
 	}
 }
 
 void
 Deployable::reload(void)
 {
-	xmlDocPtr doc = NULL;
-	xmlXPathContextPtr xpathCtx;
-	xmlXPathObjectPtr xpathObj;
 	int32_t rc;
-	int size;
-	int i;
-	string ass_name;
-	string ass_uuid;
-	string ass_ip;
+	xmlNode *cur_node = NULL;
+	xmlNode *dep_node = NULL;
+	xmlNode *cib = NULL;
+	xmlNode *nvpair = NULL;
+	xmlNode *configuration = NULL;
+	xmlNode *crm_config = NULL;
+	xmlNode *cluster_property = NULL;
 
-	rc = config_get(_uuid, &doc);
+	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
+	if (_config != NULL) {
+		xmlFreeDoc(_config);
+		_config = NULL;
+	}
+	if (_pe != NULL) {
+		xmlFreeDoc(_pe);
+		_pe = NULL;
+	}
+
+	rc = config_get(_uuid, &_config);
 	if (rc != 0) {
 		qb_log(LOG_ERR, "unable to load XML config file");
 		// O, crap
 		// try again later?
+		_config = NULL;
 		return;
 	}
+	_resource_counter = 1;
 
-	xmlInitParser();
+	_pe = xmlNewDoc(BAD_CAST "1.0");
 
-	/* Create xpath evaluation context */
-	xpathCtx = xmlXPathNewContext(doc);
-	if (xpathCtx == NULL) {
-		qb_log(LOG_ERR, "unable to create new XPath context");
-		xmlFreeDoc(doc);
-		return;
-	}
+	/* header gumf */
+	cib = xmlNewNode(NULL, BAD_CAST "cib");
+	xmlDocSetRootElement(_pe, cib);
+	xmlNewProp(cib, BAD_CAST "admin_epoch", BAD_CAST "0");
+	xmlNewProp(cib, BAD_CAST "epoch", BAD_CAST "0");
+	xmlNewProp(cib, BAD_CAST "num_updates", BAD_CAST "1");
+	xmlNewProp(cib, BAD_CAST "have-quorum", BAD_CAST "false");
+	xmlNewProp(cib, BAD_CAST "dc-uuid", BAD_CAST "0");
+	xmlNewProp(cib, BAD_CAST "remote-tls-port", BAD_CAST "0");
+	xmlNewProp(cib, BAD_CAST "validate-with", BAD_CAST "pacemaker-1.0");
 
-	/* Evaluate xpath expression */
-	xpathObj = xmlXPathEvalExpression(BAD_CAST "/deployable/assemblies/*", xpathCtx);
-	if (xpathObj == NULL) {
-		qb_log(LOG_ERR, "unable to evaluate xpath expression");
-		xmlXPathFreeContext(xpathCtx);
-		xmlFreeDoc(doc);
-		return;
-	}
+	configuration = xmlNewChild(cib, NULL, BAD_CAST "configuration", NULL);
+	crm_config = xmlNewChild(configuration, NULL, BAD_CAST "crm_config", NULL);
 
-	size = (xpathObj->nodesetval) ? xpathObj->nodesetval->nodeNr : 0;
-	qb_log(LOG_DEBUG, "parsed config for %s and found %d nodes", _uuid.c_str(), size);
+	cluster_property = xmlNewChild(crm_config, NULL, BAD_CAST "cluster_property_set", NULL);
+	xmlNewProp(cluster_property, BAD_CAST "id", BAD_CAST "no-stonith");
+	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
+	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-no-stonith");
+	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "stonith-enabled");
+	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "false");
 
-	for (i = 0; i < size; ++i) {
-		assert(xpathObj->nodesetval->nodeTab[i]);
+	cluster_property = xmlNewChild(crm_config, NULL, BAD_CAST "cluster_property_set", NULL);
+	xmlNewProp(cluster_property, BAD_CAST "id", BAD_CAST "bootstrap-options");
+	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
+	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-not-symetric");
+	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "symetric_cluster");
+	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "false");
 
-		if (xpathObj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
-			ass_name = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "name");
-			//ass_uuid = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "uuid");
-			ass_uuid = ass_name;
-			ass_ip = (char*)xmlGetProp(xpathObj->nodesetval->nodeTab[i], BAD_CAST "ipaddr");
-			assert(ass_ip.length() > 0);
-			assembly_add(ass_name, ass_uuid, ass_ip);
+	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
+	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-no-quorum-policy");
+	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "no-quorum-policy");
+	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "ignore");
+
+	dep_node = xmlDocGetRootElement(_config);
+	for (cur_node = dep_node->children; cur_node;
+	     cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
+			qb_log(LOG_DEBUG, "hostname: %s", cur_node->name);
+			if (strcmp((char*)cur_node->name, "assemblies") == 0) {
+				assemblies2nodes(configuration, cur_node->children);
+			} else if (strcmp((char*)cur_node->name, "services") == 0) {
+				services2resources(configuration, cur_node->children);
+			}
 		}
 	}
+	crm_config = xmlNewChild(configuration, NULL, BAD_CAST "constraints", NULL);
+}
 
-	/* Cleanup */
-	xmlXPathFreeObject(xpathObj);
-	xmlXPathFreeContext(xpathCtx);
+static gboolean
+_status_timeout(gpointer data)
+{
+	Deployable *d = (Deployable *)data;
+	d->process();
+	return FALSE;
+}
 
-	/* Shutdown libxml */
-	xmlCleanupParser();
+static uint32_t
+resource_execute(struct pe_operation *op)
+{
+	Assembly *a;
+	Deployable *d = (Deployable *)op->user_data;
+	string name = op->hostname;
+
+	a = d->assembly_get(name);
+	assert(a != NULL);
+	return a->resource_execute(op);
+}
+
+Assembly*
+Deployable::assembly_get(std::string& hostname)
+{
+	// FIXME we need to convert from hostname to uuid
+	// atm they are the same but they won't be forever.
+	return _assemblies[hostname];
+}
+
+void
+Deployable::process(void)
+{
+	map<string, Assembly*>::iterator iter;
+	xmlNode * cur_node = NULL;
+	xmlNode * pe_root = NULL;
+	xmlNode * status = NULL;
+	Assembly *a;
+	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
+
+	if (_pe == NULL) {
+		return;
+	}
+
+	pe_root = xmlDocGetRootElement(_pe);
+	for (cur_node = pe_root->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE &&
+		    strcmp((char*)cur_node->name, "status") == 0) {
+			status = cur_node;
+			break;
+		}
+	}
+	if (status) {
+		xmlUnlinkNode(status);
+		xmlFreeNode(status);
+	}
+	status = xmlNewChild(pe_root, NULL, BAD_CAST "status", NULL);
+
+	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
+		a = iter->second;
+		a->insert_status(status);
+	}
+
+	pe_process_state(pe_root, resource_execute, this);
+
+	_status_changed = false;
+}
+
+void
+Deployable::status_changed(void)
+{
+	qb_log(LOG_DEBUG, "status_changed current:%d", _status_changed);
+
+	if (!_status_changed) {
+		_status_changed = true;
+		// set in change and start timer
+		g_timeout_add(1000,
+			      _status_timeout,
+			      this);
+	} else {
+		// restart timer
+	}
 }
 
 int32_t
 Deployable::assembly_add(string& name, string& uuid, string& ip)
 {
-	Assembly *h = assemblies[uuid];
-	if (h) {
+	Assembly *a = _assemblies[uuid];
+	if (a) {
 		// don't want duplicates
 		return -1;
 	}
 
 	try {
-		h = new Assembly(name, uuid, ip);
+		a = new Assembly(this, name, uuid, ip);
 	} catch (qpid::types::Exception e) {
 		qb_log(LOG_ERR, "Exception creating Assembly %s",
 		       e.what());
-		delete h;
+		delete a;
 		return -1;
 	}
-	assemblies[uuid] = h;
+	_assemblies[uuid] = a;
 	return 0;
 }
 
 int32_t
 Deployable::assembly_remove(string& uuid, string& name)
 {
-	Assembly *h = assemblies[uuid];
-	if (h) {
-		assemblies.erase(uuid);
-		h->stop();
+	Assembly *a = _assemblies[uuid];
+	if (a) {
+		_assemblies.erase(uuid);
+		a->stop();
 	}
 	return 0;
 }
-
-#if 0
-int assembly_monitor_status(string& host_url)
-{
-	Assembly *h = hosts[host_url];
-	if (h) {
-		return h->state_get();
-	} else {
-		return -1;
-	}
-}
-#endif
 

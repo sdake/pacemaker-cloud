@@ -139,7 +139,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 	int32_t rc = init_job_start("dped", dep_uuid.c_str());
 
 	if (rc == 0) {
-		qb_log(LOG_DEBUG, "started dped instance=%s", dep_uuid.c_str());
+		qb_log(LOG_INFO, "started dped instance=%s", dep_uuid.c_str());
 		return 0;
 	} else {
 		errno = -rc;
@@ -154,7 +154,7 @@ CpeAgent::dep_stop(string& dep_name, string& dep_uuid)
 	int32_t rc = init_job_stop("dped", dep_uuid.c_str());
 
 	if (rc == 0) {
-		qb_log(LOG_DEBUG, "stopped dped instance=%s", dep_uuid.c_str());
+		qb_log(LOG_INFO, "stopped dped instance=%s", dep_uuid.c_str());
 		return 0;
 	} else {
 		errno = -rc;

@@ -42,8 +42,11 @@ def hack():
     ai1 = manu.assemble('%s-cpe-test' % dist, 2)
     print 'adding to dep'
     d.assembly_add(ai1)
-    print 'starting dep'
 
+    httpd = deployable.Service('httpd')
+    d.service_add(httpd)
+
+    print 'starting dep'
     d.start(only_startup)
     while (only_startup):
         time.sleep(1)
@@ -55,6 +58,7 @@ def hack():
     time.sleep(90)
 
     d.stop()
+    time.sleep(10)
     cped.stop()
     qpidd.stop()
 

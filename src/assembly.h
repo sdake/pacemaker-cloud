@@ -25,7 +25,10 @@
 #include <qmf/ConsoleEvent.h>
 #include <qmf/Data.h>
 #include <qpid/types/Variant.h>
+#include <libxml/parser.h>
 #include <string>
+
+class Deployable;
 
 class Assembly {
 private:
@@ -34,10 +37,19 @@ private:
 	qmf::ConsoleSession *session;
 	qmf::Data _mh_serv_class;
 	bool _mh_serv_class_found;
+	qmf::Data _mh_rsc_class;
+	bool _mh_rsc_class_found;
 	qpid::messaging::Connection *connection;
 	uint32_t state;
-	uint32_t _last_timestamp;
 	uint32_t _last_sequence;
+	GTimer* _last_heartbeat;
+	Deployable *_dep;
+
+	std::string _name;
+	std::string _uuid;
+	std::string _ipaddr;
+	int refcount;
+
 
 public:
 	static const uint32_t HEARTBEAT_INIT = 1;
@@ -45,25 +57,27 @@ public:
 	static const uint32_t HEARTBEAT_OK = 3;
 	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
 
-	std::string name;
-	std::string uuid;
-	std::string ipaddr;
 	bool is_connected;
-	int refcount;
 
 	Assembly();
-	Assembly(std::string& _name, std::string& _uuid, std::string& _ipaddr);
+	Assembly(Deployable *dep, std::string& name,
+		 std::string& uuid, std::string& ipaddr);
 	~Assembly();
 
 	bool nextEvent(qmf::ConsoleEvent&);
 	void stop(void);
 	uint32_t state_get(void) { return this->state; };
-	void state_set(uint32_t new_state);
 	void deref(void);
 	void check_heartbeat(void);
 	void check_heartbeat(uint32_t timestamp, uint32_t sequence);
 
+	void insert_status(xmlNode *status);
+
 	void matahari_discover(void);
+
+	void resource_failed(void);
+	uint32_t _resource_execute(struct pe_operation *op);
+	uint32_t resource_execute(struct pe_operation *op);
 };
 
 
