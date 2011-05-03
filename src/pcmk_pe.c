@@ -41,7 +41,8 @@
 #define	LSB_NOT_CONFIGURED 6
 #define	LSB_NOT_RUNNING 7
 
-/* The return codes for the status operation are not the same for other operatios - go figure
+/* The return codes for the status operation are not the same for other operations
+ * - go figure
  */
 #define LSB_STATUS_OK 0
 #define LSB_STATUS_VAR_PID 1
@@ -60,23 +61,25 @@ static void * run_user_data = NULL;
 
 enum ocf_exitcode pe_get_ocf_exitcode(const char *action, int lsb_exitcode)
 {
-    if(action != NULL && strcmp("status", action) == 0) {
-	switch(lsb_exitcode) {
-	    case LSB_STATUS_OK:			return OCF_OK;
-	    case LSB_STATUS_VAR_PID:		return OCF_NOT_RUNNING;
-	    case LSB_STATUS_VAR_LOCK:		return OCF_NOT_RUNNING;
-	    case LSB_STATUS_NOT_RUNNING:	return OCF_NOT_RUNNING;
-	    case LSB_STATUS_NOT_INSTALLED:	return OCF_UNKNOWN_ERROR;
-	    default:
+	if (action != NULL && strcmp("status", action) == 0) {
+		switch(lsb_exitcode) {
+		case LSB_STATUS_OK:		return OCF_OK;
+		case LSB_STATUS_VAR_PID:	return OCF_NOT_RUNNING;
+		case LSB_STATUS_VAR_LOCK:	return OCF_NOT_RUNNING;
+		case LSB_STATUS_NOT_RUNNING:	return OCF_NOT_RUNNING;
+		case LSB_STATUS_NOT_INSTALLED:	return OCF_UNKNOWN_ERROR;
+		default:
+						return OCF_UNKNOWN_ERROR;
+		}
+
+	} else if (lsb_exitcode > LSB_NOT_RUNNING) {
 		return OCF_UNKNOWN_ERROR;
 	}
 
-    } else if(lsb_exitcode > LSB_NOT_RUNNING) {
-	return OCF_UNKNOWN_ERROR;
-    }
-
-    /* For non-status operations, the LSB and OCF share error code meaning for rc <= 7 */
-    return (enum ocf_exitcode)lsb_exitcode;
+	/* For non-status operations, the LSB and OCF share error code meaning
+	 * for rc <= 7
+	 */
+	return (enum ocf_exitcode)lsb_exitcode;
 }
 
 static gboolean
@@ -98,13 +101,13 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	xmlNode *action_rsc = first_named_child(action->xml, XML_CIB_TAG_RESOURCE);
 	char *node = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
 
-	if(safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
+	if (safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
 		qb_log(LOG_INFO, "Skipping %s op for %s\n",
 		       crm_element_value(action->xml, "operation"), node);
 		goto done;
 	}
 
-	if(action_rsc == NULL) {
+	if (action_rsc == NULL) {
 		crm_log_xml_err(action->xml, "Bad");
 		crm_free(node);
 		return FALSE;
@@ -117,7 +120,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	pe_op.rprovider = crm_element_value(action_rsc, XML_AGENT_ATTR_PROVIDER);
 	pe_op.rtype = crm_element_value(action_rsc, XML_ATTR_TYPE);
 
-	if(target_rc_s != NULL) {
+	if (target_rc_s != NULL) {
 		target_outcome = crm_parse_int(target_rc_s, "0");
 	}
 	op = convert_graph_action(NULL, action, 0, target_outcome);
@@ -129,7 +132,8 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 
 	rc = run_fn(&pe_op);
 	if (rc != target_outcome) {
-		qb_log(LOG_ERR, "rsc %s failed %d != %d", op->op_type, rc, target_outcome);
+		qb_log(LOG_ERR, "rsc %s failed %d != %d", op->op_type, rc,
+		       target_outcome);
 		action->failed = TRUE;
 		graph->abort_priority = INFINITY;
 	}
@@ -187,9 +191,9 @@ process_graph(pe_working_set_t *data_set)
 	crm_graph_functions_t exec_fns =
 	{
 		exec_pseudo_action,
-		exec_rsc_action,
-		exec_crmd_action,
-		exec_stonith_action,
+			exec_rsc_action,
+			exec_crmd_action,
+			exec_stonith_action,
 	};
 
 	set_graph_functions(&exec_fns);
@@ -203,16 +207,16 @@ process_graph(pe_working_set_t *data_set)
 
 	} while(graph_rc == transition_active);
 
-	if(graph_rc != transition_complete) {
+	if (graph_rc != transition_complete) {
 		qb_log(LOG_ERR, "Transition failed: %s", transition_status(graph_rc));
 		print_graph(LOG_ERR, transition);
 	}
 	destroy_graph(transition);
-	if(graph_rc != transition_complete) {
+	if (graph_rc != transition_complete) {
 		qb_log(LOG_ERR, "An invalid transition was produced\n");
 	}
 
-	if(graph_rc != transition_complete) {
+	if (graph_rc != transition_complete) {
 		return graph_rc;
 	}
 	return 0;
@@ -223,8 +227,6 @@ int32_t
 pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 		 void *user_data)
 {
-	char *msg_buffer = NULL;
-	FILE* fh;
 	pe_working_set_t data_set;
 	int32_t rc = 0;
 
@@ -233,28 +235,8 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 
 	set_working_set_defaults(&data_set);
 
-	/* print input */
-	msg_buffer = dump_xml_formatted(xml_input);
-	fh = fopen("/home/asalkeld/work/fluffy/cloud-policy-engine/pe-in.xml", "a");
-	if (fh) {
-		fprintf(fh, "%s\n", msg_buffer);
-		fflush(fh);
-		fclose(fh);
-	}
-	crm_free(msg_buffer);
-
 	/* calculate output */
 	do_calculations(&data_set, xml_input, NULL);
-
-	/* print output */
-	msg_buffer = dump_xml_formatted(data_set.graph);
-	fh = fopen("/home/asalkeld/work/fluffy/cloud-policy-engine/pe-out.xml", "a");
-	if (fh) {
-		fprintf(fh, "%s\n", msg_buffer);
-		fflush(fh);
-		fclose(fh);
-	}
-	crm_free(msg_buffer);
 
 	rc = process_graph(&data_set);
 
