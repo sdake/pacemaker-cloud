@@ -39,11 +39,6 @@ noinst_PROGRAMS = cpe-tool2 pe_test
 qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 
-qpid_LIBS = -lqmf -lqmf2 -lqpidtypes -lqpidcommon -lqpidmessaging
-pengine_CFLAGS = -I/usr/include/pacemaker -I/usr/include/heartbeat
-pengine_LIBS =  -lcrmcommon -lpe_status -lpengine \
-		-lcib -ltransitioner -lplumb
-
 $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
@@ -59,15 +54,15 @@ dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp dpe_agent.c
 	        deployable.cpp assembly.cpp config_loader.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \
-		-I$(qmfauto_path) $(pengine_CFLAGS)
+		-I$(qmfauto_path) $(pcmk_CFLAGS)
 
-dped_LDFLAGS  = $(libqb_LIBS) $(qpid_LIBS) $(glib_LIBS) $(libxml2_LIBS) $(pengine_LIBS)
+dped_LDFLAGS  = $(libqb_LIBS) $(qpid_LIBS) $(glib_LIBS) $(libxml2_LIBS) $(pcmk_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
 cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS) $(libqb_LIBS)
 
 pe_test_SOURCES = pe_test.c
-pe_test_CPPFLAGS = -Wall $(glib_CFLAGS) $(libxml2_CFLAGS) $(pengine_CFLAGS)
-pe_test_LDADD = $(pengine_LIBS) $(glib_LIBS) $(libxml2_LIBS)
+pe_test_CPPFLAGS = -Wall $(glib_CFLAGS) $(libxml2_CFLAGS) $(pcmk_CFLAGS)
+pe_test_LDADD = $(pcmk_LIBS) $(glib_LIBS) $(libxml2_LIBS)
 
