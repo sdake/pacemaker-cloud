@@ -95,7 +95,7 @@ AC_ARG_WITH([qmf-include-path],
 AC_SUBST([qmf_CFLAGS])
 
 AC_ARG_WITH([qmf-lib-path],
-	    [AS_HELP_STRING([--with-qpid-lib-path],
+	    [AS_HELP_STRING([--with-qmf-lib-path],
 			    [location of the QPID and QMF libraries])],
 	    [qmf_LIBS="-L$withval -lqmf -lqmf2 -lqpidtypes -lqpidcommon -lqpidmessaging"],
 	               [qmf_LIBS="-lqmf -lqmf2 -lqpidtypes -lqpidcommon -lqpidmessaging"])
