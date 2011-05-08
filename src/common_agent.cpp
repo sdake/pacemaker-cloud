@@ -174,17 +174,19 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	int idx = 0;
 	bool daemonize = false;
 	bool gssapi = false;
-	char *servername = strdup("localhost");
-	char *username = NULL;
-	char *password = NULL;
-	char *service = NULL;
+	string servername("localhost");
+	string username;
+	string password;
+	string service;
 	int serverport = 49000;
-	string url = "localhost:49000";
 	int loglevel = LOG_INFO;
 	const char* log_argv[]={
 		0,
 		"--log-to-stderr", "no"
 	};
+	qpid::types::Variant::Map options;
+	std::stringstream url;
+
 	program_name = (char*)proc_name;
 	qpid::log::Options opts(proc_name);
 	opts.parse(sizeof(log_argv)/sizeof(char*), const_cast<char**>(log_argv));
@@ -226,7 +228,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 's':
 			if (optarg) {
-				service = strdup(optarg);
+				service = optarg;
 			} else {
 				print_usage(proc_name);
 				exit(1);
@@ -234,7 +236,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'u':
 			if (optarg) {
-				username = strdup(optarg);
+				username = optarg;
 			} else {
 				print_usage(proc_name);
 				exit(1);
@@ -242,7 +244,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'P':
 			if (optarg) {
-				password = strdup(optarg);
+				password = optarg;
 			} else {
 				print_usage(proc_name);
 				exit(1);
@@ -261,7 +263,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'b':
 			if (optarg) {
-				servername = strdup(optarg);
+				servername = optarg;
 			} else {
 				print_usage(proc_name);
 				exit(1);
@@ -299,9 +301,25 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	}
 
 	qb_log(LOG_INFO, "Connecting to Qpid broker at %s on port %d",
-	       servername, serverport);
+	       servername.c_str(), serverport);
 
-	agent_connection = qpid::messaging::Connection(url, "{reconnect:True}");
+	options["reconnect"] = true;
+	if (username.length() > 0) {
+		options["username"] = username;
+	}
+	if (password.length() > 0) {
+		options["password"] = password;
+	}
+	if (service.length() > 0) {
+		options["sasl-service"] = service;
+	}
+	if (gssapi) {
+		options["sasl-mechanism"] = "GSSAPI";
+	}
+
+	url << servername << ":" << serverport;
+
+	agent_connection = qpid::messaging::Connection(url.str(), options);
 	agent_connection.open();
 
 	agent_session = AgentSession(agent_connection, "{interval:30}");
