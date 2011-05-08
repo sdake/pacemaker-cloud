@@ -55,8 +55,8 @@ public:
 	Deployable();
 	Deployable(std::string& uuid);
 	~Deployable();
-	std::string get_name() const { return _name; }
-	std::string get_uuid() const { return _uuid; }
+	const std::string& get_name() const { return _name; }
+	const std::string& get_uuid() const { return _uuid; }
 
 	void reload(void);
 	void process(void);
