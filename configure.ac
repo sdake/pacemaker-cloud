@@ -50,6 +50,16 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_CHECK_FUNCS([select strdup strerror])
 
+AC_CHECK_HEADERS(rpc/netdb.h tirpc/netconfig.h)
+if test "x${ac_cv_header_rpc_netdb_h}" != "xyes" ; then
+	if test "x${ac_cv_header_tirpc_netconfig_h}" != "xyes" ; then
+		AC_MSG_FAILURE(Please install libtirpc-devel)
+	fi
+	# hack until heartbeat can handle tirpc
+	mkdir src/rpc
+	touch src/rpc/netdb.h
+fi
+
 AC_ARG_WITH([systemd],
 	    [AS_HELP_STRING([--with-systemd],
 			    [compile systemd support])],
