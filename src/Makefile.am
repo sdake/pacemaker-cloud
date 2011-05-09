@@ -45,18 +45,18 @@ $(qmfauto_c): schema.xml
 cped_SOURCES  = libinit.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 	        cpe_agent.cpp
 
-cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) \
+cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 		  -I$(qmfauto_path)
 
-cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qpid_LIBS) $(glib_LIBS)
+cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
 	        deployable.cpp assembly.cpp config_loader.cpp
 
-dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qpid_CFLAGS) $(libxml2_CFLAGS) \
+dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 		-I$(qmfauto_path) $(pcmk_CFLAGS)
 
-dped_LDFLAGS  = $(libqb_LIBS) $(qpid_LIBS) $(glib_LIBS) $(libxml2_LIBS) $(pcmk_LIBS)
+dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) $(pcmk_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
