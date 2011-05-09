@@ -67,17 +67,17 @@ AC_ARG_WITH([systemd],
 	    [])
 
 AC_CHECK_HEADERS(pacemaker/crm_config.h)
-if test "x${ac_cv_header_pacemaker_crm_config_h}" != "xyes"; then
+if test "x${ac_cv_header_pacemaker_crm_config_h}" != "xyes" ; then
    AC_MSG_FAILURE(Please install pacemaker-devel)
 fi
 
 AC_CHECK_HEADERS(heartbeat/glue_config.h)
-if test "x${ac_cv_header_heartbeat_glue_config_h}" != "xyes"; then
+if test "x${ac_cv_header_heartbeat_glue_config_h}" != "xyes" ; then
    AC_MSG_FAILURE(Please install heartbeat-devel)
 fi
 
 AC_CHECK_HEADERS(clplumbing/lsb_exitcodes.h)
-if test "x${ac_cv_header_clplumbing_lsb_exitcodes_h}" != "xyes"; then
+if test "x${ac_cv_header_clplumbing_lsb_exitcodes_h}" != "xyes" ; then
    AC_MSG_FAILURE(Please install cluster-glue-libs-devel)
 fi
 
