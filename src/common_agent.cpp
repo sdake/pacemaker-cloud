@@ -280,8 +280,8 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 		}
 	}
 
-	if (loglevel > LOG_DEBUG) {
-	       	loglevel = LOG_DEBUG;
+	if (loglevel > LOG_TRACE) {
+		loglevel = LOG_TRACE;
 	}
 	qb_log_init(proc_name, LOG_DAEMON, loglevel);
 	qb_log_format_set(QB_LOG_SYSLOG, "%g[%p] %b");

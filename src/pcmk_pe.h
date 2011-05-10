@@ -54,12 +54,20 @@ struct pe_operation {
 	GHashTable *params;
 	uint32_t timeout;
 	uint32_t interval;
+	uint32_t target_outcome;
 	void *user_data;
+	void *graph;
+	void *action;
+	uint32_t refcount;
 };
 
-enum ocf_exitcode pe_get_ocf_exitcode(const char *action, int lsb_exitcode);
+typedef void (*pe_resource_execute_t)(struct pe_operation *op);
 
-typedef uint32_t (*pe_resource_execute_t)(struct pe_operation *op);
+enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op,
+					       int lsb_exitcode);
+void pe_resource_completed(struct pe_operation *op, uint32_t return_code);
+void pe_resource_ref(struct pe_operation *op);
+void pe_resource_unref(struct pe_operation *op);
 
 int32_t pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 			 void *user_data);

@@ -234,7 +234,7 @@ _status_timeout(gpointer data)
 	return FALSE;
 }
 
-static uint32_t
+static void
 resource_execute(struct pe_operation *op)
 {
 	Assembly *a;
@@ -243,7 +243,7 @@ resource_execute(struct pe_operation *op)
 
 	a = d->assembly_get(name);
 	assert(a != NULL);
-	return a->resource_execute(op);
+	a->resource_execute(op);
 }
 
 Assembly*

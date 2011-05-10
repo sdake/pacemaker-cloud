@@ -32,15 +32,26 @@ class Deployable;
 
 class Assembly {
 private:
+	static const uint32_t HEARTBEAT_INIT = 1;
+	static const uint32_t HEARTBEAT_NOT_RECEIVED = 2;
+	static const uint32_t HEARTBEAT_OK = 3;
+	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
+
+	typedef uint32_t (Assembly::*fsm_state_fn)(void);
+	typedef void (Assembly::*fsm_action_fn)(void);
+
 	std::string connectionOptions;
-	std::string sessionOptions;
 	qmf::ConsoleSession *session;
 	qmf::Data _mh_serv_class;
 	bool _mh_serv_class_found;
 	qmf::Data _mh_rsc_class;
 	bool _mh_rsc_class_found;
 	qpid::messaging::Connection *connection;
+	uint32_t hb_state;
 	uint32_t state;
+	static const uint32_t NUM_STATES = 3;
+	fsm_state_fn state_table[NUM_STATES];
+	fsm_action_fn state_action_table[NUM_STATES][NUM_STATES];
 	uint32_t _last_sequence;
 	GTimer* _last_heartbeat;
 	Deployable *_dep;
@@ -50,34 +61,42 @@ private:
 	std::string _ipaddr;
 	int refcount;
 
+	std::map<uint32_t, struct pe_operation*> _ops;
+	std::list<std::string> _dead_agents;
+
+	uint32_t check_state_online(void);
+	uint32_t check_state_offline(void);
+
+	void state_offline_to_online(void);
+	void state_online_to_offline(void);
+
+	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
+	void check_state(void);
+	void matahari_discover(void);
+	void resource_failed(void);
+	void deref(void);
 
 public:
-	static const uint32_t HEARTBEAT_INIT = 1;
-	static const uint32_t HEARTBEAT_NOT_RECEIVED = 2;
-	static const uint32_t HEARTBEAT_OK = 3;
-	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
-
-	bool is_connected;
+	static const uint32_t STATE_INIT = 0;
+	static const uint32_t STATE_OFFLINE = 1;
+	static const uint32_t STATE_ONLINE = 2;
 
 	Assembly();
 	Assembly(Deployable *dep, std::string& name,
 		 std::string& uuid, std::string& ipaddr);
 	~Assembly();
 
-	bool nextEvent(qmf::ConsoleEvent&);
 	void stop(void);
 	uint32_t state_get(void) { return this->state; };
-	void deref(void);
-	void check_heartbeat(void);
-	void check_heartbeat(uint32_t timestamp, uint32_t sequence);
 
 	void insert_status(xmlNode *status);
 
-	void matahari_discover(void);
+	void resource_execute(struct pe_operation *op);
+	void _resource_execute(struct pe_operation *op);
+	struct pe_operation * op_remove_by_correlator(uint32_t correlator);
 
-	void resource_failed(void);
-	uint32_t _resource_execute(struct pe_operation *op);
-	uint32_t resource_execute(struct pe_operation *op);
+	gboolean process_qmf_events(void);
+
 };
 
 

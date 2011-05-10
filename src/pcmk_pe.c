@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,10 +59,11 @@ extern void cleanup_alloc_calculations(pe_working_set_t *data_set);
 
 static pe_resource_execute_t run_fn = NULL;
 static void * run_user_data = NULL;
+static pe_working_set_t *working_set = NULL;
 
-enum ocf_exitcode pe_get_ocf_exitcode(const char *action, int lsb_exitcode)
+enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 {
-	if (action != NULL && strcmp("status", action) == 0) {
+	if (strcmp(op->rclass, "lsb") == 0 && strcmp("monitor", op->method) == 0) {
 		switch(lsb_exitcode) {
 		case LSB_STATUS_OK:		return OCF_OK;
 		case LSB_STATUS_VAR_PID:	return OCF_NOT_RUNNING;
@@ -82,29 +84,84 @@ enum ocf_exitcode pe_get_ocf_exitcode(const char *action, int lsb_exitcode)
 	return (enum ocf_exitcode)lsb_exitcode;
 }
 
+static int graph_updated = FALSE;
+
+void pe_resource_ref(struct pe_operation *op)
+{
+	op->refcount++;
+}
+
+void pe_resource_unref(struct pe_operation *op)
+{
+	op->refcount--;
+
+	if (op->refcount == 0) {
+		crm_free(op->hostname);
+		crm_free(op->rprovider);
+		crm_free(op->rtype);
+		crm_free(op->rclass);
+		free(op->method);
+		free(op->rname);
+		free(op);
+	}
+}
+
+void
+pe_resource_completed(struct pe_operation *op, uint32_t return_code)
+{
+	crm_graph_t *graph = op->graph;
+	crm_action_t *action = op->action;
+
+	qb_enter();
+
+	if (working_set == NULL) {
+		return;
+	}
+
+	if (return_code == op->target_outcome) {
+		qb_log(LOG_DEBUG, "rsc %s succeeded %d == %d", op->method,
+		       return_code, op->target_outcome);
+	} else {
+		qb_log(LOG_ERR, "rsc %s failed %d != %d", op->method,
+		       return_code, op->target_outcome);
+		action->failed = TRUE;
+		graph->abort_priority = INFINITY;
+	}
+	action->confirmed = TRUE;
+	update_graph(graph, action);
+	graph_updated = TRUE;
+
+}
+
 static gboolean
 exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
 {
 	action->confirmed = TRUE;
 	update_graph(graph, action);
+	graph_updated = TRUE;
 	return TRUE;
 }
 
 static gboolean
 exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 {
-	int rc = 0;
-	int target_outcome = 0;
 	lrm_op_t *op = NULL;
-	struct pe_operation pe_op;
+	struct pe_operation *pe_op;
 	const char *target_rc_s = crm_meta_value(action->params, XML_ATTR_TE_TARGET_RC);
 	xmlNode *action_rsc = first_named_child(action->xml, XML_CIB_TAG_RESOURCE);
 	char *node = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
+	const char *tmp_provider;
+
+	qb_enter();
 
 	if (safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
 		qb_log(LOG_INFO, "Skipping %s op for %s\n",
 		       crm_element_value(action->xml, "operation"), node);
-		goto done;
+		crm_free(node);
+		action->confirmed = TRUE;
+		update_graph(graph, action);
+		graph_updated = TRUE;
+		return TRUE;
 	}
 
 	if (action_rsc == NULL) {
@@ -113,35 +170,33 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 		return FALSE;
 	}
 
-	pe_op.hostname = node;
-	pe_op.user_data = run_user_data;
-	pe_op.rname = ID(action_rsc);
-	pe_op.rclass = crm_element_value(action_rsc, XML_AGENT_ATTR_CLASS);
-	pe_op.rprovider = crm_element_value(action_rsc, XML_AGENT_ATTR_PROVIDER);
-	pe_op.rtype = crm_element_value(action_rsc, XML_ATTR_TYPE);
+	pe_op = calloc(1, sizeof(struct pe_operation));
+	pe_op->refcount = 1;
+	pe_op->hostname = node;
+	pe_op->user_data = run_user_data;
+	pe_op->rname = strdup(ID(action_rsc));
+	pe_op->rclass = strdup(crm_element_value(action_rsc, XML_AGENT_ATTR_CLASS));
+	tmp_provider = crm_element_value(action_rsc, XML_AGENT_ATTR_PROVIDER);
+	if (tmp_provider) {
+		pe_op->rprovider = strdup(tmp_provider);
+	}
+	pe_op->rtype = strdup(crm_element_value(action_rsc, XML_ATTR_TYPE));
 
 	if (target_rc_s != NULL) {
-		target_outcome = crm_parse_int(target_rc_s, "0");
+		pe_op->target_outcome = crm_parse_int(target_rc_s, "0");
 	}
-	op = convert_graph_action(NULL, action, 0, target_outcome);
+	op = convert_graph_action(NULL, action, 0, pe_op->target_outcome);
 
-	pe_op.method = op->op_type;
-	pe_op.params = op->params;
-	pe_op.timeout = op->timeout;
-	pe_op.interval = op->interval;
+	pe_op->method = strdup(op->op_type);
+	pe_op->params = op->params; /* TODO copy params */
+	pe_op->timeout = op->timeout;
+	pe_op->interval = op->interval;
+	pe_op->action = action;
+	pe_op->graph = graph;
 
-	rc = run_fn(&pe_op);
-	if (rc != target_outcome) {
-		qb_log(LOG_ERR, "rsc %s failed %d != %d", op->op_type, rc,
-		       target_outcome);
-		action->failed = TRUE;
-		graph->abort_priority = INFINITY;
-	}
 	free_lrm_op(op);
-done:
-	crm_free(node);
-	action->confirmed = TRUE;
-	update_graph(graph, action);
+
+	run_fn(pe_op);
 	return TRUE;
 }
 
@@ -150,6 +205,7 @@ exec_crmd_action(crm_graph_t *graph, crm_action_t *action)
 {
 	action->confirmed = TRUE;
 	update_graph(graph, action);
+	graph_updated = TRUE;
 	return TRUE;
 }
 
@@ -177,49 +233,53 @@ exec_stonith_action(crm_graph_t *graph, crm_action_t *action)
 #endif
 	action->confirmed = TRUE;
 	update_graph(graph, action);
+	graph_updated = TRUE;
 	//    free_xml(cib_node);
 	//    crm_free(target);
 	return TRUE;
 }
 
-static int32_t
-process_graph(pe_working_set_t *data_set)
+static crm_graph_functions_t graph_exec_fns =
 {
-	crm_graph_t *transition = NULL;
-	enum transition_status graph_rc = -1;
+	exec_pseudo_action,
+	exec_rsc_action,
+	exec_crmd_action,
+	exec_stonith_action,
+};
 
-	crm_graph_functions_t exec_fns =
-	{
-		exec_pseudo_action,
-			exec_rsc_action,
-			exec_crmd_action,
-			exec_stonith_action,
-	};
+static gboolean
+process_next_job(gpointer data)
+{
+	crm_graph_t *transition = (crm_graph_t *)data;
+	enum transition_status graph_rc;
 
-	set_graph_functions(&exec_fns);
+	qb_log(LOG_TRACE, "%s() %d", __func__, graph_updated);
 
-	qb_log(LOG_DEBUG, "Executing cluster transition");
-	transition = unpack_graph(data_set->graph, crm_system_name);
-	print_graph(LOG_DEBUG, transition);
+	if (!graph_updated) {
+		return TRUE;
+	}
 
-	do {
-		graph_rc = run_graph(transition);
+	graph_updated = FALSE;
+	graph_rc = run_graph(transition);
 
-	} while(graph_rc == transition_active);
+	if (graph_rc == transition_active || graph_rc == transition_pending) {
+		return TRUE;
+	}
+	qb_log(LOG_WARNING, "%s() Graph run ENDING (rc:%d)", __func__, graph_rc);
 
 	if (graph_rc != transition_complete) {
 		qb_log(LOG_ERR, "Transition failed: %s", transition_status(graph_rc));
 		print_graph(LOG_ERR, transition);
 	}
 	destroy_graph(transition);
-	if (graph_rc != transition_complete) {
-		qb_log(LOG_ERR, "An invalid transition was produced\n");
-	}
 
-	if (graph_rc != transition_complete) {
-		return graph_rc;
-	}
-	return 0;
+	// we don't want to free the input xml
+	working_set->input = NULL;
+	cleanup_alloc_calculations(working_set);
+	free(working_set);
+	working_set = NULL;
+
+	return FALSE;
 }
 
 
@@ -227,23 +287,33 @@ int32_t
 pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 		 void *user_data)
 {
-	pe_working_set_t data_set;
-	int32_t rc = 0;
+	crm_graph_t *transition = NULL;
+	uint32_t rc = 0;
 
+	qb_enter();
+
+	if (working_set) {
+		return -EEXIST;
+	}
+	working_set = calloc(1, sizeof(pe_working_set_t));
 	run_fn = fn;
 	run_user_data = user_data;
+	set_graph_functions(&graph_exec_fns);
 
-	set_working_set_defaults(&data_set);
+	set_working_set_defaults(working_set);
 
 	/* calculate output */
-	do_calculations(&data_set, xml_input, NULL);
+	do_calculations(working_set, xml_input, NULL);
 
-	rc = process_graph(&data_set);
+	qb_log(LOG_INFO, "Executing deployable transition");
+	transition = unpack_graph(working_set->graph, crm_system_name);
+	//print_graph(LOG_DEBUG, transition);
 
-	// we don't want to free the input xml
-	data_set.input = NULL;
-	cleanup_alloc_calculations(&data_set);
-
-	return rc;
+	graph_updated = TRUE;
+	rc = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+			     process_next_job,
+			     transition, NULL);
+	assert (rc > 0);
+	return 0;
 }
 
