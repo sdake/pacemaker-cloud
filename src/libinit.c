@@ -209,14 +209,13 @@ _upstart_job(const char* method, const char* service, const char* instance)
 		dbus_message_unref(method_call);
 
 		if (dbus_error_has_name(&error, DBUS_ERROR_NO_MEMORY)) {
+			dbus_error_free(&error);
 			return -ENOMEM;
 		} else {
 			qb_log(LOG_ERR, "%s: %s", error.name, error.message);
+			dbus_error_free(&error);
 			return -1;
 		}
-
-		dbus_error_free(&error);
-		return -1;
 	}
 
 	dbus_message_unref(method_call);
