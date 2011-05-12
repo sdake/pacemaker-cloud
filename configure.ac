@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.66])
-AC_INIT([pacemaker-cloud], [0.1.0], [asalkeld@redhat.com])
+AC_INIT([pacemaker-cloud], [0.1.0], [pacemaker-cloud@oss.clusterlabs.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
 AC_CONFIG_HEADERS([src/config.h])
