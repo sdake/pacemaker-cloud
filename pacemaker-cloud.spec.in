@@ -1,0 +1,48 @@
+Name: pacemaker-cloud
+Summary: The Pacemaker Cloud Policy Engine
+Version: @version@
+Release: 1%{?dist}
+License: GPL
+Group: System Environment/Base
+URL: http://github.com/cloud-policy-engine
+Source0: http://github.com/cloud-policy-engine/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
+
+# Build bits
+
+BuildRequires: autoconf automake
+BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+
+%prep
+%setup -q -n %{name}-%{version}
+
+%build
+./autogen.sh
+./configure
+
+make %{_smp_mflags}
+
+%install
+rm -rf %{buildroot}
+
+make install DESTDIR=%{buildroot}
+# this is installed by make install - but rpm picks it up in a different way
+rm -f %{buildroot}/usr/share/doc/pacemaker-cloud/COPYING
+
+%clean
+rm -rf %{buildroot}
+
+%description
+This package contains the Pacemaker Cloud Policy Engine services, command-line
+tools, and man pages.
+
+%files
+%defattr(-,root,root,-)
+%doc COPYING
+%{_sbindir}/cped
+%{_sbindir}/dped
+%{_sysconfdir}/init/dped.conf
+/lib/systemd/system/dped@.service
+
+%changelog
+* @date@ Autotools generated version <nobody@nowhere.org> - @version@
+- Autotools generated version

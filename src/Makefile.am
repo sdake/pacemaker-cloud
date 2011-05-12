@@ -17,13 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
 
-AUTOMAKE_OPTIONS	= foreign
-
-MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
-			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf
-
-EXTRA_DIST		= autogen.sh
+MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CFLAGS = -Wall
 
@@ -33,10 +27,16 @@ upstartconf_DATA = dped.conf
 systemdconfdir = /lib/systemd/system
 systemdconf_DATA = dped@.service
 
+EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA)
+
 sbin_PROGRAMS = cped dped
 noinst_PROGRAMS = cpe-tool2 pe_test
+noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
+	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
+	schema.xml org/cloudpolicyengine/QmfPackage.cpp \
+	org/cloudpolicyengine/QmfPackage.h
 
-qmfauto_path = $(abs_builddir)/org/cloudpolicyengine
+qmfauto_path = org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 
 $(qmfauto_c): schema.xml

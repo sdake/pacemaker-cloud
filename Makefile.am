@@ -1,6 +1,8 @@
 # Copyright (C) 2010-2011 Red Hat, Inc.
 #
-# Authors: Angus Salkeld <asalkeld@redhat.com>
+# Authors:
+#	Angus Salkeld <asalkeld@redhat.com>
+#	Steven Dake <sdake@redhat.com>
 #
 # This file is part of pacemaker-cloud.
 #
@@ -17,13 +19,43 @@
 # You should have received a copy of the GNU General Public License
 # along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
 
+SPEC	= $(PACKAGE_NAME).spec
+
+TARFILE = $(PACKAGE_NAME)-$(VERSION).tar.gz
+
 AUTOMAKE_OPTIONS	= foreign
 
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
-EXTRA_DIST		= autogen.sh
+EXTRA_DIST		= autogen.sh COPYING
+
+dist_doc_DATA		= COPYING
 
 SUBDIRS = src
 
+$(TARFILE):
+	$(MAKE) dist
+
+
+$(SPEC): $(SPEC).in
+        DATE=$(shell date "+%a %b %d %Y")
+	sed \
+		-e "s#@version@#$(VERSION)#g" \
+		-e "s#@date@#$(DATE)#g" \
+	$< > $@;
+
+RPMBUILDOPTS    = --define "_sourcedir $(abs_builddir)" \
+	--define "_specdir $(abs_builddir)" \
+	--define "_builddir $(abs_builddir)" \
+	--define "_srcrpmdir $(abs_builddir)" \
+	--define "_rpmdir $(abs_builddir)"
+
+srpm: clean
+	$(MAKE) $(SPEC) $(TARFILE)
+	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
+
+rpm: clean
+	$(MAKE) $(SPEC) $(TARFILE)
+	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
