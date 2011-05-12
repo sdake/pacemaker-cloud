@@ -30,9 +30,3 @@ Common lib
 l1) add API to access deployable config from exteranl API (cloud specific managemnt DB)
         config_get(deployment_uuid)
         config_list()
-
-General
--------
-g1) Change QMF code the QMFv2
-
-
