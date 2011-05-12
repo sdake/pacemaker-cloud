@@ -37,7 +37,10 @@ We are working on 5 components at the moment:
     sort of matahari actions to take
 
 Our repository is here:
-	git://gitorious.org/cloud-policy-engine/mainline.git
+	git://github.com/cloud-policy-engine/cloud-policy-engine
 
-For the moment we will share the pacemaker list for our development:
-	http://oss.clusterlabs.org/mailman/listinfo/pacemaker
+Our mailing list is here:
+	http://oss.clusterlabs.org/mailman/listinfo/pcmk-cloud
+
+A good slidedeck which shows our objective and rational is here:
+	http://www.redhat.com/summit/2011/presentations/summit/whats_new/thursday/dake_th_1130_high_availability_in_the_cloud.pdf
