@@ -37,7 +37,7 @@ config_get(std::string& uuid, xmlDoc** doc)
 	}
 
 	*doc = xmlParseFile(filename.c_str());
-	if (doc == NULL) {
+	if (*doc == NULL) {
 		qb_log(LOG_ERR, "failed to load %s", filename.c_str());
 		return -1;
 	}
