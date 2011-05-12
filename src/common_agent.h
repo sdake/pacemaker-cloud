@@ -1,6 +1,7 @@
-/* mh_agent.cpp - Copyright (C) 2010 Red Hat, Inc.
- * Written by Andrew Beekhof <andrew@beekhof.net>
+/*
+ * Copyright (C) 2010-2011 Red Hat, Inc.
  *
+ * Author: Andrew Beekhof <andrew@beekhof.net>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public
