@@ -155,7 +155,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	qb_enter();
 
 	if (safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
-		qb_log(LOG_INFO, "Skipping %s op for %s\n",
+		qb_log(LOG_DEBUG, "Skipping %s op for %s\n",
 		       crm_element_value(action->xml, "operation"), node);
 		crm_free(node);
 		action->confirmed = TRUE;
@@ -253,7 +253,7 @@ process_next_job(gpointer data)
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
 
-	qb_log(LOG_TRACE, "%s() %d", __func__, graph_updated);
+	qb_enter();
 
 	if (!graph_updated) {
 		return TRUE;
@@ -265,10 +265,12 @@ process_next_job(gpointer data)
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
 		return TRUE;
 	}
-	qb_log(LOG_WARNING, "%s() Graph run ENDING (rc:%d)", __func__, graph_rc);
 
-	if (graph_rc != transition_complete) {
-		qb_log(LOG_ERR, "Transition failed: %s", transition_status(graph_rc));
+	if (graph_rc == transition_complete) {
+		qb_log(LOG_DEBUG, "Transition Completed");
+	} else {
+		qb_log(LOG_ERR, "Transition failed: %s",
+		       transition_status(graph_rc));
 		print_graph(LOG_ERR, transition);
 	}
 	destroy_graph(transition);
@@ -290,11 +292,12 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 	crm_graph_t *transition = NULL;
 	uint32_t rc = 0;
 
-	qb_enter();
-
 	if (working_set) {
+		qb_log(LOG_ERR, "Transition already in progress");
 		return -EEXIST;
 	}
+	qb_log(LOG_INFO, "Executing deployable transition");
+
 	working_set = calloc(1, sizeof(pe_working_set_t));
 	run_fn = fn;
 	run_user_data = user_data;
@@ -305,7 +308,6 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 	/* calculate output */
 	do_calculations(working_set, xml_input, NULL);
 
-	qb_log(LOG_INFO, "Executing deployable transition");
 	transition = unpack_graph(working_set->graph, crm_system_name);
 	//print_graph(LOG_DEBUG, transition);
 
@@ -314,6 +316,7 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 			     process_next_job,
 			     transition, NULL);
 	assert (rc > 0);
+	qb_leave();
 	return 0;
 }
 
