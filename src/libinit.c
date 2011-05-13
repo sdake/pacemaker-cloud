@@ -32,12 +32,14 @@
 
 #include "init-dbus.h"
 
-#define DBUS_SERVICE_UPSTART                "com.ubuntu.Upstart"
-#define DBUS_PATH_UPSTART                  "/com/ubuntu/Upstart"
-#define DBUS_INTERFACE_UPSTART              "com.ubuntu.Upstart0_6"
-#define DBUS_INTERFACE_UPSTART_JOB          "com.ubuntu.Upstart0_6.Job"
-#define DBUS_INTERFACE_UPSTART_INSTANCE     "com.ubuntu.Upstart0_6.Instance"
-#define DBUS_ADDRESS_UPSTART "unix:abstract=/com/ubuntu/upstart"
+#ifdef WITH_SYSTEMD
+#define START_STR "StartUnit"
+#define STOP_STR "StopUnit"
+#else
+#define START_STR "Start"
+#define STOP_STR "Stop"
+#endif
+#define SERVICE_PATH_SIZE 512
 
 static DBusConnection *connection;
 
@@ -69,47 +71,48 @@ dbus_fini(void)
 }
 
 #ifdef WITH_SYSTEMD
-static int _systemd_job(const char *method,
-			const char *name,
-			const char *instance)
+static int
+_init_job(const char *method,
+	  const char *name,
+	  const char *instance)
 {
-	DBusMessage *m = NULL, *reply = NULL;
+	int32_t rc = 0;
+	DBusMessage *m = NULL;
+	DBusMessage *reply = NULL;
 	const char  *path;
 	const char  *mode = "replace";
 	DBusError   error;
-	int r;
-	char* inst_name = malloc(128*sizeof(char));
+	char        service_path[SERVICE_PATH_SIZE];
+	char       *inst_name = service_path;
 
-	assert(method);
-	assert(name);
-	assert(mode);
-
-	snprintf(inst_name, 128, "%s@%s.service", name, instance);
+	snprintf(inst_name, SERVICE_PATH_SIZE,
+		 "%s@%s.service", name, instance);
 	qb_log(LOG_INFO, "%s %s", method, inst_name);
 
-	if (!(m = dbus_message_new_method_call("org.freedesktop.systemd1",
-					       "/org/freedesktop/systemd1",
-					       "org.freedesktop.systemd1.Manager",
-					       method))) {
+	m = dbus_message_new_method_call("org.freedesktop.systemd1",
+					 "/org/freedesktop/systemd1",
+					 "org.freedesktop.systemd1.Manager",
+					 method);
+	if (!m) {
 		qb_log(LOG_ERR, "Could not allocate message.");
-		r = -ENOMEM;
+		rc = -ENOMEM;
 		goto finish;
 	}
 
-        if (!dbus_message_append_args(m,
-                                      DBUS_TYPE_STRING, &inst_name,
-                                      DBUS_TYPE_STRING, &mode,
-                                      DBUS_TYPE_INVALID)) {
-                qb_log(LOG_ERR,"Could not append arguments to message.");
-                r = -ENOMEM;
-                goto finish;
-        }
+	if (!dbus_message_append_args(m,
+				      DBUS_TYPE_STRING, &inst_name,
+				      DBUS_TYPE_STRING, &mode,
+				      DBUS_TYPE_INVALID)) {
+		qb_log(LOG_ERR,"Could not append arguments to message.");
+		rc = -ENOMEM;
+		goto finish;
+	}
 
 	dbus_error_init (&error);
 	if (!(reply = dbus_connection_send_with_reply_and_block(connection, m, -1, &error))) {
 
 		qb_log(LOG_ERR,"Failed to issue method call: %s", error.message);
-		r = -EIO;
+		rc = -EIO;
 		goto finish;
 	}
 
@@ -117,163 +120,142 @@ static int _systemd_job(const char *method,
 				   DBUS_TYPE_OBJECT_PATH, &path,
 				   DBUS_TYPE_INVALID)) {
 		qb_log(LOG_ERR,"Failed to parse reply: %s", error.message);
-		r = -EIO;
+		rc = -EIO;
 		goto finish;
 	}
 
-	r = 0;
+	rc = 0;
 
 finish:
-	free(inst_name);
 	dbus_error_free(&error);
-	if (m)
+	if (m) {
 		dbus_message_unref(m);
-
-	if (reply)
+	}
+	if (reply) {
 		dbus_message_unref(reply);
-
-	return r;
+	}
+	return rc;
 }
 
 #else
 
 static int
-_upstart_job(const char* method, const char* service, const char* instance)
+_init_job(const char* method,
+	  const char* service,
+	  const char* instance)
 {
-
-	DBusMessage *   method_call;
+	int32_t         rc = 0;
+	DBusMessage    *m = NULL;
 	DBusMessageIter iter;
+	DBusMessage    *reply = NULL;
 	DBusError       error;
-	DBusMessage *   reply;
 	DBusMessageIter env_iter;
-	char *          instance_local;
-	const char *    instance_local_dbus;
-	char * env[3];
-	size_t env_i;
-	const char *env_element;
-	int wait = TRUE;
-	char service_path[512];
-	char instance_env[512];
+	char           *env[3];
+	size_t          env_i;
+	const char     *path;
+	const char     *env_element;
+	int             wait = TRUE;
+	char            service_path[SERVICE_PATH_SIZE];
+	char            instance_env[SERVICE_PATH_SIZE];
 
-	snprintf(instance_env, 512, "INSTANCE=%s", instance);
+	snprintf(instance_env, SERVICE_PATH_SIZE, "INSTANCE=%s", instance);
 	env[0] = instance_env;
 	env[1] = NULL;
 
-	snprintf(service_path, 512, "/com/ubuntu/Upstart/jobs/%s", service);
+	snprintf(service_path, SERVICE_PATH_SIZE, "/com/ubuntu/Upstart/jobs/%s", service);
 
 	/* Construct the method call message. */
-	method_call = dbus_message_new_method_call(DBUS_SERVICE_UPSTART,
-						   service_path,
-						   DBUS_INTERFACE_UPSTART_JOB,
-						   method);
+	m = dbus_message_new_method_call("com.ubuntu.Upstart",
+					 service_path,
+					 "com.ubuntu.Upstart0_6.Job",
+					 method);
 
-	if (!method_call) {
+	if (!m) {
 		return -ENOMEM;
 	}
 
-	dbus_message_iter_init_append(method_call, &iter);
+	dbus_message_iter_init_append(m, &iter);
 
 	/* Marshal an array onto the message */
-	if (! dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &env_iter)) {
-		dbus_message_unref(method_call);
-		return -ENOMEM;
+	if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &env_iter)) {
+		rc = -ENOMEM;
+		goto finish;
 	}
 
 	for (env_i = 0; env[env_i]; env_i++) {
 		env_element = env[env_i];
 
 		/* Marshal a char * onto the message */
-		if (! dbus_message_iter_append_basic(&env_iter, DBUS_TYPE_STRING, &env_element)) {
+		if (!dbus_message_iter_append_basic(&env_iter, DBUS_TYPE_STRING, &env_element)) {
 			dbus_message_iter_abandon_container(&iter, &env_iter);
-			dbus_message_unref(method_call);
-			return -ENOMEM;
+			rc = -ENOMEM;
+			goto finish;
 		}
 	}
 
-	if (! dbus_message_iter_close_container(&iter, &env_iter)) {
-		dbus_message_unref(method_call);
-		return -ENOMEM;
+	if (!dbus_message_iter_close_container(&iter, &env_iter)) {
+		rc = -ENOMEM;
+		goto finish;
 	}
 
 	/* Marshal an int onto the message */
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_BOOLEAN, &wait)) {
-		dbus_message_unref (method_call);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto finish;
 	}
 
 	/* Send the message, and wait for the reply. */
 	dbus_error_init (&error);
 
-	reply = dbus_connection_send_with_reply_and_block(connection, method_call, -1, &error);
+	reply = dbus_connection_send_with_reply_and_block(connection, m, -1, &error);
 	if (!reply) {
-		dbus_message_unref(method_call);
-
 		if (dbus_error_has_name(&error, DBUS_ERROR_NO_MEMORY)) {
-			dbus_error_free(&error);
-			return -ENOMEM;
+			rc = -ENOMEM;
+			goto finish;
 		} else {
 			qb_log(LOG_ERR, "%s: %s", error.name, error.message);
-			dbus_error_free(&error);
-			return -1;
+			rc = -1;
+			goto finish;
 		}
 	}
 
-	dbus_message_unref(method_call);
-
-	/* Iterate the arguments of the reply */
-	dbus_message_iter_init(reply, &iter);
-
 	if (strcmp(method, "Start") == 0) {
 		/* Only the start returns the instance */
-		do {
-			/* Demarshal a char * from the message */
-			if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH) {
-				dbus_message_unref(reply);
-				return -EINVAL;
-			}
-
-			dbus_message_iter_get_basic (&iter, &instance_local_dbus);
-
-			instance_local = strdup(instance_local_dbus);
-			if (!instance_local) {
-				return -ENOMEM;
-			}
-
-			dbus_message_iter_next (&iter);
-		} while (! *instance);
+		/* Demarshal a char * from the message */
+		if (!dbus_message_get_args(reply, &error,
+					   DBUS_TYPE_OBJECT_PATH, &path,
+					   DBUS_TYPE_INVALID)) {
+			qb_log(LOG_ERR, "Failed to parse reply: %s",
+			       error.message);
+			rc = -EIO;
+		}
 	}
 
-	if (dbus_message_iter_get_arg_type (&iter) != DBUS_TYPE_INVALID) {
-		free (instance_local);
-		dbus_message_unref (reply);
-		return -EINVAL;
+finish:
+	dbus_error_free(&error);
+	if (m) {
+		dbus_message_unref(m);
 	}
-
-	dbus_message_unref (reply);
-
-	return 0;
+	if (reply) {
+		dbus_message_unref(reply);
+	}
+	return rc;
 }
-
 #endif /* ! WITH_SYSTEMD */
-
 
 int
 init_job_start(const char* service, const char* instance)
 {
-#ifdef WITH_SYSTEMD
-	return _systemd_job("StartUnit", service, instance);
-#else
-	return _upstart_job("Start", service, instance);
-#endif
+	assert(service);
+	assert(instance);
+	return _init_job(START_STR, service, instance);
 }
 
 int
 init_job_stop(const char * service, const char * instance)
 {
-#ifdef WITH_SYSTEMD
-	return _systemd_job("StopUnit", service, instance);
-#else
-	return _upstart_job("Stop", service, instance);
-#endif
+	assert(service);
+	assert(instance);
+	return _init_job(STOP_STR, service, instance);
 }
 
