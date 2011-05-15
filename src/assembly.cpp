@@ -57,7 +57,7 @@ Assembly::process_qmf_events(void)
 	}
 
 	matahari_discover();
-	while (session->nextEvent(event, qpid::messaging::Duration::SECOND)) {
+	while (session->nextEvent(event, qpid::messaging::Duration::IMMEDIATE)) {
 		if (event.getType() == CONSOLE_EVENT) {
 			uint32_t seq;
 			uint32_t tstamp;
@@ -536,7 +536,7 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	state = STATE_OFFLINE;
 
 	_last_heartbeat = g_timer_new();
-	g_timeout_add(5000,
+	g_timeout_add(1000,
 		      _poll_for_qmf_events,
 		      this);
 	refcount++;

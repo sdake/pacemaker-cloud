@@ -138,7 +138,7 @@ mainloop_qmf_session_check(GSource* source)
 	}
 
 	trig->ready = trig->asession->nextEvent(trig->event,
-						qpid::messaging::Duration::SECOND);
+						qpid::messaging::Duration::IMMEDIATE);
 	return trig->ready;
 }
 

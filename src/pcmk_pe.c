@@ -253,11 +253,10 @@ process_next_job(gpointer data)
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
 
-	qb_enter();
-
 	if (!graph_updated) {
 		return TRUE;
 	}
+	qb_enter();
 
 	graph_updated = FALSE;
 	graph_rc = run_graph(transition);
