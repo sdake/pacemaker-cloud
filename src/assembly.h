@@ -73,7 +73,7 @@ private:
 	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
 	void check_state(void);
 	void matahari_discover(void);
-	void resource_failed(void);
+	void resource_failed(struct pe_operation *op);
 	void deref(void);
 
 public:

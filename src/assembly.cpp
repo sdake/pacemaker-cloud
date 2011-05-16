@@ -98,10 +98,12 @@ Assembly::process_qmf_events(void)
 				op->action = NULL;
 				op->graph = NULL;
 			} else if (rc != op->target_outcome) {
-				pe_resource_unref(op);
+
+				resource_failed(op);
+
 				// delete request - timer will delete
 				// this is only for repeats
-				resource_failed();
+				pe_resource_unref(op);
 			}
 			// remove the ref for putting the op in the map
 			pe_resource_unref(op);
@@ -164,7 +166,7 @@ Assembly::matahari_discover(void)
 	string common = "package:org.matahariproject";
 //	common += ", where:[eq, uuid, [quote, " + string(_uuid) + "]]";
 	common += "}";
-	
+
 	qb_enter();
 
 	ac = session->getAgentCount();
@@ -241,11 +243,12 @@ resource_interval_timeout(gpointer data)
 }
 
 void
-Assembly::resource_failed(void)
+Assembly::resource_failed(struct pe_operation *op)
 {
-	qb_enter();
+	qb_log(LOG_NOTICE, "resourse %s:%s:%s FAILED",
+	       _name.c_str(), op->rname, op->rtype);
+
 	_dep->status_changed();
-	qb_leave();
 }
 
 void
@@ -410,7 +413,6 @@ Assembly::check_state_offline(void)
 	return new_state;
 }
 
-
 void
 Assembly::state_offline_to_online(void)
 {
@@ -438,7 +440,9 @@ Assembly::state_online_to_offline(void)
 
 	for (iter = _ops.begin(); iter != _ops.end(); iter++) {
 		op = iter->second;
-		pe_resource_completed(op, OCF_UNKNOWN_ERROR);
+		if (op->interval == 0) {
+			pe_resource_completed(op, OCF_UNKNOWN_ERROR);
+		}
 		pe_resource_unref(op); // delete
 	}
 }
