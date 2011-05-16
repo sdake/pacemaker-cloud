@@ -91,6 +91,14 @@ Assembly::process_qmf_events(void)
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
 			       op->interval, rc);
 			if (op->interval == 0) {
+				if (strcmp(op->method, "start") == 0 &&
+				    rc == OCF_OK) {
+					string rname = op->rtype;
+					string running = "running";
+					string reason = "started OK";
+					_dep->service_state_changed(this, rname, running, reason);
+				}
+
 				pe_resource_completed(op, rc);
 				pe_resource_unref(op); // delete
 			} else if (op->action != NULL) {
@@ -164,7 +172,7 @@ Assembly::matahari_discover(void)
 		return;
 	}
 	string common = "package:org.matahariproject";
-//	common += ", where:[eq, uuid, [quote, " + string(_uuid) + "]]";
+	//	common += ", where:[eq, uuid, [quote, " + string(_uuid) + "]]";
 	common += "}";
 
 	qb_enter();
@@ -245,10 +253,13 @@ resource_interval_timeout(gpointer data)
 void
 Assembly::resource_failed(struct pe_operation *op)
 {
+	string rname = op->rtype;
+	string running = "failed";
+	string reason = "monitor failed";
 	qb_log(LOG_NOTICE, "resourse %s:%s:%s FAILED",
 	       _name.c_str(), op->rname, op->rtype);
 
-	_dep->status_changed();
+	_dep->service_state_changed(this, rname, running, reason);
 }
 
 void
@@ -376,7 +387,6 @@ Assembly::check_state(void)
 	}
 	if (state != new_state) {
 		state = new_state;
-		_dep->status_changed();
 	}
 }
 
@@ -418,6 +428,7 @@ Assembly::state_offline_to_online(void)
 {
 	qb_log(LOG_NOTICE, "Assembly (%s) STATE_ONLINE.",
 	       _name.c_str());
+	_dep->assembly_state_changed(this, "running", "All good");
 }
 
 void
@@ -426,8 +437,6 @@ Assembly::state_online_to_offline(void)
 	map<uint32_t, struct pe_operation*>::iterator iter;
 	struct pe_operation *op;
 
-	qb_log(LOG_NOTICE, "Assembly (%s) STATE_OFFLINE.",
-	       _name.c_str());
 	_dead_agents.push_back(_mh_serv_class.getAgent().getName());
 	_dead_agents.push_back(_mh_rsc_class.getAgent().getName());
 	// TODO we need a timer -
@@ -445,6 +454,10 @@ Assembly::state_online_to_offline(void)
 		}
 		pe_resource_unref(op); // delete
 	}
+
+	qb_log(LOG_NOTICE, "Assembly (%s) STATE_OFFLINE.",
+	       _name.c_str());
+	_dep->assembly_state_changed(this, "failed", "Not reachable");
 }
 
 void

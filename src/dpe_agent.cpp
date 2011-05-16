@@ -138,7 +138,7 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 		return EEXIST;
 	}
 
-	child = new Deployable(dep_uuid);
+	child = new Deployable(dep_uuid, this);
 
 	deployments[dep_uuid] = child;
 

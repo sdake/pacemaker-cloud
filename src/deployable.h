@@ -28,6 +28,8 @@
 
 #include <qpid/sys/Mutex.h>
 
+#include "common_agent.h"
+
 class Assembly;
 
 class Deployable {
@@ -40,6 +42,7 @@ private:
 	qpid::sys::Mutex xml_lock;
 	int _resource_counter;
 	bool _status_changed;
+	CommonAgent *_agent;
 
 	void services2resources(xmlNode * pcmk_config, xmlNode * services);
 	void assemblies2nodes(xmlNode * pcmk_config, xmlNode * nodes);
@@ -53,14 +56,18 @@ private:
 public:
 
 	Deployable();
-	Deployable(std::string& uuid);
+	Deployable(std::string& uuid, CommonAgent *agent);
 	~Deployable();
 	const std::string& get_name() const { return _name; }
 	const std::string& get_uuid() const { return _uuid; }
 
 	void reload(void);
 	void process(void);
-	void status_changed(void);
+	void service_state_changed(Assembly *a, std::string& service_name,
+				   std::string state, std::string reason);
+	void assembly_state_changed(Assembly *a, std::string state,
+				    std::string reason);
+
 	Assembly* assembly_get(std::string& hostname);
 };
 

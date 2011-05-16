@@ -88,6 +88,7 @@ public:
 
 	void stop(void);
 	uint32_t state_get(void) { return this->state; };
+	std::string name_get(void) { return this->_name; };
 
 	void insert_status(xmlNode *status);
 

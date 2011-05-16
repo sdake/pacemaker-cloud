@@ -16,6 +16,18 @@
    </method>
 </class>
 
+<eventArguments>
+   <arg name="deployable"   type="sstr" />
+   <arg name="assembly"     type="sstr" />
+   <arg name="service"      type="sstr" />
+   <arg name="state"        type="sstr" />
+   <arg name="reason"       type="sstr" />
+</eventArguments>
+
+<event name="deployable_state_change" args="deployable,state,reason" />
+<event name="assembly_state_change" args="deployable,assembly,state,reason" />
+<event name="service_state_change" args="deployable,assembly,service,state,reason" />
+
 <!-- Each dpe daemon will implement this API -->
 <!-- Once running it will wait to be assigned deployments -->
 <!-- via the load and unload methods -->

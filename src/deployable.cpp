@@ -37,13 +37,14 @@
 
 using namespace std;
 
-Deployable::Deployable(std::string& uuid)
+Deployable::Deployable(std::string& uuid, CommonAgent *agent)
 {
 	_name = "";
 	_uuid = uuid;
 	_config = NULL;
 	_pe = NULL;
 	_status_changed = false;
+	_agent = agent;
 	xmlInitParser();
 	reload();
 }
@@ -64,7 +65,6 @@ Deployable::~Deployable()
 	/* Shutdown libxml */
 	xmlCleanupParser();
 }
-
 
 /*
    <nodes>
@@ -182,8 +182,8 @@ Deployable::reload(void)
 	/* header gumf */
 	cib = xmlNewNode(NULL, BAD_CAST "cib");
 	xmlDocSetRootElement(_pe, cib);
-	xmlNewProp(cib, BAD_CAST "admin_epoch", BAD_CAST "0");
-	xmlNewProp(cib, BAD_CAST "epoch", BAD_CAST "0");
+	xmlNewProp(cib, BAD_CAST "admin_epoch", BAD_CAST "1");
+	xmlNewProp(cib, BAD_CAST "epoch", BAD_CAST "1");
 	xmlNewProp(cib, BAD_CAST "num_updates", BAD_CAST "1");
 	xmlNewProp(cib, BAD_CAST "have-quorum", BAD_CAST "false");
 	xmlNewProp(cib, BAD_CAST "dc-uuid", BAD_CAST "0");
@@ -293,18 +293,40 @@ Deployable::process(void)
 }
 
 void
-Deployable::status_changed(void)
+Deployable::service_state_changed(Assembly *a, string& service_name,
+				  string state, string reason)
 {
-	qb_log(LOG_DEBUG, "status_changed current:%d", _status_changed);
+	qmf::Data event = qmf::Data(_agent->package.event_service_state_change);
+	event.setProperty("deployable", _uuid);
+	event.setProperty("assembly", a->name_get());
+	event.setProperty("service", service_name);
+	event.setProperty("state", state);
+	event.setProperty("reason", reason);
+	_agent->agent_session.raiseEvent(event);
 
 	if (!_status_changed) {
 		_status_changed = true;
-		// set in change and start timer
 		mainloop_job_add(QB_LOOP_LOW,
 				 this,
 				 _status_timeout);
-	} else {
-		// restart timer
+	}
+}
+
+void
+Deployable::assembly_state_changed(Assembly *a, string state, string reason)
+{
+	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
+	event.setProperty("deployable", _uuid);
+	event.setProperty("assembly", a->name_get());
+	event.setProperty("state", state);
+	event.setProperty("reason", reason);
+	_agent->agent_session.raiseEvent(event);
+
+	if (!_status_changed) {
+		_status_changed = true;
+		mainloop_job_add(QB_LOOP_LOW,
+				 this,
+				 _status_timeout);
 	}
 }
 
