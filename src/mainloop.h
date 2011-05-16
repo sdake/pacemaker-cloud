@@ -18,54 +18,44 @@
 #ifndef __MH_MAINLOOP__
 #define __MH_MAINLOOP__
 
-#include <glib.h>
-#include <sys/types.h>
+#include <qb/qbloop.h>
 
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <exception>
-#include <cstdlib>
+#ifdef __cplusplus
 
 #include <qmf/AgentSession.h>
 #include <qmf/AgentEvent.h>
 
-typedef struct mainloop_fd_s
-{
-	GSource source;
-	GPollFD	gpoll;
-	guint id;
-	void *user_data;
-	GDestroyNotify dnotify;
-	gboolean (*dispatch)(int fd, gpointer user_data);
-
-} mainloop_fd_t;
-
-
 typedef struct mainloop_qmf_session_s
 {
-	GSource source;
-	guint id;
 	void *user_data;
-	GDestroyNotify dnotify;
 	qmf::AgentEvent event;
 	qmf::AgentSession *asession;
-	gboolean ready;
-	gboolean (*dispatch)(qmf::AgentEvent *event, gpointer user_data);
-
+	bool (*dispatch)(qmf::AgentEvent *event, void* user_data);
 } mainloop_qmf_session_t;
-
-
-mainloop_fd_t *mainloop_add_fd(int priority, int fd,
-			       gboolean (*dispatch)(int fd, gpointer userdata),
-			       GDestroyNotify notify, gpointer userdata);
-
-gboolean mainloop_destroy_fd(mainloop_fd_t* source);
 
 mainloop_qmf_session_t*
 mainloop_add_qmf_session(qmf::AgentSession *asession,
-			 gboolean (*dispatch)(qmf::AgentEvent *event, gpointer userdata),
-			 GDestroyNotify notify, gpointer userdata);
+			 bool (*dispatch)(qmf::AgentEvent *event, void* userdata),
+			 void* user_data);
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void mainloop_default_set(qb_loop_t* l);
+void mainloop_job_add(enum qb_loop_priority p,
+		      void *userdata,
+		      qb_loop_job_dispatch_fn dispatch_fn);
+
+int32_t mainloop_timer_add(uint32_t msec_duration,
+			  void *data,
+			  qb_loop_timer_dispatch_fn dispatch_fn,
+			  qb_loop_timer_handle * timer_handle_out);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
 
 #endif
+

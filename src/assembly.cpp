@@ -128,11 +128,17 @@ Assembly::process_qmf_events(void)
 	return TRUE;
 }
 
-static gboolean
+static void
 _poll_for_qmf_events(gpointer data)
 {
 	Assembly *a = (Assembly *)data;
-	return a->process_qmf_events();
+	qb_loop_timer_handle timer_handle;
+
+	if (a->process_qmf_events()) {
+		mainloop_timer_add(1000, data,
+				   _poll_for_qmf_events,
+				   &timer_handle);
+	}
 }
 
 void
@@ -212,23 +218,26 @@ Assembly::matahari_discover(void)
 	qb_leave();
 }
 
-
-static gboolean
+static void
 resource_interval_timeout(gpointer data)
 {
 	struct pe_operation *op = (struct pe_operation *)data;
 	Assembly *a = (Assembly *)op->user_data;
+	qb_loop_timer_handle timer_handle;
 
 	qb_enter();
 	if (op->refcount == 1) {
 		// we are the last ref holder
 		pe_resource_unref(op);
-		return FALSE;
+		return;
 	}
 
 	a->_resource_execute(op);
 	qb_leave();
-	return TRUE;
+
+	mainloop_timer_add(op->interval, data,
+			   resource_interval_timeout,
+			   &timer_handle);
 }
 
 void
@@ -242,6 +251,8 @@ Assembly::resource_failed(void)
 void
 Assembly::resource_execute(struct pe_operation *op)
 {
+	qb_loop_timer_handle timer_handle;
+
 	qb_enter();
 	if (state != STATE_ONLINE) {
 		qb_log(LOG_DEBUG, "can't execute resourse in offline state");
@@ -255,9 +266,9 @@ Assembly::resource_execute(struct pe_operation *op)
 	if (op->interval > 0 && strcmp(op->method, "monitor") == 0) {
 		op->user_data = this;
 		pe_resource_ref(op);
-		g_timeout_add(op->interval,
-			      resource_interval_timeout,
-			      op);
+		mainloop_timer_add(op->interval,
+				   op, resource_interval_timeout,
+				   &timer_handle);
 	} else {
 		_resource_execute(op);
 	}
@@ -501,6 +512,7 @@ Assembly::~Assembly()
 Assembly::Assembly(Deployable *dep, std::string& name,
 		   std::string& uuid, std::string& ipaddr)
 {
+	qb_loop_timer_handle timer_handle;
 	string url("localhost:49000");
 
 	_mh_serv_class_found = false;
@@ -536,9 +548,9 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	state = STATE_OFFLINE;
 
 	_last_heartbeat = g_timer_new();
-	g_timeout_add(1000,
-		      _poll_for_qmf_events,
-		      this);
+	mainloop_timer_add(1000, this,
+			   _poll_for_qmf_events,
+			   &timer_handle);
 	refcount++;
 }
 

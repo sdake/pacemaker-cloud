@@ -49,7 +49,7 @@ public:
 	uint32_t dep_unload(std::string& name, std::string& uuid);
 
 	void setup(void);
-	gboolean event_dispatch(AgentEvent *event);
+	bool event_dispatch(AgentEvent *event);
 };
 #endif /* _DPE_H_ */
 

@@ -36,6 +36,8 @@ main(int argc, char **argv)
 
 	rc = agent.init(argc, argv, "dpe");
 	if (rc == 0) {
+		string uuid = argv[argc-1];
+		agent.dep_load(uuid, uuid);
 		agent.run();
 	}
 	return rc;
@@ -54,7 +56,7 @@ DpeAgent::setup(void)
 }
 
 
-gboolean
+bool
 DpeAgent::event_dispatch(AgentEvent *event)
 {
 	const string& methodName(event->getMethodName());
@@ -104,7 +106,7 @@ DpeAgent::event_dispatch(AgentEvent *event)
 	default:
 		break;
 	}
-	return TRUE;
+	return true;
 }
 
 void

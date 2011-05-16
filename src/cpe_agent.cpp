@@ -93,8 +93,7 @@ CpeAgent::setup(void)
 #endif
 }
 
-
-gboolean
+bool
 CpeAgent::event_dispatch(AgentEvent *event)
 {
 	const string& methodName(event->getMethodName());
@@ -130,7 +129,7 @@ CpeAgent::event_dispatch(AgentEvent *event)
 	default:	
 		break;
 	}
-	return TRUE;
+	return true;
 }
 
 uint32_t

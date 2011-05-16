@@ -46,7 +46,7 @@ private:
 	Selector log_selector;
 
 public:
-	GMainLoop *mainloop;
+	qb_loop_t *mainloop;
 	CommonAgent() {};
 	~CommonAgent() {};
 	AgentSession agent_session;
@@ -54,7 +54,7 @@ public:
 	qmf::org::cloudpolicyengine::PackageDefinition package;
 
 	virtual void setup(void) {};
-	virtual gboolean event_dispatch(AgentEvent *event) { return FALSE; };
+	virtual bool event_dispatch(AgentEvent *event) { return false; };
 	int init(int argc, char **argv, const char *proc_name);
 	void run();
 };

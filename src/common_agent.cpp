@@ -30,6 +30,7 @@ extern "C" {
 #include <glib.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
+#include <qb/qbloop.h>
 
 #include <string>
 #include <iostream>
@@ -109,18 +110,12 @@ print_usage(const char *proc_name)
 	printf("\t-p | --port       specify broker port.\n");
 }
 
-static gboolean
-qpid_callback(AgentEvent *event, gpointer user_data)
+static bool
+qpid_callback(AgentEvent *event, void* user_data)
 {
 	CommonAgent *agent = (CommonAgent *)user_data;
 	qb_log(LOG_NOTICE, "QMF callback");
 	return agent->event_dispatch(event);
-}
-
-static void
-qpid_disconnect(gpointer user_data)
-{
-	qb_log(LOG_ERR, "Qpid connection closed");
 }
 
 static void
@@ -319,10 +314,11 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	setup();
 
 	signal(SIGINT, shutdown);
-	mainloop = g_main_new(FALSE);
+	//mainloop = g_main_new(FALSE);
+	mainloop = qb_loop_create();
+	mainloop_default_set(mainloop);
 	qmf_source = mainloop_add_qmf_session(&agent_session,
 					      qpid_callback,
-					      qpid_disconnect,
 					      this);
 
 	return 0;
@@ -331,5 +327,6 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 void
 CommonAgent::run()
 {
-	g_main_run(this->mainloop);
+	qb_loop_run(mainloop);
+//	g_main_run(this->mainloop);
 }

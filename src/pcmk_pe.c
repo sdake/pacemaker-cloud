@@ -30,6 +30,7 @@
 #include <crm/pengine/status.h>
 #undef LOG_TRACE
 #include <qb/qblog.h>
+#include "mainloop.h"
 #include "pcmk_pe.h"
 
 #define LSB_PENDING -1
@@ -247,14 +248,17 @@ static crm_graph_functions_t graph_exec_fns =
 	exec_stonith_action,
 };
 
-static gboolean
-process_next_job(gpointer data)
+static void
+process_next_job(void* data)
 {
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
 
 	if (!graph_updated) {
-		return TRUE;
+		mainloop_job_add(QB_LOOP_LOW,
+				 transition,
+				 process_next_job);
+		return;
 	}
 	qb_enter();
 
@@ -262,8 +266,12 @@ process_next_job(gpointer data)
 	graph_rc = run_graph(transition);
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
-		return TRUE;
+		mainloop_job_add(QB_LOOP_LOW,
+				 transition,
+				 process_next_job);
+		return;
 	}
+
 
 	if (graph_rc == transition_complete) {
 		qb_log(LOG_DEBUG, "Transition Completed");
@@ -280,16 +288,14 @@ process_next_job(gpointer data)
 	free(working_set);
 	working_set = NULL;
 
-	return FALSE;
+	return;
 }
-
 
 int32_t
 pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 		 void *user_data)
 {
 	crm_graph_t *transition = NULL;
-	uint32_t rc = 0;
 
 	if (working_set) {
 		qb_log(LOG_ERR, "Transition already in progress");
@@ -311,10 +317,9 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 	//print_graph(LOG_DEBUG, transition);
 
 	graph_updated = TRUE;
-	rc = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-			     process_next_job,
-			     transition, NULL);
-	assert (rc > 0);
+	mainloop_job_add(QB_LOOP_HIGH,
+			 transition,
+			 process_next_job);
 	qb_leave();
 	return 0;
 }

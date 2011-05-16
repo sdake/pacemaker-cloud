@@ -30,6 +30,7 @@
 #include <string>
 #include <map>
 
+#include "mainloop.h"
 #include "config_loader.h"
 #include "deployable.h"
 #include "assembly.h"
@@ -226,12 +227,11 @@ Deployable::reload(void)
 	crm_config = xmlNewChild(configuration, NULL, BAD_CAST "constraints", NULL);
 }
 
-static gboolean
-_status_timeout(gpointer data)
+static void
+_status_timeout(void *data)
 {
 	Deployable *d = (Deployable *)data;
 	d->process();
-	return FALSE;
 }
 
 static void
@@ -300,9 +300,9 @@ Deployable::status_changed(void)
 	if (!_status_changed) {
 		_status_changed = true;
 		// set in change and start timer
-		g_timeout_add(1000,
-			      _status_timeout,
-			      this);
+		mainloop_job_add(QB_LOOP_LOW,
+				 this,
+				 _status_timeout);
 	} else {
 		// restart timer
 	}

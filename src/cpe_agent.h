@@ -43,7 +43,7 @@ private:
 
 public:
 	void setup(void);
-	gboolean event_dispatch(AgentEvent *event);
+	bool event_dispatch(AgentEvent *event);
 	int console_handler(void);
 };
 #endif /* _CPE_H_ */
