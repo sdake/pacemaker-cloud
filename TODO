@@ -3,21 +3,16 @@ TODO list
 
 CPE
 ---
-c1) extend upstart client code to include stopping a process and
-    getting events on failure.
+c1) extend upstart/systemd client code to include getting events on failure.
 c2) write the code to talk to the dpe (load/unload config)
 c3) at startup use config_list() to get initial deployables
-c4) add systemd support
-
 
 DPE
 ---
-d1) load config using config_get()
-d2) link in pacemaker PE
-d3) convert given config into PE palatable config
-d4) pass config into PE and execute commands
-d5) read config and discover state of services/assemblies
-
+d6) generate QMF events for changes in state for:
+    services (running, failed)
+    assemblies (running, failed)
+    deployables (running, failed)
 
 TESTS
 -----
