@@ -29,7 +29,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
-EXTRA_DIST		= autogen.sh COPYING
+EXTRA_DIST		= autogen.sh COPYING pacemaker-cloud.spec.in
 
 dist_doc_DATA		= COPYING
 
