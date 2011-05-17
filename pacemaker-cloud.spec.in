@@ -7,10 +7,9 @@ Group: System Environment/Base
 URL: http://github.com/cloud-policy-engine
 Source0: http://github.com/cloud-policy-engine/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
 
-# Build bits
-
 # Note libtool-ltdl-devel is required because of redhat.com bugzilla BZ #705212
-BuildRequires: autoconf automake glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel
+Requires: glib2 dbus-glib libxml2 libqb pacemaker-libs qmf
+BuildRequires: autoconf automake glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel qmf-devel
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
