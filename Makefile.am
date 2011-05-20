@@ -38,6 +38,10 @@ SUBDIRS = src
 $(TARFILE):
 	$(MAKE) dist
 
+coverity:
+	cov-build --dir=cov make
+	cov-analyze --dir cov
+	cov-format-errors --dir cov 
 
 $(SPEC): $(SPEC).in
         DATE=$(shell date "+%a %b %d %Y")
