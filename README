@@ -44,7 +44,10 @@ libxml2
 -------------------------------------------------------------------------------
 
 Installing on Fedora 15:
-fedora15# yum install autoconf automake gcc-c++ glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel qpid-cpp-client-devel
+libqb on f15 is out of date.  Please build the source tree from section 1.
+To build the libqb rpm you will need (libtool, doxygen and check-devel)
+
+fedora15# yum install autoconf automake gcc-c++ glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel qpid-cpp-client-devel qpid-qmf-devel
 fedora15# make rpm
 fedora15# rpm -ivh $(arch)/*.rpm
 
