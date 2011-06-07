@@ -66,20 +66,18 @@ AC_ARG_WITH([systemd],
 	    [AC_DEFINE([WITH_SYSTEMD], 1, [with systemd])]
 	    [])
 
-AC_CHECK_HEADERS(pacemaker/crm_config.h)
-if test "x${ac_cv_header_pacemaker_crm_config_h}" != "xyes" ; then
-   AC_MSG_FAILURE(Please install pacemaker-devel)
-fi
+fail=0
 
-AC_CHECK_HEADERS(heartbeat/glue_config.h)
-if test "x${ac_cv_header_heartbeat_glue_config_h}" != "xyes" ; then
-   AC_MSG_FAILURE(Please install heartbeat-devel)
-fi
+  AC_CHECK_HEADER([pacemaker/crm_config.h],,
+    [fail=1; AC_MSG_WARN([Please install pacemaker-devel])])
 
-AC_CHECK_HEADERS(clplumbing/lsb_exitcodes.h)
-if test "x${ac_cv_header_clplumbing_lsb_exitcodes_h}" != "xyes" ; then
-   AC_MSG_FAILURE(Please install cluster-glue-libs-devel)
-fi
+  AC_CHECK_HEADER([heartbeat/glue_config.h],,
+    [fail=1; AC_MSG_FAILURE([Please install heartbeat-devel])])
+
+  AC_CHECK_HEADER([clplumbing/lsb_exitcodes.h],,
+    [fail=1; AC_MSG_FAILURE([Please install cluster-glue-libs-devel])])
+
+test $fail = 1 && AC_MSG_ERROR([missing packages; see above])
 
 pcmk_CFLAGS="-I/usr/include/pacemaker -I/usr/include/heartbeat"
 AC_SUBST([pcmk_CFLAGS])
@@ -94,12 +92,68 @@ AC_ARG_WITH([qmf-include-path],
 	    [qmf_CFLAGS=""])
 AC_SUBST([qmf_CFLAGS])
 
+qmf_LIBS=
+
 AC_ARG_WITH([qmf-lib-path],
 	    [AS_HELP_STRING([--with-qmf-lib-path],
 			    [location of the QPID and QMF libraries])],
-	    [qmf_LIBS="-L$withval -lqmf -lqmf2 -lqpidtypes -lqpidcommon -lqpidmessaging"],
-	               [qmf_LIBS="-lqmf -lqmf2 -lqpidtypes -lqpidcommon -lqpidmessaging"])
+	    [qmf_LIBS="-L$withval"])
+
+fail=0
 AC_SUBST([qmf_LIBS])
+
+AC_LANG_PUSH(C++)
+  cpe_saved_libs=$LIBS
+
+  cpe_lib=qpidcommon
+  LIBS="$LIBS -l$cpe_lib"
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [#include <qpid/sys/Time.h>
+       using qpid::sys::AbsTime;],
+      [AbsTime t = AbsTime::now();])],
+    [qmf_LIBS="$qmf_LIBS -l$cpe_lib"],
+    [fail=1; AC_MSG_WARN([lib$cpe_lib is not installed.])])
+
+  cpe_lib=qpidmessaging
+  LIBS="$LIBS -l$cpe_lib"
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [#include <qpid/messaging/Connection.h>],
+      [qpid::messaging::Connection c("", "");])],
+    [qmf_LIBS="$qmf_LIBS -l$cpe_lib"],
+    [fail=1; AC_MSG_WARN([lib$cpe_lib is not installed.])])
+
+  cpe_lib=qpidtypes
+  LIBS="$LIBS -l$cpe_lib"
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [#include <qpid/types/Variant.h>],
+      [qpid::types::Variant v;])],
+    [qmf_LIBS="$qmf_LIBS -l$cpe_lib"],
+    [fail=1; AC_MSG_WARN([lib$cpe_lib is not installed.])])
+
+  cpe_lib=qmf
+  LIBS="$LIBS -l$cpe_lib"
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [#include <qpid/agent/ManagementAgent.h>
+       using qpid::management::ManagementAgent;],
+      [ManagementAgent::Singleton* singleton;
+       ManagementAgent* agent = singleton->getInstance();])],
+    [qmf_LIBS="$qmf_LIBS -l$cpe_lib"],
+    [fail=1; AC_MSG_WARN([lib$cpe_lib is not installed.])])
+
+  # FIXME do something similar for qmf2; but for now, just use it unconditionally.
+  # If everything else is here, odds are very good that -lqmf2 will work, too.
+  if test $fail = 0; then
+    cpe_lib=qmf2
+    qmf_LIBS="$qmf_LIBS -l$cpe_lib"
+  fi
+
+  LIBS=$cpe_saved_libs
+AC_LANG_POP([C++])
+test $fail = 1 && AC_MSG_ERROR([missing libraries; see above])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 
