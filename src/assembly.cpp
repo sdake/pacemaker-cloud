@@ -505,16 +505,11 @@ Assembly::stop(void)
 	deref();
 }
 
-Assembly::Assembly()
+Assembly::Assembly() :
+		_mh_serv_class_found(false), _mh_rsc_class_found(false),
+		hb_state(HEARTBEAT_INIT), state(STATE_INIT), refcount(1),
+		session(NULL), connection(NULL), _name("")
 {
-	_mh_serv_class_found = false;
-	_mh_rsc_class_found = false;
-	hb_state = HEARTBEAT_INIT;
-	state = STATE_INIT;
-	refcount = 1;
-	session = NULL;
-	connection = NULL;
-	_name = "";
 }
 
 Assembly::~Assembly()
@@ -527,15 +522,13 @@ Assembly::~Assembly()
 }
 
 Assembly::Assembly(Deployable *dep, std::string& name,
-		   std::string& uuid, std::string& ipaddr)
+		   std::string& uuid, std::string& ipaddr) :
+		_mh_serv_class_found(false), _mh_rsc_class_found(false),
+		hb_state(HEARTBEAT_INIT), refcount(1), _dep(dep),
+		_name(name), _uuid(uuid), _ipaddr(ipaddr), state(STATE_OFFLINE)
 {
 	qb_loop_timer_handle timer_handle;
 	string url("localhost:49000");
-
-	_mh_serv_class_found = false;
-	_mh_rsc_class_found = false;
-	hb_state = HEARTBEAT_INIT;
-	state = STATE_INIT;
 
 	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
 	state_table[STATE_ONLINE] = &Assembly::check_state_online;
@@ -546,12 +539,6 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &Assembly::state_online_to_offline;
 	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
 
-	refcount = 1;
-	_dep = dep;
-	_name = name;
-	_uuid = uuid;
-	_ipaddr = ipaddr;
-
 	qb_log(LOG_INFO, "Assembly(%s:%s)", name.c_str(), ipaddr.c_str());
 
 	connection = new qpid::messaging::Connection(url, connectionOptions);;
@@ -561,8 +548,6 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	session->open();
 
 	qb_log(LOG_INFO, "Assembly(%s:%s) session open", name.c_str(), ipaddr.c_str());
-
-	state = STATE_OFFLINE;
 
 	_last_heartbeat = g_timer_new();
 	mainloop_timer_add(1000, this,

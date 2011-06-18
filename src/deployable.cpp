@@ -37,14 +37,10 @@
 
 using namespace std;
 
-Deployable::Deployable(std::string& uuid, CommonAgent *agent)
+Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
+		_name(""), _uuid(uuid), _config(NULL), _pe(NULL),
+		_status_changed(false), _agent(agent)
 {
-	_name = "";
-	_uuid = uuid;
-	_config = NULL;
-	_pe = NULL;
-	_status_changed = false;
-	_agent = agent;
 	xmlInitParser();
 	reload();
 }
