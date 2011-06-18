@@ -63,3 +63,5 @@ srpm: clean
 rpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
+
+.PHONY: coverity srpm rpm
