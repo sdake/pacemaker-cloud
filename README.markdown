@@ -59,7 +59,7 @@ _Assembly_ = user defined guest composed of a VM image, Matahari active
 
 _Deployable_ = user defined set of assemblies and services
 
-_CPE_ = Clould Policy Engine, starts and stops DPE's
+_CPE_ = Cloud Policy Engine, starts and stops DPE's
 
 _DPE_ = Deployable Policy Engine, controls the services in a customer deployment
 
