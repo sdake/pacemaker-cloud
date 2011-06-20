@@ -47,7 +47,6 @@ class Manufacturer(object):
     def assemble(self, name, number):
         instname = '%s-%d' % (name, number)
         confdir = name
-        image_filename = '/var/lib/libvirt/images/%s.dsk' % instname
 
         libvirt_filename = '%s/%d.xml' % (name, number)
         tdl_filename = '%s/%d.tdl' % (name, number)
@@ -78,7 +77,7 @@ class Manufacturer(object):
             o.close()
 
         oz_config = ConfigParser.SafeConfigParser()
-        oz_config.read('/etc/oz/oz.config')
+        oz_config.read('/etc/oz/oz.cfg')
 
         libvirt_uri = self.get_conf(oz_config, 'libvirt', 'uri',
                                          'qemu:///system')
