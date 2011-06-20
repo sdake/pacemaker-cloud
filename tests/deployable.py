@@ -120,7 +120,6 @@ class Deployable(object):
         self.name = name
         self.uuid = name # TODO
         self.assemblies = {}
-        self.services = {}
         self.cpe = Cpe()
         self.l = logging.getLogger()
 
@@ -131,27 +130,20 @@ class Deployable(object):
     def assembly_add(self, ass):
         self.assemblies[ass.name] = ass
 
-    def service_add(self, srv):
-        self.services[srv.name] = srv
-
     def generate_config(self):
         doc = libxml2.newDoc("1.0")
         dep = doc.newChild(None, "deployable", None)
         dep.setProp("name", self.name)
+        dep.setProp("uuid", self.uuid)
         asses = dep.newChild(None, "assemblies", None)
-        servs = dep.newChild(None, "services", None)
         constraints = dep.newChild(None, 'constraints', None)
 
         for n, a in self.assemblies.iteritems():
             ass = asses.newChild(None, 'assembly', None)
             ass.setProp("name", n)
-#            ass.setProp("uuid", 'TODO')
+            ass.setProp("uuid", n) # TODO
             ass.setProp("ipaddr", a.ipaddr_get())
-
-        for n, a in self.services.iteritems():
-            srv = servs.newChild(None, 'service', None)
-            srv.setProp("name", n)
-            srv.setProp("HA", "True")
+            a.insert_service_config(ass)
 
         open(self.name + '.xml', 'w').write(doc.serialize(None, 1))
         doc.freeDoc()

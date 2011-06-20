@@ -26,6 +26,7 @@ class Assembly(FedoraGuest):
     def __init__(self, name, number, config, tdl):
         self.name = name
         self.number = number
+        self.services = {}
 
         tdl_filename = '%s/%d.tdl' % (name, number)
         kickstart_filename = '%s/%d.ks' % (name, number)
@@ -45,6 +46,14 @@ class Assembly(FedoraGuest):
 
     def __del__(self):
         self.stop()
+
+    def insert_service_config(self, ass_node):
+            servs = ass_node.newChild(None, "services", None)
+
+            for n, a in self.services.iteritems():
+                srv = servs.newChild(None, 'service', None)
+                srv.setProp("name", n)
+                srv.setProp("monitor_interval", "30s")
 
     def rsh(self, command):
         if self.guestaddr is None:
@@ -78,6 +87,9 @@ class Assembly(FedoraGuest):
 
     def ipaddr_get(self):
         return self.guestaddr
+
+    def service_add(self, srv):
+        self.services[srv.name] = srv
 
     def start(self):
 
