@@ -8,7 +8,7 @@ network  @NETWORK@
 rootpw --iscrypted $1$g7wJsgcU$gWTT/UE1AhXF86UB8GuuF/
 firewall --disabled
 authconfig --enableshadow --enablemd5
-selinux --enforcing
+selinux --permissive
 timezone --utc America/New_York
 bootloader --location=mbr --append="console=tty0 console=ttyS0,115200"
 zerombr yes
