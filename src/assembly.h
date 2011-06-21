@@ -18,15 +18,11 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <string>
 
-#include <qpid/messaging/Connection.h>
-#include <qpid/messaging/Duration.h>
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
 #include <qmf/Data.h>
-#include <qpid/types/Variant.h>
-#include <libxml/parser.h>
-#include <string>
 
 class Deployable;
 
@@ -40,15 +36,17 @@ private:
 	typedef uint32_t (Assembly::*fsm_state_fn)(void);
 	typedef void (Assembly::*fsm_action_fn)(void);
 
-	std::string connectionOptions;
-	qmf::ConsoleSession *session;
 	qmf::Data _mh_serv_class;
 	bool _mh_serv_class_found;
+
 	qmf::Data _mh_rsc_class;
 	bool _mh_rsc_class_found;
-	qpid::messaging::Connection *connection;
-	uint32_t hb_state;
-	uint32_t state;
+
+	qmf::Data _mh_host_class;
+	bool _mh_host_class_found;
+
+	uint32_t _hb_state;
+	uint32_t _state;
 	static const uint32_t NUM_STATES = 3;
 	fsm_state_fn state_table[NUM_STATES];
 	fsm_action_fn state_action_table[NUM_STATES][NUM_STATES];
@@ -59,7 +57,7 @@ private:
 	std::string _name;
 	std::string _uuid;
 	std::string _ipaddr;
-	int refcount;
+	int _refcount;
 
 	std::map<uint32_t, struct pe_operation*> _ops;
 	std::list<std::string> _dead_agents;
@@ -72,32 +70,31 @@ private:
 
 	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
 	void check_state(void);
-	void matahari_discover(void);
-	void resource_failed(struct pe_operation *op);
 	void deref(void);
+	void insert_op_history(xmlNode *rsc, struct operation_history *oh);
 
 public:
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
 	static const uint32_t STATE_ONLINE = 2;
+	std::map<std::string, struct operation_history*> op_history;
 
 	Assembly();
 	Assembly(Deployable *dep, std::string& name,
 		 std::string& uuid, std::string& ipaddr);
 	~Assembly();
 
+	void matahari_discover(qmf::ConsoleSession *session);
 	void stop(void);
-	uint32_t state_get(void) { return this->state; };
-	std::string name_get(void) { return this->_name; };
+	uint32_t state_get(void) { return _state; };
+	const std::string& name_get(void) const { return _name; }
+	const std::string& uuid_get(void) const { return _uuid; }
 
 	void insert_status(xmlNode *status);
 
-	void resource_execute(struct pe_operation *op);
-	void _resource_execute(struct pe_operation *op);
+	void resource_execute(struct pe_operation *op, std::string method, qpid::types::Variant::Map args);
 	struct pe_operation * op_remove_by_correlator(uint32_t correlator);
 
-	gboolean process_qmf_events(void);
+	bool process_qmf_events(qmf::ConsoleEvent &event);
 
 };
-
-

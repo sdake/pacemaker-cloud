@@ -88,12 +88,12 @@ DpeAgent::event_dispatch(AgentEvent *event)
 			for (map<string, Deployable*>::iterator iter = deployments.begin();
 			     iter != deployments.end();  iter++) {
 
-				d_list.push_back(iter->second->get_uuid());
+				d_list.push_back(iter->second->uuid_get());
 
 				cout << "listing(active) " << iter->first <<
-					iter->second->get_name() <<
+					iter->second->name_get() <<
 					", uuid " <<
-					iter->second->get_uuid() << endl;
+					iter->second->uuid_get() << endl;
 			}
 		}
 		if (rc == 0) {

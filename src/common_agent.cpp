@@ -151,17 +151,19 @@ my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *mess
 
 	qb_log_from_external_source(__FUNCTION__, __FILE__, "%s",
 				    log_level, __LINE__,
-				    1 << 1, message);
+				    2, message);
 }
 
 static const char *my_tags_stringify(uint32_t tags)
 {
 	if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT)) {
-		return "libqb ";
-	} else if (qb_bit_is_set(tags, 0)) {
-		return "qpid ";
-	} else if (qb_bit_is_set(tags, 1)) {
-		return "glib ";
+		return "QB   ";
+	} else if (tags == 1) {
+		return "QPID ";
+	} else if (tags == 2) {
+		return "GLIB ";
+	} else if (tags == 3) {
+		return "PCMK ";
 	} else {
 		return "MAIN ";
 	}
@@ -198,7 +200,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	log_selector.enable(error);
 	log_selector.enable(warning);
 	log_selector.enable(info);
-	log_selector.enable(debug);
+//	log_selector.enable(debug);
 	l.select(log_selector);
 
 	out = new LibqbLogger(l);

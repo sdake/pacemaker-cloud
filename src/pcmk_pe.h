@@ -29,6 +29,7 @@ extern "C" {
 #include <glib.h>
 #include <libxml/parser.h>
 
+#define PE_CRM_VERSION "3.0.5"
 
 enum ocf_exitcode {
 	OCF_PENDING = -1,
@@ -52,16 +53,22 @@ struct pe_operation {
 	char *rprovider;
 	char *rtype;
 	GHashTable *params;
+	char *op_digest;
 	uint32_t timeout;
+	uint32_t times_executed;
 	uint32_t interval;
 	uint32_t target_outcome;
 	void *user_data;
 	void *graph;
 	void *action;
+	void *resource;
+	uint32_t graph_id;
+	uint32_t action_id;
 	uint32_t refcount;
 };
 
 typedef void (*pe_resource_execute_t)(struct pe_operation *op);
+typedef void (*pe_transition_completed_t)(void* user_data, int32_t result);
 
 enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op,
 					       int lsb_exitcode);
@@ -69,8 +76,12 @@ void pe_resource_completed(struct pe_operation *op, uint32_t return_code);
 void pe_resource_ref(struct pe_operation *op);
 void pe_resource_unref(struct pe_operation *op);
 
-int32_t pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
+int32_t pe_process_state(xmlNode *xml_input,
+			 pe_resource_execute_t exec_fn,
+			 pe_transition_completed_t done_fn,
 			 void *user_data);
+
+int32_t pe_is_busy_processing(void);
 
 #ifdef __cplusplus
 }

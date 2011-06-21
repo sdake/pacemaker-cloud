@@ -18,14 +18,15 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include <glib.h>
-#include <libxml/parser.h>
-#include "pcmk_pe.h"
+#include "config.h"
+
 #include <qb/qblog.h>
+#include <uuid/uuid.h>
+
+#include <libxml/parser.h>
+#include <libxslt/transform.h>
+
+#include "pcmk_pe.h"
 
 #include <string>
 #include <map>
@@ -34,15 +35,99 @@
 #include "config_loader.h"
 #include "deployable.h"
 #include "assembly.h"
+#include "resource.h"
 
 using namespace std;
 
-Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
-		_name(""), _uuid(uuid), _config(NULL), _pe(NULL),
-		_status_changed(false), _agent(agent)
+bool
+Deployable::process_qmf_events(void)
 {
+	uint32_t rc = 0;
+	ConsoleEvent event;
+	Assembly *a;
+	map<string, Assembly*>::iterator iter;
+
+	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
+		a = iter->second;
+		if (a->state_get() != Assembly::STATE_ONLINE) {
+			a->matahari_discover(session);
+		}
+	}
+	a = NULL;
+	while (session->nextEvent(event, qpid::messaging::Duration::IMMEDIATE)) {
+		a = _agents_ass[event.getAgent().getName()];
+		if (a) {
+			a->process_qmf_events(event);
+		}
+		if (event.getType() == CONSOLE_AGENT_DEL) {
+			_agents_ass.erase(event.getAgent().getName());
+		}
+	}
+	return true;
+}
+
+void
+Deployable::map_agents_ass(string &agent_name, Assembly *a)
+{
+	_agents_ass[agent_name] = a;
+}
+
+static void
+_poll_for_qmf_events(gpointer data)
+{
+	Deployable *d = (Deployable *)data;
+	qb_loop_timer_handle timer_handle;
+
+	if (d->process_qmf_events()) {
+		mainloop_timer_add(1000, data,
+				   _poll_for_qmf_events,
+				   &timer_handle);
+	}
+}
+
+Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
+	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
+	_status_changed(false), _agent(agent), _file_count(0),
+	_resource_counter(0)
+{
+	qb_loop_timer_handle timer_handle;
+	std::stringstream filter;
+	string url("localhost:49000");
+	uuid_t tmp_id;
+	char tmp_id_s[37];
+
 	xmlInitParser();
+
+	uuid_generate(tmp_id);
+	uuid_unparse(tmp_id, tmp_id_s);
+	_crmd_uuid.insert(0, (char*)tmp_id_s, sizeof(tmp_id_s));
+
 	reload();
+
+	connection = new qpid::messaging::Connection(url, "");
+	connection->open();
+
+	session = new ConsoleSession(*connection, "max-agent-age:1");
+
+	filter << "[and";
+	filter << ", [eq, _vendor, [quote, 'matahariproject.org']]";
+//	filter << ", [eq, _product, [quote, 'service']]";
+//	filter << ", [or";
+//	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
+//		filter << ", [eq, hostname, [quote, '" << iter->second->name_get() << "']]";
+//	}
+//	filter << "]";
+	filter << "]";
+
+	session->setAgentFilter(filter.str());
+
+	session->open();
+
+	qb_log(LOG_INFO, "session open. Filter is: %s", filter.str().c_str());
+
+	mainloop_timer_add(1000, this,
+			   _poll_for_qmf_events,
+			   &timer_handle);
 }
 
 Deployable::~Deployable()
@@ -58,86 +143,68 @@ Deployable::~Deployable()
 		_assemblies.erase(kill);
 		a->stop();
 	}
+	session->close();
+	connection->close();
+
 	/* Shutdown libxml */
 	xmlCleanupParser();
 }
 
-/*
-   <nodes>
-   <node id="node1" uname="node1" type="member"/>
-   <node id="node2" uname="node2" type="member"/>
-   </nodes>
-   */
 void
-Deployable::assemblies2nodes(xmlNode * pcmk_config, xmlNode * assemblies)
+Deployable::create_services(string& ass_name, xmlNode * services)
+{
+	xmlNode *cur_node = NULL;
+	string name;
+	string type;
+
+	for (cur_node = services; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		type = (char*)xmlGetProp(cur_node, BAD_CAST "name");
+		name = "rsc_";
+		name += ass_name;
+		name += "_";
+		name += type;
+		qb_log(LOG_DEBUG, "service name: %s", name.c_str());
+
+		if (_resources[name] == NULL) {
+			string cl = "lsb";
+			string pr = "pacemaker";
+			_resources[name] = new Resource(this, name, type,
+							cl, pr);
+		}
+	}
+}
+
+void
+Deployable::create_assemblies(xmlNode * assemblies)
 {
 	string ass_name;
 	string ass_uuid;
 	string ass_ip;
 	xmlNode *cur_node = NULL;
-	xmlNode *nodes = xmlNewChild(pcmk_config, NULL, BAD_CAST "nodes", NULL);
-	xmlNode *node = NULL;
+	xmlNode *child_node = NULL;
 
 	for (cur_node = assemblies; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-			qb_log(LOG_DEBUG, "node name: %s", cur_node->name);
-			ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
-			ass_uuid = ass_name/* FIXME (char*)xmlGetProp(cur_node, BAD_CAST "uuid")*/;
-			ass_ip = (char*)xmlGetProp(cur_node, BAD_CAST "ipaddr");
-			assert(ass_ip.length() > 0);
-
-			node = xmlNewChild(nodes, NULL, BAD_CAST "node", NULL);
-			xmlNewProp(node, BAD_CAST "id", BAD_CAST ass_name.c_str());
-			xmlNewProp(node, BAD_CAST "uname", BAD_CAST ass_name.c_str());
-			xmlNewProp(node, BAD_CAST "type", BAD_CAST "member");
-
-			assembly_add(ass_name, ass_uuid, ass_ip);
+		if (cur_node->type != XML_ELEMENT_NODE) {
+			continue;
 		}
-	}
-}
+		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
+		ass_uuid = ass_name/* FIXME (char*)xmlGetProp(cur_node, BAD_CAST "uuid")*/;
+		ass_ip = (char*)xmlGetProp(cur_node, BAD_CAST "ipaddr");
+		assert(ass_ip.length() > 0);
+		qb_log(LOG_DEBUG, "node name: %s", ass_name.c_str());
 
-/*
-   <resources>
-   <primitive id="rsc1" class="heartbeat" type="apache"/>
-   <primitive id="rsc2" class="heartbeat" type="apache"/>
-   </resources>
-   */
-void
-Deployable::services2resources(xmlNode * pcmk_config, xmlNode * services)
-{
-	xmlNode *cur_node = NULL;
-	xmlNode *resource = NULL;
-	xmlChar *name = NULL;
-	xmlChar *ha = NULL;
-	xmlChar res_id[128];
-	xmlNode *resources;
-	xmlNode *operations = NULL;
-	xmlNode *op = NULL;
-	xmlChar op_id[128];
-
-	resources = xmlNewChild(pcmk_config, NULL, BAD_CAST "resources", NULL);
-
-	for (cur_node = services; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-			name = xmlGetProp(cur_node, BAD_CAST "name");
-			ha = xmlGetProp(cur_node, BAD_CAST "HA");
-			snprintf((char*)res_id, 128, "res-%d", _resource_counter);
-			_resource_counter++;
-
-			resource = xmlNewChild(resources, NULL, BAD_CAST "primitive", NULL);
-			xmlNewProp(resource, BAD_CAST "id", res_id);
-			xmlNewProp(resource, BAD_CAST "class", BAD_CAST "lsb");
-			xmlNewProp(resource, BAD_CAST "type", name);
-			if (ha && strcmp((char*)ha, "True") == 0) {
-				operations = xmlNewChild(resource, NULL, BAD_CAST "operations", NULL);
-				op = xmlNewChild(operations, NULL, BAD_CAST "op", NULL);
-				snprintf((char*)op_id, 128, "monitor-%s", (char*)res_id);
-
-				xmlNewProp(op, BAD_CAST "id", op_id);
-				xmlNewProp(op, BAD_CAST "name", BAD_CAST "monitor");
-				xmlNewProp(op, BAD_CAST "interval", BAD_CAST "10s");
+		for (child_node = cur_node->children; child_node; child_node = child_node->next) {
+			if (child_node->type != XML_ELEMENT_NODE) {
+				continue;
+			}
+			if (strcmp((char*)child_node->name, "services") == 0) {
+				create_services(ass_name, child_node->children);
 			}
 		}
+		assembly_add(ass_name, ass_uuid, ass_ip);
 	}
 }
 
@@ -147,13 +214,10 @@ Deployable::reload(void)
 	int32_t rc;
 	xmlNode *cur_node = NULL;
 	xmlNode *dep_node = NULL;
-	xmlNode *cib = NULL;
-	xmlNode *nvpair = NULL;
-	xmlNode *configuration = NULL;
-	xmlNode *crm_config = NULL;
-	xmlNode *cluster_property = NULL;
-
+	xsltStylesheetPtr ss = NULL;
+	const char *params[1];
 	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
+
 	if (_config != NULL) {
 		xmlFreeDoc(_config);
 		_config = NULL;
@@ -173,73 +237,79 @@ Deployable::reload(void)
 	}
 	_resource_counter = 1;
 
-	_pe = xmlNewDoc(BAD_CAST "1.0");
-
-	/* header gumf */
-	cib = xmlNewNode(NULL, BAD_CAST "cib");
-	xmlDocSetRootElement(_pe, cib);
-	xmlNewProp(cib, BAD_CAST "admin_epoch", BAD_CAST "1");
-	xmlNewProp(cib, BAD_CAST "epoch", BAD_CAST "1");
-	xmlNewProp(cib, BAD_CAST "num_updates", BAD_CAST "1");
-	xmlNewProp(cib, BAD_CAST "have-quorum", BAD_CAST "false");
-	xmlNewProp(cib, BAD_CAST "dc-uuid", BAD_CAST "0");
-	xmlNewProp(cib, BAD_CAST "remote-tls-port", BAD_CAST "0");
-	xmlNewProp(cib, BAD_CAST "validate-with", BAD_CAST "pacemaker-1.0");
-
-	configuration = xmlNewChild(cib, NULL, BAD_CAST "configuration", NULL);
-	crm_config = xmlNewChild(configuration, NULL, BAD_CAST "crm_config", NULL);
-
-	cluster_property = xmlNewChild(crm_config, NULL, BAD_CAST "cluster_property_set", NULL);
-	xmlNewProp(cluster_property, BAD_CAST "id", BAD_CAST "no-stonith");
-	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
-	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-no-stonith");
-	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "stonith-enabled");
-	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "false");
-
-	cluster_property = xmlNewChild(crm_config, NULL, BAD_CAST "cluster_property_set", NULL);
-	xmlNewProp(cluster_property, BAD_CAST "id", BAD_CAST "bootstrap-options");
-	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
-	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-not-symetric");
-	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "symetric_cluster");
-	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "false");
-
-	nvpair = xmlNewChild(cluster_property, NULL, BAD_CAST "nvpair", NULL);
-	xmlNewProp(nvpair, BAD_CAST "id", BAD_CAST "opt-no-quorum-policy");
-	xmlNewProp(nvpair, BAD_CAST "name", BAD_CAST "no-quorum-policy");
-	xmlNewProp(nvpair, BAD_CAST "value", BAD_CAST "ignore");
+	ss = xsltParseStylesheetFile(BAD_CAST "/usr/share/pacemaker-cloud/cf2pe.xsl");
+	params[0] = NULL;
+	_pe = xsltApplyStylesheet(ss, _config, params);
 
 	dep_node = xmlDocGetRootElement(_config);
 	for (cur_node = dep_node->children; cur_node;
 	     cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
-			qb_log(LOG_DEBUG, "hostname: %s", cur_node->name);
 			if (strcmp((char*)cur_node->name, "assemblies") == 0) {
-				assemblies2nodes(configuration, cur_node->children);
-			} else if (strcmp((char*)cur_node->name, "services") == 0) {
-				services2resources(configuration, cur_node->children);
+				create_assemblies(cur_node->children);
 			}
 		}
 	}
-	crm_config = xmlNewChild(configuration, NULL, BAD_CAST "constraints", NULL);
+
+	xsltFreeStylesheet(ss);
 }
 
 static void
 _status_timeout(void *data)
 {
 	Deployable *d = (Deployable *)data;
-	d->process();
+
+	if (pe_is_busy_processing()) {
+		// try later
+		qb_log(LOG_INFO, "pe_is_busy_processing: trying later");
+		d->schedule_processing();
+	} else {
+		d->process();
+	}
 }
 
 static void
-resource_execute(struct pe_operation *op)
+resource_execute_cb(struct pe_operation *op)
 {
-	Assembly *a;
 	Deployable *d = (Deployable *)op->user_data;
-	string name = op->hostname;
+	d->resource_execute(op);
+}
 
-	a = d->assembly_get(name);
-	assert(a != NULL);
-	a->resource_execute(op);
+void
+Deployable::resource_execute(struct pe_operation *op)
+{
+	Resource *r = resource_get(op);
+	assert(r != NULL);
+
+	if (op->interval > 0 && strcmp(op->method, "monitor") == 0) {
+		r->start_recurring(op);
+	} else if (strcmp(op->method, "delete") == 0) {
+		r->delete_op_history(op);
+	} else if (strcmp(op->method, "stop") == 0) {
+		r->stop(op);
+	} else {
+		r->execute(op);
+	}
+}
+
+static void
+transition_completed_cb(void* user_data, int32_t result)
+{
+	Deployable *d = (Deployable *)user_data;
+	d->transition_completed(result);
+}
+
+void
+Deployable::transition_completed(int32_t result)
+{
+	qb_log(LOG_INFO, "-- transition_completed -- %d", result);
+}
+
+Resource*
+Deployable::resource_get(struct pe_operation *op)
+{
+	string name = op->rname;
+	return _resources[name];
 }
 
 Assembly*
@@ -253,18 +323,33 @@ Deployable::assembly_get(std::string& hostname)
 void
 Deployable::process(void)
 {
-	map<string, Assembly*>::iterator iter;
 	xmlNode * cur_node = NULL;
 	xmlNode * pe_root = NULL;
 	xmlNode * status = NULL;
+	xmlNode * rscs = NULL;
+	int32_t rc = 0;
 	Assembly *a;
+	Resource *r;
 	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
 
 	if (_pe == NULL) {
 		return;
 	}
+	_status_changed = true;
+
+	if (_dc_uuid.length() == 0 ||
+	    _assemblies[_dc_uuid]->state_get() != Assembly::STATE_ONLINE) {
+		for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
+		     a_iter != _assemblies.end(); a_iter++) {
+			a = a_iter->second;
+			if (a->state_get() == Assembly::STATE_ONLINE) {
+				_dc_uuid = a->uuid_get();
+			}
+		}
+	}
 
 	pe_root = xmlDocGetRootElement(_pe);
+	xmlSetProp(pe_root, BAD_CAST "dc-uuid", BAD_CAST dc_uuid_get().c_str());
 	for (cur_node = pe_root->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE &&
 		    strcmp((char*)cur_node->name, "status") == 0) {
@@ -278,52 +363,71 @@ Deployable::process(void)
 	}
 	status = xmlNewChild(pe_root, NULL, BAD_CAST "status", NULL);
 
-	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
-		a = iter->second;
+	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
+	     a_iter != _assemblies.end(); a_iter++) {
+		a = a_iter->second;
 		a->insert_status(status);
 	}
 
-	pe_process_state(pe_root, resource_execute, this);
+	stringstream nf;
+	nf << "pe-out-" << _file_count <<  ".xml";
+	_file_count++;
 
+	qb_log(LOG_INFO, "processing new state with %s", nf.str().c_str());
+	xmlSaveFormatFileEnc(nf.str().c_str(), _pe, "UTF-8", 1);
+
+	rc = pe_process_state(pe_root, resource_execute_cb,
+			      transition_completed_cb, this);
 	_status_changed = false;
+	if (rc != 0) {
+		schedule_processing();
+	}
 }
 
 void
-Deployable::service_state_changed(Assembly *a, string& service_name,
-				  string state, string reason)
+Deployable::schedule_processing(void)
+{
+	if (_status_changed) {
+		qb_log(LOG_INFO, "not scheduling - collecting status");
+		// busy collecting status
+		return;
+	}
+
+	if (mainloop_timer_is_running(_processing_timer)) {
+		qb_log(LOG_INFO, "not scheduling - already scheduled");
+	} else {
+		mainloop_timer_add(1000, this,
+				   _status_timeout,
+				   &_processing_timer);
+	}
+}
+
+void
+Deployable::service_state_changed(const string& ass_name, string& service_name,
+				  string &state, string &reason)
 {
 	qmf::Data event = qmf::Data(_agent->package.event_service_state_change);
+
 	event.setProperty("deployable", _uuid);
-	event.setProperty("assembly", a->name_get());
+	event.setProperty("assembly", ass_name);
 	event.setProperty("service", service_name);
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
-
-	if (!_status_changed) {
-		_status_changed = true;
-		mainloop_job_add(QB_LOOP_LOW,
-				 this,
-				 _status_timeout);
-	}
 }
 
 void
 Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 {
+	qb_loop_timer_handle th;
 	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
+
 	event.setProperty("deployable", _uuid);
 	event.setProperty("assembly", a->name_get());
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
-
-	if (!_status_changed) {
-		_status_changed = true;
-		mainloop_job_add(QB_LOOP_LOW,
-				 this,
-				 _status_timeout);
-	}
+	schedule_processing();
 }
 
 int32_t

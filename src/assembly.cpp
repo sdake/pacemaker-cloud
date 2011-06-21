@@ -18,19 +18,19 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "config.h"
-#include <string.h>
+
 #include <qb/qblog.h>
+
 #include <iostream>
 #include <sstream>
 #include <map>
-#include <assert.h>
+
 #include "pcmk_pe.h"
 #include "mainloop.h"
 #include "assembly.h"
+#include "resource.h"
 #include "deployable.h"
-
 
 using namespace std;
 using namespace qmf;
@@ -43,151 +43,96 @@ Assembly::op_remove_by_correlator(uint32_t correlator)
 	return op;
 }
 
-gboolean
-Assembly::process_qmf_events(void)
+bool
+Assembly::process_qmf_events(ConsoleEvent &event)
 {
-	uint32_t rc = 0;
-	ConsoleEvent event;
+	enum ocf_exitcode rc = OCF_OK;
 	bool got_event = false;
 	struct pe_operation *op;
+	Resource *rsc;
 
-	if (state == Assembly::STATE_INIT) {
+	if (_state == Assembly::STATE_INIT) {
 		deref();
 		return FALSE;
 	}
 
-	matahari_discover();
-	while (session->nextEvent(event, qpid::messaging::Duration::IMMEDIATE)) {
-		if (event.getType() == CONSOLE_EVENT) {
-			uint32_t seq;
-			uint32_t tstamp;
-			const Data& event_data(event.getData(0));
+	if (event.getType() == CONSOLE_EVENT) {
+		const Data& event_data(event.getData(0));
 
-			if (event_data.getSchemaId().getPackageName() != "org.matahariproject" ||
-			    event_data.getSchemaId().getName() != "heartbeat") {
-				continue;
-			}
+		if (event_data.getSchemaId().getName() == "heartbeat") {
+			uint32_t seq = event_data.getProperty("sequence");
+			uint32_t tstamp = event_data.getProperty("timestamp");
 
-			tstamp = event_data.getProperty("timestamp");
-			seq = event_data.getProperty("sequence");
 			heartbeat_recv(tstamp, seq);
 			got_event = true;
+		}
 
-		} else if (event.getType() == CONSOLE_AGENT_DEL) {
-			if (event.getAgentDelReason() == AGENT_DEL_AGED) {
-				qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (aged) %s",
-				       event.getAgent().getName().c_str());
-			} else {
-				qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (filtered) %s",
-				       event.getAgent().getName().c_str());
-			}
-			_dead_agents.remove(event.getAgent().getName());
+	} else if (event.getType() == CONSOLE_AGENT_DEL) {
+		if (event.getAgentDelReason() == AGENT_DEL_AGED) {
+			qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (aged) %s",
+			       event.getAgent().getName().c_str());
+		} else {
+			qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (filtered) %s",
+			       event.getAgent().getName().c_str());
+		}
+		_dead_agents.remove(event.getAgent().getName());
 
-		} else if (event.getType() == CONSOLE_METHOD_RESPONSE) {
-			qpid::types::Variant::Map my_map = event.getArguments();
-			op = op_remove_by_correlator(event.getCorrelator());
-			rc = pe_resource_ocf_exitcode_get(op, my_map["rc"].asUint32());
-			qb_log(LOG_INFO, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%d",
+	} else if (event.getType() == CONSOLE_METHOD_RESPONSE) {
+		qpid::types::Variant::Map my_map = event.getArguments();
+		op = op_remove_by_correlator(event.getCorrelator());
+		rsc = (Resource *)op->resource;
+		rc = pe_resource_ocf_exitcode_get(op, my_map["rc"].asUint32());
+		op->times_executed++;
+
+		rsc->completed(op, rc);
+		// remove the ref for putting the op in the map
+		pe_resource_unref(op);
+	} else if (event.getType() == CONSOLE_EXCEPTION) {
+		rc = OCF_UNKNOWN_ERROR;
+		op = op_remove_by_correlator(event.getCorrelator());
+		rsc = (Resource *)op->resource;
+
+		if (event.getDataCount() >= 1) {
+			string error(event.getData(0).getProperty("error_text"));
+			qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
+			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
+			       op->interval, error.c_str());
+		} else {
+			qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%d",
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
 			       op->interval, rc);
-			if (op->interval == 0) {
-				if (strcmp(op->method, "start") == 0 &&
-				    rc == OCF_OK) {
-					string rname = op->rtype;
-					string running = "running";
-					string reason = "started OK";
-					_dep->service_state_changed(this, rname, running, reason);
-				}
-
-				pe_resource_completed(op, rc);
-				pe_resource_unref(op); // delete
-			} else if (op->action != NULL) {
-				pe_resource_completed(op, rc);
-				op->action = NULL;
-				op->graph = NULL;
-			} else if (rc != op->target_outcome) {
-
-				resource_failed(op);
-
-				// delete request - timer will delete
-				// this is only for repeats
-				pe_resource_unref(op);
-			}
-			// remove the ref for putting the op in the map
-			pe_resource_unref(op);
-		} else if (event.getType() == CONSOLE_EXCEPTION) {
-			rc = OCF_UNKNOWN_ERROR;
-			op = op_remove_by_correlator(event.getCorrelator());
-
-			if (event.getDataCount() >= 1) {
-				string error(event.getData(0).getProperty("error_text"));
-				qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
-				       op->method, op->rname, op->rclass, op->rtype, op->hostname,
-				       op->interval, error.c_str());
-			} else {
-				qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%d",
-				       op->method, op->rname, op->rclass, op->rtype, op->hostname,
-				       op->interval, rc);
-			}
-			pe_resource_completed(op, rc);
-			// remove the ref for putting the op in the map
-			pe_resource_unref(op);
 		}
+		rsc->completed(op, rc);
 	}
 	check_state();
 	return TRUE;
 }
 
-static void
-_poll_for_qmf_events(gpointer data)
-{
-	Assembly *a = (Assembly *)data;
-	qb_loop_timer_handle timer_handle;
-
-	if (a->process_qmf_events()) {
-		mainloop_timer_add(1000, data,
-				   _poll_for_qmf_events,
-				   &timer_handle);
-	}
-}
-
 void
-Assembly::matahari_discover(void)
+Assembly::matahari_discover(ConsoleSession *session)
 {
-	Agent a;
-	ConsoleEvent ce;
 	int32_t ai;
 	int32_t ac;
 	int32_t q;
 	bool dont_use;
 
-	// only search for agents if we have a heartbeat
-	if (state != Assembly::STATE_OFFLINE) {
-		return;
-	}
-	if (_mh_serv_class_found && _mh_rsc_class_found) {
-		return;
-	}
-	if (hb_state != HEARTBEAT_OK) {
+	if (_mh_serv_class_found && _mh_rsc_class_found && _mh_host_class_found) {
 		return;
 	}
 	string common = "package:org.matahariproject";
 	//	common += ", where:[eq, uuid, [quote, " + string(_uuid) + "]]";
+	//common += ", where:[eq, hostname, [quote, " + _name + "]]";
 	common += "}";
 
-	qb_enter();
-
 	ac = session->getAgentCount();
-	qb_log(LOG_DEBUG, "session has %d agents", ac);
+	qb_log(LOG_TRACE, "session has %d agents", ac);
 	for (ai = 0; ai < ac; ai++) {
-		dont_use = false;
-		a = session->getAgent(ai);
-		if (a.getVendor() != "matahariproject.org" ||
-		    a.getProduct() != "service") {
-			continue;
-		}
+		ConsoleEvent ce;
+		Agent a = session->getAgent(ai);
 
-		qb_log(LOG_INFO, "looking at agent %s", a.getName().c_str());
+		dont_use = false;
+
+		qb_log(LOG_TRACE, "looking at agent %s", a.getName().c_str());
 		for (list<string>::iterator it = _dead_agents.begin();
 		     it != _dead_agents.end(); ++it) {
 			if (*it == a.getName()) {
@@ -196,216 +141,252 @@ Assembly::matahari_discover(void)
 			}
 		}
 		if (dont_use) {
-			qb_log(LOG_INFO, "*** ignoring dead agent %s",
+			qb_log(LOG_DEBUG, "ignoring dead agent %s",
 			       a.getName().c_str());
 			continue;
 		}
 
-		if (!_mh_serv_class_found) {
-			ce = a.query("{class:Services, " + common);
+		if (!_mh_host_class_found) {
+			ce = a.query("{class:Host, " + common);
 			for (q = 0; q < ce.getDataCount(); q++) {
-				qb_log(LOG_INFO, "WOOT found Services class %d of %d",
-				       q, ce.getDataCount());
-				if (q == 0) {
+				string hostname = ce.getData(q).getProperty("hostname");
+				qb_log(LOG_TRACE, "found Host class %d of %d hostname %s (looking for %s)",
+				       q, ce.getDataCount(), hostname.c_str(),
+				       _name.c_str());
+				if (hostname == _name) {
+					string agent_name = ce.getAgent().getName();
 					qb_log(LOG_INFO, "choosing agent %s", a.getName().c_str());
-					_mh_serv_class_found = true;
-					_mh_serv_class = ce.getData(0);
+					_mh_host_class_found = true;
+					_mh_host_class = ce.getData(q);
+
+					_dep->map_agents_ass(agent_name, this);
+					break;
 				}
 			}
 		}
-		if (!_mh_rsc_class_found) {
-			ce = a.query("{class:Resources, " + common);
-			if (ce.getDataCount() >= 1) {
-				_mh_rsc_class_found = true;
-				_mh_rsc_class = ce.getData(0);
-				qb_log(LOG_DEBUG, "WOOT found Resources class");
+		if (!_mh_serv_class_found && _hb_state == HEARTBEAT_OK) {
+			ce = a.query("{class:Services, " + common);
+			for (q = 0; q < ce.getDataCount(); q++) {
+				string hostname = ce.getData(q).getProperty("hostname");
+				qb_log(LOG_TRACE, "found Servicest class %d of %d hostname %s (looking for %s)",
+				       q, ce.getDataCount(), hostname.c_str(),
+				       _name.c_str());
+				if (hostname == _name) {
+					string agent_name = ce.getAgent().getName();
+					qb_log(LOG_INFO, "choosing agent %s", a.getName().c_str());
+					_mh_serv_class_found = true;
+					_mh_serv_class = ce.getData(q);
+
+					_dep->map_agents_ass(agent_name, this);
+					break;
+				}
 			}
 		}
-		if (_mh_serv_class_found && _mh_rsc_class_found) {
+		if (!_mh_rsc_class_found && _hb_state == HEARTBEAT_OK) {
+			ce = a.query("{class:Resources, " + common);
+			for (q = 0; q < ce.getDataCount(); q++) {
+				string hostname = ce.getData(q).getProperty("hostname");
+				qb_log(LOG_TRACE, "found Resources class %d of %d hostname %s (looking for %s)",
+				       q, ce.getDataCount(), hostname.c_str(),
+				       _name.c_str());
+				if (hostname == _name) {
+					string agent_name = ce.getAgent().getName();
+					_mh_rsc_class_found = true;
+					_mh_rsc_class = ce.getData(q);
+					qb_log(LOG_TRACE, "found Resources class");
+
+					_dep->map_agents_ass(agent_name, this);
+					break;
+				}
+			}
+		}
+		if (_mh_serv_class_found && _mh_rsc_class_found && _mh_host_class_found) {
 			break;
 		}
 	}
-	qb_leave();
-}
-
-static void
-resource_interval_timeout(gpointer data)
-{
-	struct pe_operation *op = (struct pe_operation *)data;
-	Assembly *a = (Assembly *)op->user_data;
-	qb_loop_timer_handle timer_handle;
-
-	qb_enter();
-	if (op->refcount == 1) {
-		// we are the last ref holder
-		pe_resource_unref(op);
-		return;
-	}
-
-	a->_resource_execute(op);
-	qb_leave();
-
-	mainloop_timer_add(op->interval, data,
-			   resource_interval_timeout,
-			   &timer_handle);
 }
 
 void
-Assembly::resource_failed(struct pe_operation *op)
+Assembly::resource_execute(struct pe_operation *op, std::string method,
+			   qpid::types::Variant::Map in_args)
 {
-	string rname = op->rtype;
-	string running = "failed";
-	string reason = "monitor failed";
-	qb_log(LOG_NOTICE, "resourse %s:%s:%s FAILED",
-	       _name.c_str(), op->rname, op->rtype);
+	uint32_t correlation_id;
+	Agent a = _mh_serv_class.getAgent();
 
-	_dep->service_state_changed(this, rname, running, reason);
-}
-
-void
-Assembly::resource_execute(struct pe_operation *op)
-{
-	qb_loop_timer_handle timer_handle;
-
-	qb_enter();
-	if (state != STATE_ONLINE) {
-		qb_log(LOG_DEBUG, "can't execute resourse in offline state");
-		if (op->interval > 0 && strcmp(op->method, "monitor") == 0) {
-			pe_resource_completed(op, OCF_UNKNOWN_ERROR);
-		}
-		pe_resource_unref(op); // delete
-		return;
-	}
-
-	if (op->interval > 0 && strcmp(op->method, "monitor") == 0) {
-		op->user_data = this;
-		pe_resource_ref(op);
-		mainloop_timer_add(op->interval,
-				   op, resource_interval_timeout,
-				   &timer_handle);
-	} else {
-		_resource_execute(op);
-	}
-	qb_leave();
-}
-
-void
-Assembly::_resource_execute(struct pe_operation *op)
-{
-	Agent a;
-	qpid::types::Variant::Map in_args;
-	qpid::types::Variant::Map in_params;
-	const char *rmethod = op->method;
-
-	qb_enter();
-
-	if (state != Assembly::STATE_ONLINE) {
-		qb_log(LOG_DEBUG, "can't execute resourse in offline state");
-		pe_resource_completed(op, OCF_UNKNOWN_ERROR);
-		pe_resource_unref(op); // delete
-		qb_leave();
-		return;
-	}
-
-	if (strcmp(op->method, "monitor") == 0) {
-		in_args["interval"] = 0;
-	}
-	if (op->timeout < 20000) {
-		in_args["timeout"] = 20000;
-	} else {
-		in_args["timeout"] = op->timeout;
-	}
-
-	if (strcmp(op->rclass, "lsb") == 0) {
-		uint32_t corralation_id;
-		a = _mh_serv_class.getAgent();
-		if (strcmp(op->method, "monitor") == 0) {
-			rmethod = "status";
-		}
-		in_args["name"] = op->rtype;
-		pe_resource_ref(op);
-		corralation_id = a.callMethodAsync(rmethod, in_args, _mh_serv_class.getAddr());
-		qb_log(LOG_DEBUG, "callMethodAsync: %d", corralation_id);
-		_ops[corralation_id] = op;
-	} else {
-		uint32_t corralation_id;
-		a = _mh_rsc_class.getAgent();
-		// make a non-empty parameters map
-		in_params["qmf"] = "frustrating";
-
-		in_args["name"] = op->rname;
-		in_args["class"] = op->rclass;
-		in_args["provider"] = op->rprovider;
-		in_args["type"] = op->rtype;
-		in_args["parameters"] = in_params;
-		pe_resource_ref(op);
-		corralation_id = a.callMethodAsync(rmethod, in_args, _mh_rsc_class.getAddr());
-		_ops[corralation_id] = op;
-	}
+	correlation_id = a.callMethodAsync(method, in_args, _mh_serv_class.getAddr());
+	qb_log(LOG_DEBUG, "callMethodAsync: correlation id = %d", correlation_id);
+	_ops[correlation_id] = op;
 	qb_leave();
 }
 
 void
 Assembly::deref(void)
 {
-	refcount--;
-	if (refcount == 0) {
+	_refcount--;
+	if (_refcount == 0) {
 		delete this;
 	}
+}
+
+static void
+xml_new_int_prop(xmlNode *n, const char *name, int32_t val)
+{
+	char int_str[36];
+	snprintf(int_str, 36, "%d", val);
+	xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+}
+
+static void
+xml_new_time_prop(xmlNode *n, const char *name, time_t val)
+{
+	char int_str[36];
+	snprintf(int_str, 36, "%d", val);
+	xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+}
+
+/*
+ * id			Identifier for the job constructed from the resource id, operation and interval.
+ * call-id	 	The job's ticket number. Used as a sort key to determine the order in which the jobs were executed.
+ * operation		The action the resource agent was invoked with.
+ * interval		The frequency, in milliseconds, at which the operation will be repeated. 0 indicates a one-off job.
+ * op-status		The job's status. Generally this will be either 0 (done) or -1 (pending). Rarely used in favor of rc-code.
+ * rc-code	 	The job's result.
+ * last-run		Diagnostic indicator. Machine local date/time, in seconds since epoch,
+ * 			at which the job was executed.
+ * last-rc-change	Diagnostic indicator. Machine local date/time, in seconds since epoch,
+ * 			at which the job first returned the current value of rc-code
+ * exec-time		Diagnostic indicator. Time, in seconds, that the job was running for
+ * queue-time		Diagnostic indicator. Time, in seconds, that the job was queued for in the LRMd
+ * crm_feature_set	The version which this job description conforms to. Used when processing op-digest
+ * transition-key	A concatenation of the job's graph action number, the graph number,
+ * 			the expected result and the UUID of the crmd instance that scheduled it.
+ * 			This is used to construct transition-magic (below).
+ * transition-magic	A concatenation of the job's op-status, rc-code and transition-key.
+ * 			Guaranteed to be unique for the life of the cluster (which ensures it is part of CIB update notifications)
+ * 			and contains all the information needed for the crmd to correctly analyze and process the completed job.
+ * 			Most importantly, the decomposed elements tell the crmd if the job entry was expected and whether it failed.
+ * op-digest		An MD5 sum representing the parameters passed to the job.
+ * 			Used to detect changes to the configuration and restart resources if necessary.
+ * crm-debug-origin	Diagnostic indicator. The origin of the current values.
+ */
+/* <lrm_resource id="pingd:0" type="pingd" class="ocf" provider="pacemaker">
+ * <lrm_rsc_op
+ *  id="pingd:0_monitor_30000"
+ *  operation="monitor"
+ *  call-id="34"
+ *  rc-code="0"
+ *  interval="30000"
+ *  crm-debug-origin="do_update_resource"
+ *  crm_feature_set="3.0.1"
+ *  op-digest="a0f8398dac7ced82320fe99fd20fbd2f"
+ *  transition-key="10:11:0:2668bbeb-06d5-40f9-936d-24cb7f87006a"
+ *  transition-magic="0:0;10:11:0:2668bbeb-06d5-40f9-936d-24cb7f87006a"
+ *  last-run="1239009741"
+ *  last-rc-change="1239009741"
+ *  exec-time="10"
+ *  queue-time="0"/>
+ */
+void
+Assembly::insert_op_history(xmlNode *rsc, struct operation_history *oh)
+{
+	xmlNode *op;
+	char key[255];
+	char magic[255];
+
+	op = xmlNewChild(rsc, NULL, BAD_CAST "lrm_rsc_op", NULL);
+
+	xmlNewProp(op, BAD_CAST "id", BAD_CAST oh->rsc_id->c_str());
+	xmlNewProp(op, BAD_CAST "operation", BAD_CAST oh->operation->c_str());
+	xml_new_int_prop(op, "call-id", oh->call_id);
+	xml_new_int_prop(op, "rc-code", oh->rc);
+	xml_new_int_prop(op, "interval", oh->interval);
+	xml_new_time_prop(op, "last-run", oh->last_run);
+	xml_new_time_prop(op, "last-rc-change", oh->last_rc_change);
+
+	snprintf(key, 255, "%d:%d:%d:%s",
+		 oh->action_id, oh->graph_id, oh->target_outcome,
+		 _dep->crmd_uuid_get().c_str());
+	xmlNewProp(op, BAD_CAST "transition-key", BAD_CAST key);
+
+	snprintf(magic, 255, "0:%d:%s", oh->rc, key);
+	xmlNewProp(op, BAD_CAST "transition-magic", BAD_CAST magic);
+
+	xmlNewProp(op, BAD_CAST "op-digest", BAD_CAST oh->op_digest);
+	xmlNewProp(op, BAD_CAST "crm-debug-origin", BAD_CAST __func__);
+	xmlNewProp(op, BAD_CAST "crm_feature_set", BAD_CAST PE_CRM_VERSION);
+	xmlNewProp(op, BAD_CAST "op-status", BAD_CAST "0");
+	xmlNewProp(op, BAD_CAST "exec-time", BAD_CAST "0");
+	xmlNewProp(op, BAD_CAST "queue-time", BAD_CAST "0");
 }
 
 void
 Assembly::insert_status(xmlNode *status)
 {
 	xmlNode *node_state = xmlNewChild(status, NULL, BAD_CAST "node_state", NULL);
+	Resource *r = NULL;
 
 	qb_enter();
-	xmlNewProp(node_state, BAD_CAST "id", BAD_CAST _name.c_str());
+	xmlNewProp(node_state, BAD_CAST "id", BAD_CAST _uuid.c_str());
 	xmlNewProp(node_state, BAD_CAST "uname", BAD_CAST _name.c_str());
 
 	xmlNewProp(node_state, BAD_CAST "ha", BAD_CAST "active");
 	xmlNewProp(node_state, BAD_CAST "expected", BAD_CAST "member");
 	xmlNewProp(node_state, BAD_CAST "in_ccm", BAD_CAST "true");
+	xmlNewProp(node_state, BAD_CAST "crmd", BAD_CAST "online");
 
-	if (state == STATE_ONLINE) {
-		xmlNewProp(node_state, BAD_CAST "crmd", BAD_CAST "online");
+	if (_state == STATE_ONLINE) {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
 	} else {
-		xmlNewProp(node_state, BAD_CAST "crmd", BAD_CAST "offline");
-		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "down");
+		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "pending");
 	}
+	if (op_history.size() > 0) {
+		xmlNode *lrm = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
+		xmlNode *rscs = xmlNewChild(lrm, NULL, BAD_CAST "lrm_resources", NULL);
+
+		for (map<string, struct operation_history*>::iterator iter = op_history.begin();
+		     iter != op_history.end(); iter++) {
+			struct operation_history *oh = iter->second;
+			xmlNode *rsc = NULL;
+			if (r != oh->resource) {
+				r = (Resource*)oh->resource;
+				rsc = r->insert_status(rscs);
+			}
+			insert_op_history(rsc, oh);
+		}
+	}
+
 	qb_leave();
 }
 
 void
 Assembly::check_state(void)
 {
-	uint32_t new_state = (this->*state_table[state])();
+	uint32_t new_state = (this->*state_table[_state])();
 
-	if (state_action_table[state][new_state]) {
-		(this->*state_action_table[state][new_state])();
+	if (state_action_table[_state][new_state]) {
+		(this->*state_action_table[_state][new_state])();
 	}
-	if (state != new_state) {
-		state = new_state;
+	if (_state != new_state) {
+		_state = new_state;
 	}
 }
 
 uint32_t
 Assembly::check_state_online(void)
 {
-	uint32_t new_state = state;
+	uint32_t new_state = _state;
 	gdouble elapsed = 0;
 
-	if (hb_state == HEARTBEAT_OK) {
+	if (_hb_state == HEARTBEAT_OK) {
 		elapsed = g_timer_elapsed(_last_heartbeat, NULL);
 		if (elapsed > (5 * 1.5)) {
-			hb_state = Assembly::HEARTBEAT_NOT_RECEIVED;
+			_hb_state = Assembly::HEARTBEAT_NOT_RECEIVED;
 			qb_log(LOG_WARNING,
-			       "assembly heartbeat too late! (%.2f > 5 seconds)",
-			       elapsed);
+			       "assembly (%s) heartbeat too late! (%.2f > 5 seconds)",
+			       _name.c_str(), elapsed);
 		}
 	}
-	if (hb_state != HEARTBEAT_OK) {
+	if (_hb_state != HEARTBEAT_OK) {
 		new_state = STATE_OFFLINE;
 	}
 	return new_state;
@@ -414,9 +395,9 @@ Assembly::check_state_online(void)
 uint32_t
 Assembly::check_state_offline(void)
 {
-	uint32_t new_state = state;
-	if (hb_state == HEARTBEAT_OK &&
-	    _mh_serv_class_found &&
+	uint32_t new_state = _state;
+	if (_hb_state == HEARTBEAT_OK &&
+	    _mh_serv_class_found && _mh_host_class_found &&
 	    _mh_rsc_class_found) {
 		new_state = STATE_ONLINE;
 	}
@@ -431,14 +412,17 @@ Assembly::state_offline_to_online(void)
 	_dep->assembly_state_changed(this, "running", "All good");
 }
 
+
 void
 Assembly::state_online_to_offline(void)
 {
 	map<uint32_t, struct pe_operation*>::iterator iter;
 	struct pe_operation *op;
+	Resource *rsc = (Resource *)op->resource;
 
 	_dead_agents.push_back(_mh_serv_class.getAgent().getName());
 	_dead_agents.push_back(_mh_rsc_class.getAgent().getName());
+	_dead_agents.push_back(_mh_host_class.getAgent().getName());
 	// TODO we need a timer -
 	// the same as the qmf agent ageing one to
 	// remove these agents from the _dead_agents list
@@ -446,13 +430,11 @@ Assembly::state_online_to_offline(void)
 	// be the same)
 	_mh_serv_class_found = false;
 	_mh_rsc_class_found = false;
+	_mh_host_class_found = false;
 
 	for (iter = _ops.begin(); iter != _ops.end(); iter++) {
 		op = iter->second;
-		if (op->interval == 0) {
-			pe_resource_completed(op, OCF_UNKNOWN_ERROR);
-		}
-		pe_resource_unref(op); // delete
+		rsc->completed(op, OCF_UNKNOWN_ERROR);
 	}
 
 	qb_log(LOG_NOTICE, "Assembly (%s) STATE_OFFLINE.",
@@ -465,17 +447,16 @@ Assembly::heartbeat_recv(uint32_t timestamp, uint32_t sequence)
 {
 	gdouble elapsed = 0;
 
-	qb_enter();
-	if (hb_state != Assembly::HEARTBEAT_OK) {
+	if (_hb_state != Assembly::HEARTBEAT_OK) {
 		_last_sequence = sequence;
-		hb_state = Assembly::HEARTBEAT_OK;
+		_hb_state = Assembly::HEARTBEAT_OK;
 		qb_log(LOG_INFO, "Got the first heartbeat.");
 		g_timer_stop(_last_heartbeat);
 		g_timer_start(_last_heartbeat);
 		return;
 	}
 	if (sequence > (_last_sequence + 1)) {
-		hb_state = Assembly::HEARTBEAT_SEQ_BAD;
+		_hb_state = Assembly::HEARTBEAT_SEQ_BAD;
 		qb_log(LOG_WARNING, "assembly heartbeat missed a sequence!");
 		return;
 
@@ -485,50 +466,51 @@ Assembly::heartbeat_recv(uint32_t timestamp, uint32_t sequence)
 	g_timer_stop(_last_heartbeat);
 	elapsed = g_timer_elapsed(_last_heartbeat, NULL);
 	if (elapsed > (5 * 1.5)) {
-		hb_state = Assembly::HEARTBEAT_NOT_RECEIVED;
+		_hb_state = Assembly::HEARTBEAT_NOT_RECEIVED;
 		qb_log(LOG_WARNING, "assembly heartbeat too late! (%.2f > 5 seconds)",
 		       elapsed);
 		return;
 	}
 	g_timer_start(_last_heartbeat);
-	qb_leave();
 }
 
 void
 Assembly::stop(void)
 {
-	if (state > STATE_INIT) {
-		session->close();
-		connection->close();
-		state = STATE_INIT;
+	if (_state > STATE_INIT) {
+		_state = STATE_INIT;
 	}
 	deref();
 }
 
 Assembly::Assembly() :
-		_mh_serv_class_found(false), _mh_rsc_class_found(false),
-		hb_state(HEARTBEAT_INIT), state(STATE_INIT), refcount(1),
-		session(NULL), connection(NULL), _name("")
+	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
+	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(NULL),
+	_name(""), _uuid(""), _ipaddr(""), _state(STATE_OFFLINE)
 {
+	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
+	state_table[STATE_ONLINE] = &Assembly::check_state_online;
+	state_table[STATE_INIT] = NULL;
+
+	state_action_table[STATE_OFFLINE][STATE_ONLINE] = &Assembly::state_offline_to_online;
+	state_action_table[STATE_OFFLINE][STATE_OFFLINE] = NULL;
+	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &Assembly::state_online_to_offline;
+	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
+
+	_last_heartbeat = g_timer_new();
 }
 
 Assembly::~Assembly()
 {
 	qb_log(LOG_DEBUG, "~Assembly(%s)", _name.c_str());
-	if (state > STATE_INIT) {
-		session->close();
-		connection->close();
-	}
 }
 
 Assembly::Assembly(Deployable *dep, std::string& name,
 		   std::string& uuid, std::string& ipaddr) :
-		_mh_serv_class_found(false), _mh_rsc_class_found(false),
-		hb_state(HEARTBEAT_INIT), refcount(1), _dep(dep),
-		_name(name), _uuid(uuid), _ipaddr(ipaddr), state(STATE_OFFLINE)
+	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
+	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(dep),
+	_name(name), _uuid(uuid), _ipaddr(ipaddr), _state(STATE_OFFLINE)
 {
-	qb_loop_timer_handle timer_handle;
-	string url("localhost:49000");
 
 	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
 	state_table[STATE_ONLINE] = &Assembly::check_state_online;
@@ -541,19 +523,6 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 
 	qb_log(LOG_INFO, "Assembly(%s:%s)", name.c_str(), ipaddr.c_str());
 
-	connection = new qpid::messaging::Connection(url, connectionOptions);;
-	connection->open();
-
-	session = new ConsoleSession(*connection, "max-agent-age:1");
-	session->open();
-
-	qb_log(LOG_INFO, "Assembly(%s:%s) session open", name.c_str(), ipaddr.c_str());
-
 	_last_heartbeat = g_timer_new();
-	mainloop_timer_add(1000, this,
-			   _poll_for_qmf_events,
-			   &timer_handle);
-	refcount++;
+	_refcount++;
 }
-
-

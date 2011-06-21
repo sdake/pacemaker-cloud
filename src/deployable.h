@@ -21,31 +21,40 @@
 #include <string>
 #include <map>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
-#include <libxml/xpathInternals.h>
+#include <qmf/ConsoleSession.h>
 
-#include <qpid/sys/Mutex.h>
-
+#include "pcmk_pe.h"
 #include "common_agent.h"
 
 class Assembly;
+class Resource;
 
 class Deployable {
 private:
+	CommonAgent *_agent;
+	qpid::messaging::Connection *connection;
+	qmf::ConsoleSession *session;
+
 	std::string _name;
 	std::string _uuid;
+	std::string _dc_uuid;
+	std::string _crmd_uuid;
+	int _file_count;
+
 	std::map<std::string, Assembly*> _assemblies;
+	std::map<std::string, Resource*> _resources;
+	std::map<std::string, Assembly*> _agents_ass;
+
 	xmlDocPtr _config;
 	xmlDocPtr _pe;
 	qpid::sys::Mutex xml_lock;
+
 	int _resource_counter;
 	bool _status_changed;
-	CommonAgent *_agent;
+	qb_loop_timer_handle _processing_timer;
 
-	void services2resources(xmlNode * pcmk_config, xmlNode * services);
-	void assemblies2nodes(xmlNode * pcmk_config, xmlNode * nodes);
+	void create_assemblies(xmlNode * nodes);
+	void create_services(std::string& ass_name, xmlNode * services);
 
 	int32_t assembly_add(std::string& name,
 			     std::string& uuid,
@@ -54,22 +63,29 @@ private:
 				std::string& uuid);
 
 public:
-
 	Deployable();
 	Deployable(std::string& uuid, CommonAgent *agent);
 	~Deployable();
-	const std::string& get_name() const { return _name; }
-	const std::string& get_uuid() const { return _uuid; }
+
+	const std::string& name_get() const { return _name; }
+	const std::string& uuid_get() const { return _uuid; }
+	const std::string& dc_uuid_get() const { return _dc_uuid; }
+	const std::string& crmd_uuid_get() const { return _crmd_uuid; }
+	Assembly* assembly_get(std::string& hostname);
+	Resource* resource_get(struct pe_operation * op);
 
 	void reload(void);
 	void process(void);
-	void service_state_changed(Assembly *a, std::string& service_name,
-				   std::string state, std::string reason);
+	void schedule_processing(void);
+	void resource_execute(struct pe_operation *op);
+	void transition_completed(int32_t result);
+
+	void service_state_changed(const std::string& ass_name, std::string& service_name,
+				  std::string &state, std::string &reason);
 	void assembly_state_changed(Assembly *a, std::string state,
 				    std::string reason);
 
-	Assembly* assembly_get(std::string& hostname);
+	bool process_qmf_events(void);
+	void map_agents_ass(string &agent_name, Assembly *a);
 };
-
-
 

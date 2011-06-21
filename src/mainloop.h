@@ -18,6 +18,7 @@
 #ifndef __MH_MAINLOOP__
 #define __MH_MAINLOOP__
 
+#include <stdbool.h>
 #include <qb/qbloop.h>
 
 #ifdef __cplusplus
@@ -51,6 +52,10 @@ int32_t mainloop_timer_add(uint32_t msec_duration,
 			  void *data,
 			  qb_loop_timer_dispatch_fn dispatch_fn,
 			  qb_loop_timer_handle * timer_handle_out);
+
+int32_t mainloop_timer_del(qb_loop_timer_handle th);
+
+bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
 
 #ifdef __cplusplus
 }

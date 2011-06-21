@@ -59,8 +59,10 @@ extern xmlNode * do_calculations(pe_working_set_t *data_set,
 extern void cleanup_alloc_calculations(pe_working_set_t *data_set);
 
 static pe_resource_execute_t run_fn = NULL;
+static pe_transition_completed_t completed_fn = NULL;
 static void * run_user_data = NULL;
 static pe_working_set_t *working_set = NULL;
+static int graph_updated = FALSE;
 
 enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 {
@@ -84,8 +86,6 @@ enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_
 	 */
 	return (enum ocf_exitcode)lsb_exitcode;
 }
-
-static int graph_updated = FALSE;
 
 void pe_resource_ref(struct pe_operation *op)
 {
@@ -119,12 +119,7 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 		return;
 	}
 
-	if (return_code == op->target_outcome) {
-		qb_log(LOG_DEBUG, "rsc %s succeeded %d == %d", op->method,
-		       return_code, op->target_outcome);
-	} else {
-		qb_log(LOG_ERR, "rsc %s failed %d != %d", op->method,
-		       return_code, op->target_outcome);
+	if (return_code != op->target_outcome) {
 		action->failed = TRUE;
 		graph->abort_priority = INFINITY;
 	}
@@ -134,13 +129,10 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 
 }
 
-static gboolean
-exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
+static void
+dup_attr(gpointer key, gpointer value, gpointer user_data)
 {
-	action->confirmed = TRUE;
-	update_graph(graph, action);
-	graph_updated = TRUE;
-	return TRUE;
+	g_hash_table_replace(user_data, crm_strdup(key), crm_strdup(value));
 }
 
 static gboolean
@@ -152,11 +144,12 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	xmlNode *action_rsc = first_named_child(action->xml, XML_CIB_TAG_RESOURCE);
 	char *node = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
 	const char *tmp_provider;
+	xmlNode *params_all;
 
 	qb_enter();
 
 	if (safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
-		qb_log(LOG_DEBUG, "Skipping %s op for %s\n",
+		qb_log(LOG_INFO, "Skipping rsc %s op for %s\n",
 		       crm_element_value(action->xml, "operation"), node);
 		crm_free(node);
 		action->confirmed = TRUE;
@@ -188,55 +181,76 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	}
 	op = convert_graph_action(NULL, action, 0, pe_op->target_outcome);
 
+	params_all = create_xml_node(NULL, XML_TAG_PARAMS);
+	g_hash_table_foreach(op->params, hash2field, params_all);
+/*
+ * TODO at some point.
+	g_hash_table_foreach(action->extra, hash2field, params_all);
+	g_hash_table_foreach(rsc->parameters, hash2field, params_all);
+	g_hash_table_foreach(action->meta, hash2metafield, params_all);
+*/
+	filter_action_parameters(params_all, PE_CRM_VERSION);
+	pe_op->op_digest = calculate_operation_digest(params_all, PE_CRM_VERSION);
+
 	pe_op->method = strdup(op->op_type);
-	pe_op->params = op->params; /* TODO copy params */
+
+	pe_op->params = g_hash_table_new_full(crm_str_hash, g_str_equal,
+					      g_hash_destroy_str, g_hash_destroy_str);
+
+	if (op->params != NULL) {
+		g_hash_table_foreach(op->params, dup_attr, pe_op->params);
+	}
+
 	pe_op->timeout = op->timeout;
 	pe_op->interval = op->interval;
 	pe_op->action = action;
 	pe_op->graph = graph;
+	pe_op->action_id = action->id;
+	pe_op->graph_id = graph->id;
 
 	free_lrm_op(op);
+	free_xml(params_all);
 
 	run_fn(pe_op);
 	return TRUE;
 }
 
 static gboolean
-exec_crmd_action(crm_graph_t *graph, crm_action_t *action)
+exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
 {
+	qb_log(LOG_INFO, "Skipping pseudo %s op \n",
+	       crm_element_value(action->xml, "operation"));
+
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
 	return TRUE;
 }
 
-#define STATUS_PATH_MAX 512
 static gboolean
-exec_stonith_action(crm_graph_t *graph, crm_action_t *action)
+exec_crmd_action(crm_graph_t *graph, crm_action_t *action)
 {
-#if 0
-	int rc = 0;
-	char xpath[STATUS_PATH_MAX];
-	char *target = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
-	xmlNode *cib_node = modify_node(global_cib, target, FALSE);
-	crm_xml_add(cib_node, XML_ATTR_ORIGIN, __FUNCTION__);
-	CRM_ASSERT(cib_node != NULL);
+	qb_log(LOG_INFO, "Skipping crmd %s op \n",
+	       crm_element_value(action->xml, "operation"));
 
-	quiet_log(" * Fencing %s\n", target);
-	rc = global_cib->cmds->replace(global_cib, XML_CIB_TAG_STATUS, cib_node, cib_sync_call|cib_scope_local);
-	CRM_ASSERT(rc == cib_ok);
-
-	snprintf(xpath, STATUS_PATH_MAX, "//node_state[@uname='%s']/%s", target, XML_CIB_TAG_LRM);
-	rc = global_cib->cmds->delete(global_cib, xpath, NULL, cib_xpath|cib_sync_call|cib_scope_local);
-
-	snprintf(xpath, STATUS_PATH_MAX, "//node_state[@uname='%s']/%s", target, XML_TAG_TRANSIENT_NODEATTRS);
-	rc = global_cib->cmds->delete(global_cib, xpath, NULL, cib_xpath|cib_sync_call|cib_scope_local);
-#endif
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
-	//    free_xml(cib_node);
-	//    crm_free(target);
+	return TRUE;
+}
+
+static gboolean
+exec_stonith_action(crm_graph_t *graph, crm_action_t *action)
+{
+	char *target = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
+
+	qb_log(LOG_WARNING, "Skipping STONITH %s op (not fencing %s)\n",
+	       crm_element_value(action->xml, "operation"), target);
+	crm_free(target);
+
+	action->confirmed = TRUE;
+	update_graph(graph, action);
+	graph_updated = TRUE;
 	return TRUE;
 }
 
@@ -253,11 +267,12 @@ process_next_job(void* data)
 {
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
+	qb_loop_timer_handle th;
 
 	if (!graph_updated) {
-		mainloop_job_add(QB_LOOP_LOW,
-				 transition,
-				 process_next_job);
+		mainloop_timer_add(1000,
+				   transition,
+				   process_next_job, &th);
 		return;
 	}
 	qb_enter();
@@ -265,20 +280,20 @@ process_next_job(void* data)
 	graph_updated = FALSE;
 	graph_rc = run_graph(transition);
 
+	qb_log(LOG_INFO, "run_graph returned: %s", transition_status(graph_rc));
+
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
-		mainloop_job_add(QB_LOOP_LOW,
-				 transition,
-				 process_next_job);
+		mainloop_timer_add(1000,
+				   transition,
+				   process_next_job, &th);
 		return;
 	}
 
-
 	if (graph_rc == transition_complete) {
-		qb_log(LOG_DEBUG, "Transition Completed");
+		qb_log(LOG_INFO, "Transition Completed");
 	} else {
 		qb_log(LOG_ERR, "Transition failed: %s",
 		       transition_status(graph_rc));
-		print_graph(LOG_ERR, transition);
 	}
 	destroy_graph(transition);
 
@@ -288,11 +303,40 @@ process_next_job(void* data)
 	free(working_set);
 	working_set = NULL;
 
+	completed_fn(run_user_data, graph_rc);
+
 	return;
 }
 
 int32_t
-pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
+pe_is_busy_processing(void)
+{
+	if (working_set != NULL) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+
+void
+cl_log(int priority, const char * fmt, ...)
+{
+	va_list		ap;
+	char		buf[512];
+
+	buf[512-1] = '\0';
+	va_start(ap, fmt);
+	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+
+	qb_log_from_external_source(__func__, __FILE__,
+				    "%s", priority, __LINE__, 3, buf);
+}
+
+int32_t
+pe_process_state(xmlNode *xml_input,
+		 pe_resource_execute_t exec_fn,
+		 pe_transition_completed_t done_fn,
 		 void *user_data)
 {
 	crm_graph_t *transition = NULL;
@@ -301,10 +345,17 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 		qb_log(LOG_ERR, "Transition already in progress");
 		return -EEXIST;
 	}
+
+	set_crm_log_level(LOG_INFO);
+	//set_crm_log_level(12);
+
+	assert(validate_xml(xml_input, NULL, FALSE) == TRUE);
+
 	qb_log(LOG_INFO, "Executing deployable transition");
 
 	working_set = calloc(1, sizeof(pe_working_set_t));
-	run_fn = fn;
+	run_fn = exec_fn;
+	completed_fn = done_fn;
 	run_user_data = user_data;
 	set_graph_functions(&graph_exec_fns);
 
@@ -313,8 +364,8 @@ pe_process_state(xmlNode *xml_input, pe_resource_execute_t fn,
 	/* calculate output */
 	do_calculations(working_set, xml_input, NULL);
 
-	transition = unpack_graph(working_set->graph, crm_system_name);
-	//print_graph(LOG_DEBUG, transition);
+	transition = unpack_graph(working_set->graph, __func__);
+	//print_graph(LOG_INFO, transition);
 
 	graph_updated = TRUE;
 	mainloop_job_add(QB_LOOP_HIGH,

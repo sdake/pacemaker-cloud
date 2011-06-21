@@ -27,14 +27,17 @@ upstartconf_DATA = dped.conf
 systemdconfdir = /lib/systemd/system
 systemdconf_DATA = dped@.service
 
-EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA)
+xsldir = $(datadir)/pacemaker-cloud
+xsl_DATA = cf2pe.xsl
+
+EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA) $(xsl_DATA)
 
 sbin_PROGRAMS = cped dped
 noinst_PROGRAMS = cpe-tool2 pe_test
 noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/cloudpolicyengine/QmfPackage.cpp \
-	org/cloudpolicyengine/QmfPackage.h
+	org/cloudpolicyengine/QmfPackage.h resource.h
 
 qmfauto_path = org/cloudpolicyengine
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -50,13 +53,15 @@ cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAG
 
 cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS)
 
-dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp dpe_agent.cpp \
-	        deployable.cpp assembly.cpp config_loader.cpp
+dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
+		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \
+		resource.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
-		-I$(qmfauto_path) $(pcmk_CFLAGS)
+		-I$(qmfauto_path) $(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_CFLAGS)
 
-dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) $(pcmk_LIBS)
+dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+		$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
