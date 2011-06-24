@@ -42,11 +42,6 @@ class pcloudsh(cmd.Cmd, object):
         self.d = deployable.Deployable()
 	cmd.Cmd.__init__(self)
 
-    def onecmd_init(self):
-        self.j = jeos.Jeos()
-        self.a = assembly.Assembly()
-        self.d = deployable.Deployable()
-
     def do_EOF(self, line):
         return True
 
@@ -234,7 +229,6 @@ class pcloudsh(cmd.Cmd, object):
 if __name__ == '__main__':
 
     if len(sys.argv) > 1:
-	pcloudsh().onecmd_init()
 	pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
     else:
          pcloudsh().cmdloop()
