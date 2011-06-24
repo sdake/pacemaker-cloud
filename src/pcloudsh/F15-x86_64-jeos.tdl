@@ -1,0 +1,18 @@
+<template>
+  <name>F15-x86_64-jeos</name>
+  <os>
+    <name>Fedora</name>
+    <version>15</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>file:/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso</iso>
+    </install>
+    <rootpw>password</rootpw>
+  </os>
+  <description>Fedora 15</description>
+  <commands>
+    <command name='commands'>
+yum -y update;yum -y install matahari;chkconfig matahari-host on; chkconfig matahari-service on
+    </command>
+  </commands>
+</template>
