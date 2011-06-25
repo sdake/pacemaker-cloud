@@ -12,7 +12,7 @@
   <description>Fedora 15</description>
   <commands>
     <command name='commands'>
-yum -y update;yum -y install matahari-host;yum -y install matahari-service;chkconfig matahari-host on;chkconfig matahari-service on
+dmidecode -t1 | grep UUID | cut -c8-15,17-20,22-25,27-30,32-43 > /var/lib/dbus/machine-id
     </command>
   </commands>
 </template>

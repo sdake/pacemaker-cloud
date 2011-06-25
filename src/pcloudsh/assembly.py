@@ -40,18 +40,17 @@ class Assembly(object):
             self.doc.newChild(None, "assemblies", None);
             self.doc_assemblies = self.doc.getRootElement()
 
-    def clone_internal(self, name, source_name, dest_name):
-	source_xml = "%s.xml" % source_name 
-	dest_xml = "%s.xml" % dest_name 
-        self.dest_doc = libxml2.parseFile(source_xml)
+    def clone_internal(self, dest, source, source_jeos):
+        print "source = %s.xml" % source
+        self.dest_doc = libxml2.parseFile("%s.xml" % source)
 
         source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
 	source_disk_name = source_xml[0].prop('file')
-	dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % name
+	dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % dest
         print 'Copying source %s to destination %s' % (source_disk_name, dest_disk_name)
         shutil.copy2 (source_disk_name, dest_disk_name)
 	source_xml = self.dest_doc.xpathEval('/domain/name')
-	source_xml[0].setContent(name)
+	source_xml[0].setContent(dest)
 	source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
 	source_xml[0].setProp ('file', dest_disk_name)
         mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
@@ -102,21 +101,20 @@ class Assembly(object):
         g.sync()
 	del g
 
-	self.dest_doc.saveFile (dest_xml)
+	self.dest_doc.saveFile ("%s.xml" % dest)
+	os.system ("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
 
         assemblies_path = self.doc_assemblies.newChild (None, "assembly", None);
-        assemblies_path.newProp("name", dest_name);
+        assemblies_path.newProp("name", dest);
         self.doc.serialize(None, 1)
         self.doc.saveFile ('db_assemblies.xml');
 
-    def clone(self, source_name, dest_name):
-        self.clone_internal (dest_name, source_name, dest_name)
+    def clone(self, dest, source, source_jeos):
+        self.clone_internal (dest, source, "%s-jeos" % source_jeos);
 
-    def create(self, name, source_tdl):
-        source_xml = '%s.xml' % source_tdl
-	dest_xml = '%s.xml' % name
-        self.clone_internal (name, source_tdl, name)
-	os.system ("oz-customize -d3 %s.tdl %s" % (source_tdl, dest_xml))
+    def create(self, dest, source):
+        self.clone_internal (dest, "%s-jeos" % source, "%s-jeos" % source);
+	os.system ("oz-customize -d3 %s.tdl %s.xml" % (dest, dest))
 
     def list(self, listiter):
         assembly_list = self.doc.xpathEval("/assemblies/assembly")

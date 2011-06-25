@@ -1,0 +1,18 @@
+<template>
+  <name>rhel61-x86_64-jeos</name>
+  <os>
+    <name>RHEL-6</name>
+    <version>0</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>file:/var/lib/libvirt/images/RHEL6.1-20110510.1-Server-x86_64-DVD1.iso</iso>
+    </install>
+    <rootpw>password</rootpw>
+  </os>
+  <description>RHEL 6.1 (Santiago) assembly</description>
+  <commands>
+    <command name='commands'>
+dmidecode -t1 | grep UUID | cut -c8-15,17-20,22-25,27-30,32-43 > /var/lib/dbus/machine-id
+    </command>
+  </commands>
+</template>
