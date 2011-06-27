@@ -28,6 +28,8 @@ import shutil
 import uuid
 import guestfs
 import fileinput
+import ifconfig
+
 
 class Assembly(object):
 
@@ -39,6 +41,49 @@ class Assembly(object):
             self.doc = libxml2.newDoc ("1.0")
             self.doc.newChild(None, "assemblies", None);
             self.doc_assemblies = self.doc.getRootElement()
+
+    def clone_network_setup(self, g, macaddr, hostname, qpid_broker_ip):
+        # change macaddr
+        # --------------
+        tmp_filename = '/tmp/ifcfg-eth0-%s' % macaddr
+        g.download('/etc/sysconfig/network-scripts/ifcfg-eth0', tmp_filename)
+        for line in fileinput.FileInput(tmp_filename, inplace=1):
+            if 'HWADDR' in line:
+               print 'HWADDR="%s"' % macaddr
+            else:
+               print line
+        g.upload(tmp_filename, '/etc/sysconfig/network-scripts/ifcfg-eth0')
+        os.unlink(tmp_filename)
+
+        # change hostname
+        # --------------
+        tmp_filename = '/tmp/network-%s' % macaddr
+        g.download('/etc/sysconfig/network', tmp_filename)
+        for line in fileinput.FileInput(tmp_filename, inplace=1):
+            if 'HOSTNAME' in line:
+               print 'HOSTNAME="%s"' % hostname
+            else:
+               print line
+        g.upload(tmp_filename, '/etc/sysconfig/network')
+        os.unlink(tmp_filename)
+
+        # change matahari broker
+        # ----------------------
+        tmp_filename = '/tmp/matahari-%s' % macaddr
+        g.download('/etc/sysconfig/matahari', tmp_filename)
+        for line in fileinput.FileInput(tmp_filename, inplace=1):
+            if 'MATAHARI_BROKER' in line:
+               print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
+            else:
+               print line
+        g.upload(tmp_filename, '/etc/sysconfig/matahari')
+        os.unlink(tmp_filename)
+
+        # how to write this newline back to the file
+        try:
+            g.rm('/etc/udev/rules.d/70-persistent-net.rules')
+        except:
+            pass
 
     def clone_internal(self, dest, source, source_jeos):
         print "source = %s.xml" % source
@@ -64,7 +109,12 @@ class Assembly(object):
         self.uuid = uuid.uuid4()
         source_xml = self.dest_doc.xpathEval('/domain/uuid')
         source_xml[0].setContent(self.uuid.get_hex())
-        g = guestfs.GuestFS ()
+
+        source_xml = self.dest_doc.xpathEval('/domain/devices/interface/source')
+        host_iface = source_xml[0].prop('bridge')
+        iface_info = ifconfig.Ifconfig(host_iface)
+
+        g = guestfs.GuestFS()
         g.add_drive_opts(dest_disk_name, format='raw', readonly=0)
         g.launch ()
         roots = g.inspect_os ()
@@ -86,21 +136,7 @@ class Assembly(object):
                 except RuntimeError as msg:
                     print "%s (ignored)" % msg
 
-        ifcfg_name = '/tmp/ifcfg-eth0-%s' % macaddr
-        g.download ('/etc/sysconfig/network-scripts/ifcfg-eth0', ifcfg_name)
-        for line in fileinput.FileInput(ifcfg_name, inplace=1):
-            if 'HWADDR' in line:
-               print ('HWADDR="%s"' % macaddr)
-            else:
-               print line
-
-        g.upload (ifcfg_name, '/etc/sysconfig/network-scripts/ifcfg-eth0')
-
-        # how to write this newline back to the file
-        try:
-            g.rm ('/etc/udev/rules.d/70-persistent-net.rules')
-        except:
-            pass
+        self.clone_network_setup(g, macaddr, dest, iface_info.addr_get())
 
         g.umount_all()
         g.sync()
