@@ -38,7 +38,7 @@ class Assembly(object):
             self.doc = libxml2.parseFile('db_assemblies.xml')
             self.doc_assemblies = self.doc.getRootElement()
         except:
-            self.doc = libxml2.newDoc ("1.0")
+            self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "assemblies", None);
             self.doc_assemblies = self.doc.getRootElement()
 
@@ -96,11 +96,11 @@ class Assembly(object):
             print '*** assembly %s already exists, delete first.' % (dest_disk_name)
             return
         print 'Copying source %s to destination %s' % (source_disk_name, dest_disk_name)
-        shutil.copy2 (source_disk_name, dest_disk_name)
+        shutil.copy2(source_disk_name, dest_disk_name)
         source_xml = self.dest_doc.xpathEval('/domain/name')
         source_xml[0].setContent(dest)
         source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
-        source_xml[0].setProp ('file', dest_disk_name)
+        source_xml[0].setProp('file', dest_disk_name)
         mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
                random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
         macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
@@ -116,23 +116,21 @@ class Assembly(object):
 
         g = guestfs.GuestFS()
         g.add_drive_opts(dest_disk_name, format='raw', readonly=0)
-        g.launch ()
-        roots = g.inspect_os ()
-        print 'roots %d' % len(roots)
+        g.launch()
+        roots = g.inspect_os()
         for root in roots:
-            mps = g.inspect_get_mountpoints (root)
-            def compare (a, b):
+            mps = g.inspect_get_mountpoints(root)
+            def compare(a, b):
                 if len(a[0]) > len(b[0]):
                     return 1
                 elif len(a[0]) == len(b[0]):
                     return 0
                 else:
                     return -1
-            mps.sort (compare)
-            print 'root %s has %d mount points' % (root, len(mps))
+            mps.sort(compare)
             for mp_dev in mps:
                 try:
-                    g.mount (mp_dev[1], mp_dev[0])
+                    g.mount(mp_dev[1], mp_dev[0])
                 except RuntimeError as msg:
                     print "%s (ignored)" % msg
 
@@ -142,19 +140,19 @@ class Assembly(object):
         g.sync()
         del g
 
-        self.dest_doc.saveFile ("%s.xml" % dest)
-        os.system ("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
+        self.dest_doc.saveFile("%s.xml" % dest)
+        os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
 
-        assemblies_path = self.doc_assemblies.newChild (None, "assembly", None);
+        assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);
         assemblies_path.newProp("name", dest);
         self.doc.serialize(None, 1)
-        self.doc.saveFile ('db_assemblies.xml');
+        self.doc.saveFile('db_assemblies.xml');
 
     def clone(self, dest, source, source_jeos):
-        self.clone_internal (dest, source, "%s-jeos" % source_jeos);
+        self.clone_internal(dest, source, "%s-jeos" % source_jeos);
 
     def create(self, dest, source):
-        self.clone_internal (dest, "%s-jeos" % source, "%s-jeos" % source);
+        self.clone_internal(dest, "%s-jeos" % source, "%s-jeos" % source);
 
     def list(self, listiter):
         assembly_list = self.doc.xpathEval("/assemblies/assembly")
@@ -165,4 +163,4 @@ class Assembly(object):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
         root_node = assembly_path[0]
         root_node.unlinkNode();
-        self.doc.saveFile ('db_assemblies.xml');
+        self.doc.saveFile('db_assemblies.xml');
