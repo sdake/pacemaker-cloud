@@ -30,20 +30,20 @@ class Jeos(object):
         try:
             self.doc = libxml2.parseFile('db_jeos.xml')
             self.doc_images = self.doc.getRootElement()
-	except:
+        except:
             self.doc = libxml2.newDoc ("1.0")
             self.doc.newChild(None, "images", None); 
             self.doc_images = self.doc.getRootElement()
 
     def create(self, name, arch):
         jeos_list = self.doc.xpathEval("/images/jeos")
-	for jeos_data in jeos_list:
+        for jeos_data in jeos_list:
             if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
                 raise
         xml_filename = '%s-%s-jeos.xml' % (name, arch)
         tdl_filename = '%s-%s-jeos.tdl' % (name, arch)
 
-	res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename));
+        res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename));
         if res == 256:
             raise
 
@@ -53,9 +53,9 @@ class Jeos(object):
         doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename); 
         doc_xml_path = doc_jeos.newProp("xml_path", xml_filename); 
         self.doc.serialize(None, 1)
-	self.doc.saveFile ('db_jeos.xml');
+        self.doc.saveFile ('db_jeos.xml');
 
     def list(self, listiter):
         jeos_list = self.doc.xpathEval("/images/jeos")
-	for jeos_data in jeos_list:
+        for jeos_data in jeos_list:
             listiter.append("%s %s" % (jeos_data.prop('name'), jeos_data.prop ('arch')))

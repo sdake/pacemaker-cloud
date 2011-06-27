@@ -45,26 +45,27 @@ class Assembly(object):
         self.dest_doc = libxml2.parseFile("%s.xml" % source)
 
         source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
-	source_disk_name = source_xml[0].prop('file')
-	dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % dest
+        source_disk_name = source_xml[0].prop('file')
+        dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % dest
         print 'Copying source %s to destination %s' % (source_disk_name, dest_disk_name)
         shutil.copy2 (source_disk_name, dest_disk_name)
-	source_xml = self.dest_doc.xpathEval('/domain/name')
-	source_xml[0].setContent(dest)
-	source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
-	source_xml[0].setProp ('file', dest_disk_name)
+        source_xml = self.dest_doc.xpathEval('/domain/name')
+        source_xml[0].setContent(dest)
+        source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
+        source_xml[0].setProp ('file', dest_disk_name)
         mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
                random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
         macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
-	source_xml = self.dest_doc.xpathEval('/domain/devices/interface/mac')
-	source_xml[0].setProp('address', macaddr)
-	self.uuid = uuid.uuid4()
-	source_xml = self.dest_doc.xpathEval('/domain/uuid')
-	source_xml[0].setContent(self.uuid.get_hex())
+        source_xml = self.dest_doc.xpathEval('/domain/devices/interface/mac')
+        source_xml[0].setProp('address', macaddr)
+        self.uuid = uuid.uuid4()
+        source_xml = self.dest_doc.xpathEval('/domain/uuid')
+        source_xml[0].setContent(self.uuid.get_hex())
         g = guestfs.GuestFS ()
         g.add_drive_opts(dest_disk_name, format='raw', readonly=0)
         g.launch ()
         roots = g.inspect_os ()
+        print 'roots %d' % len(roots)
         for root in roots:
             mps = g.inspect_get_mountpoints (root)
             def compare (a, b):
@@ -75,13 +76,14 @@ class Assembly(object):
                 else:
                     return -1
             mps.sort (compare)
+            print 'root %s has %d mount points' % (root, len(mps))
             for mp_dev in mps:
                 try:
                     g.mount (mp_dev[1], mp_dev[0])
                 except RuntimeError as msg:
                     print "%s (ignored)" % msg
 
-	ifcfg_name = '/tmp/ifcfg-eth0-%s' % macaddr
+        ifcfg_name = '/tmp/ifcfg-eth0-%s' % macaddr
         g.download ('/etc/sysconfig/network-scripts/ifcfg-eth0', ifcfg_name)
         for line in fileinput.FileInput(ifcfg_name, inplace=1):
             if 'HWADDR' in line:
@@ -93,16 +95,16 @@ class Assembly(object):
 
         # how to write this newline back to the file
         try:
-    	    g.rm ('/etc/udev/rules.d/70-persistent-net.rules')
+            g.rm ('/etc/udev/rules.d/70-persistent-net.rules')
         except:
             pass
 
-	g.umount_all()
+        g.umount_all()
         g.sync()
-	del g
+        del g
 
-	self.dest_doc.saveFile ("%s.xml" % dest)
-	os.system ("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
+        self.dest_doc.saveFile ("%s.xml" % dest)
+        os.system ("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
 
         assemblies_path = self.doc_assemblies.newChild (None, "assembly", None);
         assemblies_path.newProp("name", dest);
@@ -118,11 +120,11 @@ class Assembly(object):
 
     def list(self, listiter):
         assembly_list = self.doc.xpathEval("/assemblies/assembly")
-	for assembly_data in assembly_list:
+        for assembly_data in assembly_list:
             listiter.append("%s" % assembly_data.prop('name'));
 
     def delete(self, name):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
-	root_node = assembly_path[0]
+        root_node = assembly_path[0]
         root_node.unlinkNode();
         self.doc.saveFile ('db_assemblies.xml');

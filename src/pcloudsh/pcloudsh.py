@@ -40,13 +40,13 @@ class pcloudsh(cmd.Cmd, object):
         self.j = jeos.Jeos()
         self.a = assembly.Assembly()
         self.d = deployable.Deployable()
-	cmd.Cmd.__init__(self)
+        cmd.Cmd.__init__(self)
 
     def do_EOF(self, line):
         return True
 
     def preloop(self):
-	return True
+        return True
 
     def postloop(self):
         print "Shell completed!"
@@ -162,7 +162,7 @@ class pcloudsh(cmd.Cmd, object):
   done to ensure it is not already part of an deployable.  Use this command with
   caution. 
         """
-	options = s.split()
+        options = s.split()
         if not len(options) == 1:
             self.do_help ("assembly_delete");
         else:
@@ -176,7 +176,7 @@ class pcloudsh(cmd.Cmd, object):
 
   The assembly_list action lists all assemblies in the database.
         """
-	options = s.split()
+        options = s.split()
         if not len(options) == 0:
             self.do_help ("assembly_delete");
         else:
@@ -198,7 +198,7 @@ class pcloudsh(cmd.Cmd, object):
   Fedora 15 or RHEL6.1.  The only supported architecture is x86_64.
         """
   
-	options = s.split()
+        options = s.split()
         if not len(options) == 2:
             self.do_help ("jeos_create");
         elif not options[0] == 'F15' and not options[0] == 'rhel61':
@@ -229,6 +229,6 @@ class pcloudsh(cmd.Cmd, object):
 if __name__ == '__main__':
 
     if len(sys.argv) > 1:
-	pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
+        pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
     else:
          pcloudsh().cmdloop()
