@@ -47,6 +47,9 @@ class Assembly(object):
         source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
         source_disk_name = source_xml[0].prop('file')
         dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % dest
+        if os.access(dest_disk_name, os.R_OK):
+            print '*** assembly %s already exists, delete first.' % (dest_disk_name)
+            return
         print 'Copying source %s to destination %s' % (source_disk_name, dest_disk_name)
         shutil.copy2 (source_disk_name, dest_disk_name)
         source_xml = self.dest_doc.xpathEval('/domain/name')
