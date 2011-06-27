@@ -152,8 +152,11 @@ class Assembly(object):
         self.clone_internal(dest, source, "%s-jeos" % source_jeos);
 
     def create(self, dest, source):
+        if not os.access('%s.tdl' % dest, os.R_OK):
+            print '*** please provide %s.tdl to customize your assembly' % dest
+            return
         self.clone_internal(dest, "%s-jeos" % source, "%s-jeos" % source);
-	os.system ("oz-customize -d3 %s.tdl %s.xml" % (dest, dest))
+        os.system ("oz-customize -d3 %s.tdl %s.xml" % (dest, dest))
 
     def list(self, listiter):
         assembly_list = self.doc.xpathEval("/assemblies/assembly")
