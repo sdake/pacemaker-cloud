@@ -140,13 +140,13 @@ class Assembly(object):
         g.sync()
         del g
 
-        self.dest_doc.saveFile("%s.xml" % dest)
+        self.dest_doc.saveFormatFile("%s.xml" % dest, format=1)
         os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
 
         assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);
         assemblies_path.newProp("name", dest);
         self.doc.serialize(None, 1)
-        self.doc.saveFile('db_assemblies.xml');
+        self.doc.saveFormatFile('db_assemblies.xml', format=1);
 
     def clone(self, dest, source, source_jeos):
         self.clone_internal(dest, source, "%s-jeos" % source_jeos);

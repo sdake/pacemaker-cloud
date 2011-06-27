@@ -39,20 +39,20 @@ class Deployable(object):
         deployable_path = self.doc_images.newChild(None, "deployable", None);
         deployable_path.newProp("name", name);
         self.doc.serialize(None, 1)
-        self.doc.saveFile('db_deployable.xml');
+        self.doc.saveFormatFile('db_deployable.xml', format=1);
 
     def assembly_add(self, deployable_name, assembly_name):
         deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % deployable_name)
         root_node = deployable_path[0]
         assembly_root = root_node.newChild(None, "assembly", None);
         assembly_root.newProp("name", assembly_name);
-        self.doc.saveFile('db_deployable.xml');
+        self.doc.saveFormatFile('db_deployable.xml', format=1);
 
     def assembly_remove(self, deployable_name, assembly_name):
         deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % assembly_name)
         root_node = deployable_path[0]
         root_node.unlinkNode();
-        self.doc.saveFile('db_deployable.xml');
+        self.doc.saveFormatFile('db_deployable.xml', format=1);
 
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")

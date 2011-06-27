@@ -53,7 +53,7 @@ class Jeos(object):
         doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename);
         doc_xml_path = doc_jeos.newProp("xml_path", xml_filename);
         self.doc.serialize(None, 1)
-        self.doc.saveFile('db_jeos.xml');
+        self.doc.saveFormatFile('db_jeos.xml', format=1);
 
     def list(self, listiter):
         jeos_list = self.doc.xpathEval("/images/jeos")
