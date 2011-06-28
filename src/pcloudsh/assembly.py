@@ -145,6 +145,7 @@ class Assembly(object):
 
         assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);
         assemblies_path.newProp("name", dest);
+        assemblies_path.newProp("uuid", self.uuid.get_hex())
         assemblies_path.newChild(None, "resources", None);
         self.save()
 
