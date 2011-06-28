@@ -32,6 +32,8 @@ xsl_DATA = cf2pe.xsl
 
 EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA) $(xsl_DATA)
 
+SUBDIRS = pcloudsh
+
 sbin_PROGRAMS = cped dped
 noinst_PROGRAMS = cpe-tool2 pe_test
 noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \

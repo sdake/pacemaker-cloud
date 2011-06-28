@@ -145,8 +145,8 @@ class Assembly(object):
 
         assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);
         assemblies_path.newProp("name", dest);
-        self.doc.serialize(None, 1)
-        self.doc.saveFormatFile('db_assemblies.xml', format=1);
+        assemblies_path.newChild(None, "resources", None);
+        self.save()
 
     def clone(self, dest, source, source_jeos):
         self.clone_internal(dest, source, "%s-jeos" % source_jeos);
@@ -167,4 +167,28 @@ class Assembly(object):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
         root_node = assembly_path[0]
         root_node.unlinkNode();
-        self.doc.saveFile('db_assemblies.xml');
+        self.save()
+
+    def save(self):
+        self.doc.saveFormatFile('db_assemblies.xml', format=1);
+
+    def resource_add(self, rsc_name, rsc_type, ass_name):
+        '''
+        resource_add <resource name> <resource template> <assembly_name>
+        '''
+        rscs_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']/resources" % ass_name)
+        if len(rscs_path) == 1:
+            rscs = rscs_path[0]
+        else:
+            ass_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % ass_name)
+            ass = ass_path[0]
+            rscs = ass.newChild(None, "resources", None);
+
+        rsc_temp_doc = libxml2.parseFile('/usr/share/pacemaker-cloud/resource_templates/%s.xml' % rsc_type)
+        rsc_temp_root = rsc_temp_doc.getRootElement()
+        rsc_temp_root.newProp('name', rsc_name)
+
+        rscs.addChild(rsc_temp_root)
+
+        self.save()
+

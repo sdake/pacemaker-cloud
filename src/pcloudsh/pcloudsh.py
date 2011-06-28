@@ -238,6 +238,21 @@ class pcloudsh(cmd.Cmd, object):
         for jeos_name in jeos_names:
             print 'name %s' % (jeos_name)
 
+
+    def do_assembly_resource_add(self, s):
+        """
+  assembly_resource_add <resource name> <resource template> <assembly_name>
+
+  SYNOPSIS: Add a resource to an assembly
+        """
+        options = s.split()
+        if not len(options) == 3:
+            self.do_help("assembly_resource_add");
+        else:
+            print 'assembly_resource_add %s' % str(options)
+            self.a.resource_add(options[0], options[1], options[2])
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) > 1:
