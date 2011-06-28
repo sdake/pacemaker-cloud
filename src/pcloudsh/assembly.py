@@ -87,35 +87,42 @@ class Assembly(object):
 
     def clone_internal(self, dest, source, source_jeos):
         print "source = %s.xml" % source
-        self.dest_doc = libxml2.parseFile("%s.xml" % source)
+        self.jeos_doc = libxml2.parseFile("%s.xml" % source_jeos)
 
-        source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
-        source_disk_name = source_xml[0].prop('file')
-        dest_disk_name = '/var/lib/libvirt/images/%s.dsk' % dest
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk')
+	driver = source_xml[0].newChild (None, "driver", None);
+        driver.newProp ("name", "qemu");
+        driver.newProp ("type", "qcow2");
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
+        jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source_jeos
+        dest_disk_name = '/var/lib/libvirt/images/%s.qcow2' % dest
         if os.access(dest_disk_name, os.R_OK):
             print '*** assembly %s already exists, delete first.' % (dest_disk_name)
             return
-        print 'Copying source %s to destination %s' % (source_disk_name, dest_disk_name)
-        shutil.copy2(source_disk_name, dest_disk_name)
-        source_xml = self.dest_doc.xpathEval('/domain/name')
+# attempted a copy on write image, but they wont boot (perhaps guestfs bug)
+#        os.system("qemu-img create -f qcow2 -b %s %s" % (jeos_disk_name, dest_disk_name));
+        shutil.copy2(jeos_disk_name, dest_disk_name)
+        source_xml = self.jeos_doc.xpathEval('/domain/name')
         source_xml[0].setContent(dest)
-        source_xml = self.dest_doc.xpathEval('/domain/devices/disk/source')
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
         source_xml[0].setProp('file', dest_disk_name)
         mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
                random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
         macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
-        source_xml = self.dest_doc.xpathEval('/domain/devices/interface/mac')
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/mac')
         source_xml[0].setProp('address', macaddr)
         self.uuid = uuid.uuid4()
-        source_xml = self.dest_doc.xpathEval('/domain/uuid')
+        source_xml = self.jeos_doc.xpathEval('/domain/uuid')
         source_xml[0].setContent(self.uuid.get_hex())
 
-        source_xml = self.dest_doc.xpathEval('/domain/devices/interface/source')
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/source')
         host_iface = source_xml[0].prop('bridge')
         iface_info = ifconfig.Ifconfig(host_iface)
 
+        self.jeos_doc.saveFormatFile("%s.xml" % dest, format=1)
+
         g = guestfs.GuestFS()
-        g.add_drive_opts(dest_disk_name, format='raw', readonly=0)
+        g.add_drive_opts(dest_disk_name, format='qcow2', readonly=0)
         g.launch()
         roots = g.inspect_os()
         for root in roots:
@@ -140,7 +147,6 @@ class Assembly(object):
         g.sync()
         del g
 
-        self.dest_doc.saveFormatFile("%s.xml" % dest, format=1)
         os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
 
         assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);

@@ -42,11 +42,14 @@ class Jeos(object):
                 raise
         xml_filename = '%s-%s-jeos.xml' % (name, arch)
         tdl_filename = '%s-%s-jeos.tdl' % (name, arch)
+        dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
+        qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
 
         res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename));
         if res == 256:
             raise
 
+        os.system("qemu-img convert -O qcow2 %s %s" % (dsk_filename, qcow2_filename));
         doc_jeos = self.doc_images.newChild(None, "jeos", None);
         doc_xml_path = doc_jeos.newProp("arch", arch);
         doc_xml_path = doc_jeos.newProp("name", name);
