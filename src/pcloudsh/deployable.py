@@ -18,6 +18,7 @@
 #
 import os
 import time
+import libvirt
 import re
 import random
 import logging
@@ -54,6 +55,16 @@ class Deployable(object):
         root_node.unlinkNode();
         self.doc.saveFormatFile('db_deployable.xml', format=1);
 
+    def start(self, deployable_name):
+        self.libvirt_conn = libvirt.open("qemu:///system")
+        assembly_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % deployable_name)
+        print ("Starting Deployable %s" % deployable_name);
+        for assembly_data in assembly_list:
+            print (" - Starting Assembly %s" % assembly_data.prop('name'))
+            libvirt_xml = libxml2.parseFile('%s.xml' % assembly_data.prop('name'))
+            libvirt_doc = libvirt_xml.serialize(None, 1);
+            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+        
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")
         for deployable_data in deployable_list:

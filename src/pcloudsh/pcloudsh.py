@@ -83,6 +83,18 @@ class pcloudsh(cmd.Cmd, object):
         for deployable_name in deployable_names:
             print 'name:%s' % (deployable_name)
 
+    def do_deployable_start(self, s):
+        """
+  deployable_start <deployable_name> - start a new deployable
+
+  The deployable_start action starts a new deployable in the system
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_start")
+        else:
+            self.d.start(options[0])
+
     def do_deployable_assembly_add(self, s):
         """
   deployable_assembly_add <deployable_name> <assembly_name>
