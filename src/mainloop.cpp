@@ -35,6 +35,7 @@ mainloop_qmf_session_dispatch(void *user_data)
 {
 	mainloop_qmf_session_t *trig = (mainloop_qmf_session_t *)user_data;
 	bool rerun = true;
+	qb_loop_timer_handle th;
 
 	if (trig->asession->nextEvent(trig->event,
 				      qpid::messaging::Duration::IMMEDIATE)) {
@@ -42,10 +43,12 @@ mainloop_qmf_session_dispatch(void *user_data)
 		rerun = trig->dispatch(&trig->event, trig->user_data);
 	}
 	if (rerun) {
-		qb_loop_job_add(default_loop,
-				QB_LOOP_MED,
-				trig,
-				mainloop_qmf_session_dispatch);
+		qb_loop_timer_add(default_loop,
+				  QB_LOOP_MED,
+				  500 * QB_TIME_NS_IN_MSEC,
+				  trig,
+				  mainloop_qmf_session_dispatch,
+				  &th);
 	} else {
 		free(trig);
 	}
@@ -57,6 +60,7 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 		void* userdata)
 {
 	mainloop_qmf_session_t *qmf_source;
+	qb_loop_timer_handle th;
 
 	qmf_source = (mainloop_qmf_session_t *)calloc(1, sizeof(mainloop_qmf_session_t));
 	assert(qmf_source != NULL);
@@ -65,10 +69,12 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	qmf_source->user_data = userdata;
 	qmf_source->asession = asession;
 	
-	qb_loop_job_add(default_loop,
-			QB_LOOP_MED,
-			qmf_source,
-			mainloop_qmf_session_dispatch);
+	qb_loop_timer_add(default_loop,
+			  QB_LOOP_MED,
+			  500 * QB_TIME_NS_IN_MSEC,
+			  qmf_source,
+			  mainloop_qmf_session_dispatch,
+			  &th);
 
 	return qmf_source;
 }
