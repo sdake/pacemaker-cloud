@@ -1,27 +1,43 @@
 TODO list
 =========
 
+a == Angus
+s == Steven
+u == Unassigned
+
 CPE
 ---
-c1) extend upstart/systemd client code to include getting events on failure.
-c2) write the code to talk to the dpe (load/unload config)
-c3) at startup use config_list() to get initial deployables
+u5) extend upstart/systemd client code to include getting events on failure.
+u6) at startup use config_list() to get initial deployables
 
 DPE
 ---
-d6) generate QMF events for changes in state for:
-    services (running, failed)
-    assemblies (running, failed)
+u7) generate QMF events for changes in state for:
     deployables (running, failed)
+u4) Add support for failure escalations
 
 TESTS
 -----
-t1) cover basic use cases
-t2) get better coverage as functionality is extended
-
+a4) Convert tests to use the shell
 
 Common lib
 ----------
-l1) add API to access deployable config from exteranl API (cloud specific managemnt DB)
+u2) add API to access deployable config from exteranl API (cloud specific managemnt DB)
         config_get(deployment_uuid)
         config_list()
+
+SHELL
+-----
+Add the following commands:
+a1) assembly_resource_remove
+a2) assembly_resource_add
+    handle errors better
+u1) deployable_status
+    show guest running/stopped
+    show assembly online/offline
+    show resource status
+a3) receive dped notifications
+s1) launching of assembly via vm launcher so we can do stop/start of vm
+s2) restart of vm/application on vm after failure detected
+u7) add setup.py to install python scripts
+
