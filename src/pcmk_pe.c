@@ -129,6 +129,18 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 
 }
 
+static guint
+g_str_hash_traditional_copy(gconstpointer v)
+{
+	const signed char *p;
+	guint32 h = 0;
+
+	for (p = v; *p != '\0'; p++) {
+		h = (h << 5) - h + *p;
+	}
+	return h;
+}
+
 static void
 dup_attr(gpointer key, gpointer value, gpointer user_data)
 {
@@ -194,7 +206,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 
 	pe_op->method = strdup(op->op_type);
 
-	pe_op->params = g_hash_table_new_full(g_str_hash_traditional, g_str_equal,
+	pe_op->params = g_hash_table_new_full(g_str_hash_traditional_copy, g_str_equal,
 					      g_hash_destroy_str, g_hash_destroy_str);
 
 	if (op->params != NULL) {
