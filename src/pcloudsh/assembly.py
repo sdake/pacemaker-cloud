@@ -2,6 +2,7 @@
 # Copyright (C) 2011 Red Hat, Inc.
 #
 # Author: Steven Dake <sdake@redhat.com>
+#         Angus Salkeld <asalkeld@redhat.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -29,104 +30,113 @@ import uuid
 import guestfs
 import fileinput
 import ifconfig
-
+import resource
 
 class Assembly(object):
 
-    def __init__(self):
-        try:
-            self.doc = libxml2.parseFile('db_assemblies.xml')
-            self.doc_assemblies = self.doc.getRootElement()
-        except:
-            self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "assemblies", None);
-            self.doc_assemblies = self.doc.getRootElement()
+    def __init__(self, factory):
+        self.factory = factory
+        self.name = ''
+        self.uuid = ''
+        self.disk = ''
+        self.xml_node = None
+        self.rf = None
+        self.gfs = None
 
-    def clone_network_setup(self, g, macaddr, hostname, qpid_broker_ip):
+    def resources_get(self):
+        return self.rf.all_get().values()
+
+    def load_from_xml(self, xml):
+        self.xml_node = xml
+
+        self.name_set(xml.prop('name'))
+        self.uuid = xml.prop('uuid')
+        if not os.access(self.disk, os.R_OK):
+            print 'warning: assembly %s does not have a disk(%s).' % (self.name, self.disk)
+        self.rf = resource.ResourceFactory(xml)
+
+    def save(self):
+        if self.xml_node is None:
+            ass = self.factory.root_get().newChild(None, "assembly", None)
+            ass.newProp("name", self.name)
+            ass.newProp("uuid", self.uuid)
+            ass.newChild(None, "resources", None);
+            self.xml_node = ass
+        else:
+            self.xml_node.setProp('name', self.name)
+            self.xml_node.setProp('uuid', self.uuid)
+
+        self.factory.save()
+
+    def uuid_set(self, uuid):
+        self.uuid = uuid
+
+    def name_get(self):
+        return self.name
+
+    def uuid_get(self):
+        return self.uuid
+
+    def name_set(self, name):
+        self.name = name
+        self.disk = '/var/lib/libvirt/images/%s.qcow2' % self.name
+
+    def __str__(self):
+        return 'assembly: %s (%s)' % (self.name, self.uuid)
+
+    def clone_network_setup(self, macaddr, qpid_broker_ip):
         # change macaddr
         # --------------
         tmp_filename = '/tmp/ifcfg-eth0-%s' % macaddr
-        g.download('/etc/sysconfig/network-scripts/ifcfg-eth0', tmp_filename)
+        self.gfs.download('/etc/sysconfig/network-scripts/ifcfg-eth0', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'HWADDR' in line:
                print 'HWADDR="%s"' % macaddr
             else:
                print line
-        g.upload(tmp_filename, '/etc/sysconfig/network-scripts/ifcfg-eth0')
+        self.gfs.upload(tmp_filename, '/etc/sysconfig/network-scripts/ifcfg-eth0')
         os.unlink(tmp_filename)
 
         # change hostname
-        # --------------
+        # ---------------
         tmp_filename = '/tmp/network-%s' % macaddr
-        g.download('/etc/sysconfig/network', tmp_filename)
+        self.gfs.download('/etc/sysconfig/network', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'HOSTNAME' in line:
-               print 'HOSTNAME="%s"' % hostname
+               print 'HOSTNAME="%s"' % self.name
             else:
                print line
-        g.upload(tmp_filename, '/etc/sysconfig/network')
+        self.gfs.upload(tmp_filename, '/etc/sysconfig/network')
         os.unlink(tmp_filename)
 
         # change matahari broker
         # ----------------------
         tmp_filename = '/tmp/matahari-%s' % macaddr
-        g.download('/etc/sysconfig/matahari', tmp_filename)
+        self.gfs.download('/etc/sysconfig/matahari', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'MATAHARI_BROKER' in line:
                print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
             else:
                print line
-        g.upload(tmp_filename, '/etc/sysconfig/matahari')
+        self.gfs.upload(tmp_filename, '/etc/sysconfig/matahari')
         os.unlink(tmp_filename)
 
         # how to write this newline back to the file
         try:
-            g.rm('/etc/udev/rules.d/70-persistent-net.rules')
+            self.gfs.rm('/etc/udev/rules.d/70-persistent-net.rules')
         except:
             pass
 
-    def clone_internal(self, dest, source, source_jeos):
-        print "source = %s.xml" % source
-        self.jeos_doc = libxml2.parseFile("%s.xml" % source_jeos)
-
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk')
-	driver = source_xml[0].newChild (None, "driver", None);
-        driver.newProp ("name", "qemu");
-        driver.newProp ("type", "qcow2");
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
-        jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source_jeos
-        dest_disk_name = '/var/lib/libvirt/images/%s.qcow2' % dest
-        if os.access(dest_disk_name, os.R_OK):
-            print '*** assembly %s already exists, delete first.' % (dest_disk_name)
+    def guest_mount(self):
+        if not self.gfs is None:
             return
-# attempted a copy on write image, but they wont boot (perhaps guestfs bug)
-#        os.system("qemu-img create -f qcow2 -b %s %s" % (jeos_disk_name, dest_disk_name));
-        shutil.copy2(jeos_disk_name, dest_disk_name)
-        source_xml = self.jeos_doc.xpathEval('/domain/name')
-        source_xml[0].setContent(dest)
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
-        source_xml[0].setProp('file', dest_disk_name)
-        mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
-               random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
-        macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/mac')
-        source_xml[0].setProp('address', macaddr)
-        self.uuid = uuid.uuid4()
-        source_xml = self.jeos_doc.xpathEval('/domain/uuid')
-        source_xml[0].setContent(self.uuid.get_hex())
 
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/source')
-        host_iface = source_xml[0].prop('bridge')
-        iface_info = ifconfig.Ifconfig(host_iface)
-
-        self.jeos_doc.saveFormatFile("%s.xml" % dest, format=1)
-
-        g = guestfs.GuestFS()
-        g.add_drive_opts(dest_disk_name, format='qcow2', readonly=0)
-        g.launch()
-        roots = g.inspect_os()
+        self.gfs = guestfs.GuestFS()
+        self.gfs.add_drive_opts(self.disk, format='qcow2', readonly=0)
+        self.gfs.launch()
+        roots = self.gfs.inspect_os()
         for root in roots:
-            mps = g.inspect_get_mountpoints(root)
+            mps = self.gfs.inspect_get_mountpoints(root)
             def compare(a, b):
                 if len(a[0]) > len(b[0]):
                     return 1
@@ -137,38 +147,132 @@ class Assembly(object):
             mps.sort(compare)
             for mp_dev in mps:
                 try:
-                    g.mount(mp_dev[1], mp_dev[0])
+                    self.gfs.mount(mp_dev[1], mp_dev[0])
                 except RuntimeError as msg:
                     print "%s (ignored)" % msg
 
-        self.clone_network_setup(g, macaddr, dest, iface_info.addr_get())
+    def guest_unmount(self):
+        if self.gfs is None:
+            return
+        self.gfs.umount_all()
+        self.gfs.sync()
+        del self.gfs
+        self.gfs = None
 
-        g.umount_all()
-        g.sync()
-        del g
 
-        os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, dest))
+    def clone_from(self, source, source_jeos):
+        if os.access(self.disk, os.R_OK):
+            print '*** assembly %s already exists, delete first.' % (self.disk)
+            return -1
 
-        assemblies_path = self.doc_assemblies.newChild(None, "assembly", None);
-        assemblies_path.newProp("name", dest);
-        assemblies_path.newProp("uuid", self.uuid.get_hex())
-        assemblies_path.newChild(None, "resources", None);
+        print "source = %s.xml" % source
+        self.jeos_doc = libxml2.parseFile("%s.xml" % source_jeos)
+
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk')
+        driver = source_xml[0].newChild (None, "driver", None);
+        driver.newProp ("type", "qcow2");
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
+        jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source
+        # attempted a copy on write image, but they wont boot (perhaps guestfs bug)
+        # os.system("qemu-img create -f qcow2 -b %s %s" % (jeos_disk_name, self.disk));
+        print 'Coping %s to %s' % (jeos_disk_name, self.disk)
+        shutil.copy2(jeos_disk_name, self.disk)
+        source_xml = self.jeos_doc.xpathEval('/domain/name')
+        source_xml[0].setContent(self.name)
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
+        source_xml[0].setProp('file', self.disk)
+        mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
+               random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
+        macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/mac')
+        source_xml[0].setProp('address', macaddr)
+        self.uuid = uuid.uuid4().get_hex()
+        source_xml = self.jeos_doc.xpathEval('/domain/uuid')
+        source_xml[0].setContent(self.uuid)
+
+        source_xml = self.jeos_doc.xpathEval('/domain/devices/interface/source')
+        host_iface = source_xml[0].prop('bridge')
+        iface_info = ifconfig.Ifconfig(host_iface)
+
+        self.guest_mount()
+        self.clone_network_setup(macaddr, iface_info.addr_get())
+        self.guest_unmount()
+
+        self.jeos_doc.saveFormatFile("%s.xml" % self.name, format=1)
+        os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, self.name))
+        self.save()
+        return 0
+
+    def resource_add(self, rsc_name, rsc_type):
+        '''
+        resource_add <resource name> <resource template> <assembly_name>
+        '''
+        if self.rf == None:
+            self.rf = resource.ResourceFactory(self.xml_node)
+
+        r = self.rf.get(rsc_name)
+        r.name_set(rsc_name)
+        r.type_set(rsc_type)
+        r.save()
+
         self.save()
 
-    def clone(self, dest, source, source_jeos):
-        self.clone_internal(dest, source, "%s-jeos" % source_jeos);
+class AssemblyFactory(object):
 
-    def create(self, dest, source):
-        if not os.access('%s.tdl' % dest, os.R_OK):
-            print '*** please provide %s.tdl to customize your assembly' % dest
-            return
-        self.clone_internal(dest, "%s-jeos" % source, "%s-jeos" % source);
-        os.system ("oz-customize -d3 %s.tdl %s.xml" % (dest, dest))
+    def __init__(self):
+        self.xml_file = '/var/lib/pacemaker-cloud/db_assemblies.xml'
+        it_exists = os.access(self.xml_file, os.R_OK)
 
-    def list(self, listiter):
+        try:
+            if it_exists:
+                self.doc = libxml2.parseFile(self.xml_file)
+        except:
+            it_exists = False
+
+        if not it_exists:
+            self.doc = libxml2.newDoc("1.0")
+            self.doc.newChild(None, "assemblies", None);
+
+        self.root_node = self.doc.getRootElement()
+        self.all = {}
         assembly_list = self.doc.xpathEval("/assemblies/assembly")
         for assembly_data in assembly_list:
-            listiter.append("%s" % assembly_data.prop('name'));
+            n = assembly_data.prop('name')
+            if n not in self.all:
+                self.all[n] = Assembly(self)
+                self.all[n].load_from_xml(assembly_data)
+
+    def root_get(self):
+        return self.root_node
+
+    def clone(self, name, source, source_jeos):
+        a = self.get(name)
+        a.clone_from(source, "%s-jeos" % source_jeos);
+
+    def create(self, name, source):
+        if not os.access('%s.tdl' % name, os.R_OK):
+            print '*** please provide %s.tdl to customize your assembly' % name
+            return
+
+        a = self.get(name)
+        if a.clone_from("%s-jeos" % source, "%s-jeos" % source) == 0:
+            os.system ("oz-customize -d3 %s.tdl %s.xml" % (name, name))
+
+    def exists(self, name):
+        if name in self.all:
+            return True
+        else:
+            return False
+
+    def get(self, name):
+        if name in self.all:
+            return self.all[name]
+
+        a = Assembly(self)
+        a.name_set(name)
+        self.all[name] = a
+        a.save()
+        return a
 
     def delete(self, name):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
@@ -177,25 +281,12 @@ class Assembly(object):
         self.save()
 
     def save(self):
-        self.doc.saveFormatFile('db_assemblies.xml', format=1);
+        self.doc.saveFormatFile(self.xml_file, format=1)
 
-    def resource_add(self, rsc_name, rsc_type, ass_name):
-        '''
-        resource_add <resource name> <resource template> <assembly_name>
-        '''
-        rscs_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']/resources" % ass_name)
-        if len(rscs_path) == 1:
-            rscs = rscs_path[0]
-        else:
-            ass_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % ass_name)
-            ass = ass_path[0]
-            rscs = ass.newChild(None, "resources", None);
+    def all_get(self):
+        return self.all
 
-        rsc_temp_doc = libxml2.parseFile('/usr/share/pacemaker-cloud/resource_templates/%s.xml' % rsc_type)
-        rsc_temp_root = rsc_temp_doc.getRootElement()
-        rsc_temp_root.newProp('name', rsc_name)
-
-        rscs.addChild(rsc_temp_root)
-
-        self.save()
+    def list(self, listiter):
+        for a in self.all:
+            listiter.append(str(a));
 

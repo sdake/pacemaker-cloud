@@ -2,5 +2,5 @@
 Description=Deployable Policy Engine
 
 [Service]
-ExecStart=/usr/sbin/dped -v -v %i
+ExecStart=/usr/sbin/dped -v %i
 Type=simple

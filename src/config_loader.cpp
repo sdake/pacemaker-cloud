@@ -26,15 +26,8 @@
 int32_t
 config_get(std::string& uuid, xmlDoc** doc)
 {
-	char *config_dir = getenv("CPE_CONFIG_DIR");
-	std::string filename;
-
-	if (config_dir) {
-		filename = config_dir;
-		filename +=  "/" + uuid + ".xml";
-	} else {
-		filename = uuid + ".xml";
-	}
+	std::string filename = "/var/lib/pacemaker-cloud/";
+	filename +=  uuid + ".xml";
 
 	*doc = xmlParseFile(filename.c_str());
 	if (*doc == NULL) {

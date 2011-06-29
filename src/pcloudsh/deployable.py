@@ -24,36 +24,73 @@ import random
 import logging
 import libxml2
 import exceptions
+import cpe
+import assembly
 
 class Deployable(object):
 
     def __init__(self):
+        self.xml_file = '/var/lib/pacemaker-cloud/db_deployable.xml'
         try:
-            self.doc = libxml2.parseFile('db_deployable.xml')
+            self.doc = libxml2.parseFile(self.xml_file)
             self.doc_images = self.doc.getRootElement()
         except:
             self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "deployables", None);
             self.doc_images = self.doc.getRootElement()
+        self.cpe = cpe.Cpe()
+
+    def save(self):
+        self.doc.saveFormatFile(self.xml_file, format=1);
 
     def create(self, name):
         deployable_path = self.doc_images.newChild(None, "deployable", None);
         deployable_path.newProp("name", name);
-        self.doc.serialize(None, 1)
-        self.doc.saveFormatFile('db_deployable.xml', format=1);
+        self.save()
 
     def assembly_add(self, deployable_name, assembly_name):
         deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % deployable_name)
         root_node = deployable_path[0]
         assembly_root = root_node.newChild(None, "assembly", None);
         assembly_root.newProp("name", assembly_name);
-        self.doc.saveFormatFile('db_deployable.xml', format=1);
+        self.save()
 
     def assembly_remove(self, deployable_name, assembly_name):
         deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % assembly_name)
         root_node = deployable_path[0]
         root_node.unlinkNode();
-        self.doc.saveFormatFile('db_deployable.xml', format=1);
+        self.save()
+
+    def generate_config(self, name):
+
+        fac = assembly.AssemblyFactory()
+
+        doc = libxml2.newDoc("1.0")
+        dep = doc.newChild(None, "deployable", None)
+        dep.setProp("name", name)
+        dep.setProp("uuid", name) # TODO
+        n_asses = dep.newChild(None, "assemblies", None)
+        constraints = dep.newChild(None, 'constraints', None)
+
+        a_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % name)
+        for a_data in a_list:
+            a = fac.get(a_data.prop('name'))
+
+            n_ass = n_asses.newChild(None, 'assembly', None)
+            n_ass.setProp("name", a.name_get())
+            n_ass.setProp("uuid", a.name_get()) # FIXME
+            n_ass.setProp("ipaddr", '1.2.3.4')
+            n_servs = n_ass.newChild(None, "services", None)
+
+            for r in a.resources_get():
+                n_srv = n_servs.newChild(None, 'service', None)
+                n_srv.setProp("name", r.type_get())
+                n_srv.setProp("monitor_interval", r.monitor_interval_get())
+
+        filename = '/var/lib/pacemaker-cloud/%s.xml' % name
+        open(filename, 'w').write(doc.serialize(None, 1))
+        doc.freeDoc()
+
 
     def start(self, deployable_name):
         self.libvirt_conn = libvirt.open("qemu:///system")
@@ -64,7 +101,17 @@ class Deployable(object):
             libvirt_xml = libxml2.parseFile('%s.xml' % assembly_data.prop('name'))
             libvirt_doc = libvirt_xml.serialize(None, 1);
             libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
-        
+
+        self.generate_config(deployable_name)
+
+        if self.cpe.deployable_start(deployable_name, deployable_name) == 0:
+            if self.cpe.wait_for_dpe_agent():
+                self.cpe.deployable_load(deployable_name, deployable_name)
+            else:
+                print "*** given up waiting for dpe to start"
+        else:
+            print "deployable_start FAILED!!"
+
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")
         for deployable_data in deployable_list:

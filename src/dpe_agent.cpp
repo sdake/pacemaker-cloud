@@ -36,8 +36,6 @@ main(int argc, char **argv)
 
 	rc = agent.init(argc, argv, "dpe");
 	if (rc == 0) {
-		string uuid = argv[argc-1];
-		agent.dep_load(uuid, uuid);
 		agent.run();
 	}
 	return rc;

@@ -38,7 +38,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def __init__(self):
         self.j = jeos.Jeos()
-        self.a = assembly.Assembly()
+        self.a = assembly.AssemblyFactory()
         self.d = deployable.Deployable()
         cmd.Cmd.__init__(self)
 
@@ -250,7 +250,11 @@ class pcloudsh(cmd.Cmd, object):
             self.do_help("assembly_resource_add");
         else:
             print 'assembly_resource_add %s' % str(options)
-            self.a.resource_add(options[0], options[1], options[2])
+            if not self.a.exists(options[2]):
+                print '*** assembly %s does not exist' % options[2]
+                return
+            a = self.a.get(options[2])
+            a.resource_add(options[0], options[1])
 
 
 if __name__ == '__main__':
