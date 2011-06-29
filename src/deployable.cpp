@@ -369,13 +369,14 @@ Deployable::process(void)
 		a->insert_status(status);
 	}
 
+#if 0
 	stringstream nf;
 	nf << "pe-out-" << _file_count <<  ".xml";
 	_file_count++;
 
 	qb_log(LOG_INFO, "processing new state with %s", nf.str().c_str());
 	xmlSaveFormatFileEnc(nf.str().c_str(), _pe, "UTF-8", 1);
-
+#endif
 	rc = pe_process_state(pe_root, resource_execute_cb,
 			      transition_completed_cb, this);
 	_status_changed = false;
