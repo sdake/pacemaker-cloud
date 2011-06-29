@@ -51,29 +51,13 @@ class Resource(object):
             self.xml_node.setProp('class', self.klass)
             self.xml_node.setProp('monitor_interval', self.monitor_interval)
 
-    def name_set(self, name):
-        self.name = name
-
-    def class_set(self, c):
-        self.klass = c
-
-    def type_set(self, t):
-        self.type = t
-
-    def monitor_interval_set(self, monitor_interval):
-        self.monitor_interval = monitor_interval
-
-    def name_get(self):
-        return self.name
-
-    def type_get(self):
-        return self.type
-
-    def monitor_interval_get(self):
-        return self.monitor_interval
+    def delete(self):
+        if self.xml_node != None:
+            self.xml_node.unlinkNode();
+            self.xml_node = None
 
     def __str__(self):
-        return 'resource: %s_%s' % (self.name, self.monitor_interval)
+        return '%s_%s_%s' % (self.name, self.type, self.monitor_interval)
 
 class ResourceFactory(object):
 
@@ -110,17 +94,18 @@ class ResourceFactory(object):
             return self.all[name]
 
         a = Resource(self)
-        a.name_set(name)
+        a.name = name
         self.all[name] = a
         return a
 
     def delete(self, name):
-        self.root_node.unlinkNode();
-        self.root_node = None
+        if name in self.all:
+            self.all[name].delete()
+            del self.all[name]
 
     def save(self):
         pass
 
     def all_get(self):
-        return self.all
+        return self.all.values()
 

@@ -85,8 +85,8 @@ class Deployable(object):
 
             for r in a.resources_get():
                 n_srv = n_servs.newChild(None, 'service', None)
-                n_srv.setProp("name", r.type_get())
-                n_srv.setProp("monitor_interval", r.monitor_interval_get())
+                n_srv.setProp("name", r.type)
+                n_srv.setProp("monitor_interval", r.monitor_interval)
 
         filename = '/var/lib/pacemaker-cloud/%s.xml' % name
         open(filename, 'w').write(doc.serialize(None, 1))

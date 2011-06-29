@@ -44,7 +44,10 @@ class Assembly(object):
         self.gfs = None
 
     def resources_get(self):
-        return self.rf.all_get().values()
+        if self.rf == None:
+            self.rf = resource.ResourceFactory(self.xml_node)
+
+        return self.rf.all_get()
 
     def load_from_xml(self, xml):
         self.xml_node = xml
@@ -82,7 +85,7 @@ class Assembly(object):
         self.disk = '/var/lib/libvirt/images/%s.qcow2' % self.name
 
     def __str__(self):
-        return 'assembly: %s (%s)' % (self.name, self.uuid)
+        return '%s (%s)' % (self.name, self.uuid)
 
     def clone_network_setup(self, macaddr, qpid_broker_ip):
         # change macaddr
@@ -211,10 +214,20 @@ class Assembly(object):
             self.rf = resource.ResourceFactory(self.xml_node)
 
         r = self.rf.get(rsc_name)
-        r.name_set(rsc_name)
-        r.type_set(rsc_type)
+        r.name = rsc_name
+        r.type = rsc_type
         r.save()
 
+        self.save()
+
+    def resource_remove(self, rsc_name):
+        '''
+        resource_remove <resource name> <assembly_name>
+        '''
+        if self.rf == None:
+            self.rf = resource.ResourceFactory(self.xml_node)
+
+        self.rf.delete(rsc_name)
         self.save()
 
 class AssemblyFactory(object):
@@ -284,7 +297,7 @@ class AssemblyFactory(object):
         self.doc.saveFormatFile(self.xml_file, format=1)
 
     def all_get(self):
-        return self.all
+        return self.all.values()
 
     def list(self, listiter):
         for a in self.all:

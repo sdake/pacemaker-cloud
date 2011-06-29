@@ -204,11 +204,9 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 0:
             self.do_help("assembly_delete");
         else:
-            assembly_names = []
-            self.a.list(assembly_names)
-            print 'Assemblies:'
-            for assembly_name in assembly_names:
-                print 'name %s' % (assembly_name)
+            all = self.a.all_get()
+            for a in all:
+                print '  %s' % a
 
     def do_jeos_create(self, s):
         """
@@ -268,6 +266,41 @@ class pcloudsh(cmd.Cmd, object):
             a = self.a.get(options[2])
             a.resource_add(options[0], options[1])
 
+    def do_assembly_resource_remove(self, s):
+        """
+  assembly_resource_remove <resource name> <assembly_name>
+
+  SYNOPSIS: Remove a resource from an assembly
+        """
+        options = s.split()
+        if not len(options) == 2:
+            self.do_help("assembly_resource_remove");
+        else:
+            print 'assembly_resource_remove %s' % str(options)
+            if not self.a.exists(options[1]):
+                print '*** assembly %s does not exist' % options[1]
+                return
+            a = self.a.get(options[1])
+            a.resource_remove(options[0])
+
+    def do_assembly_resource_list(self, s):
+        """
+  assembly_resource_list <assembly_name>
+
+  SYNOPSIS: List resources for an assembly
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("assembly_resource_list");
+        else:
+            if not self.a.exists(options[0]):
+                print '*** assembly %s does not exist' % options[0]
+                return
+            a = self.a.get(options[0])
+            rscs = a.resources_get()
+            print '  %8s %6s %6s %4s' % ('name', 'type', 'class', 'monitor_interval')
+            for r in rscs:
+                print '  %8s %6s %6s %4s' % (r.name, r.type, r.klass, r.monitor_interval)
 
 if __name__ == '__main__':
 
