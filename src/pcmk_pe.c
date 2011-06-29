@@ -194,7 +194,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 
 	pe_op->method = strdup(op->op_type);
 
-	pe_op->params = g_hash_table_new_full(crm_str_hash, g_str_equal,
+	pe_op->params = g_hash_table_new_full(g_str_hash_traditional, g_str_equal,
 					      g_hash_destroy_str, g_hash_destroy_str);
 
 	if (op->params != NULL) {
