@@ -103,7 +103,7 @@ class Cpe(object):
                 return 1
 
             for k,v in result.items():
-                print "Output Parameters: %s=%s" % (k, v)
+                return v
         else:
             return 1
 

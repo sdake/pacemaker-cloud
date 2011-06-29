@@ -39,6 +39,7 @@ class Deployable(object):
             self.doc.newChild(None, "deployables", None);
             self.doc_images = self.doc.getRootElement()
         self.cpe = cpe.Cpe()
+        self.libvirt_conn = None
 
     def save(self):
         self.doc.saveFormatFile(self.xml_file, format=1);
@@ -93,7 +94,9 @@ class Deployable(object):
 
 
     def start(self, deployable_name):
-        self.libvirt_conn = libvirt.open("qemu:///system")
+        if self.libvirt_conn is None:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+
         assembly_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % deployable_name)
         print ("Starting Deployable %s" % deployable_name);
         for assembly_data in assembly_list:
@@ -111,6 +114,24 @@ class Deployable(object):
                 print "*** given up waiting for dpe to start"
         else:
             print "deployable_start FAILED!!"
+
+
+    def stop(self, deployable_name):
+        if self.cpe.deployable_stop(deployable_name, deployable_name) != 0:
+            print "deployable_stop FAILED!!"
+
+        if self.libvirt_conn is None:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        assembly_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % deployable_name)
+        print ("Stopping Deployable %s" % deployable_name);
+        for assembly_data in assembly_list:
+            print (" - Stopping Assembly %s" % assembly_data.prop('name'))
+
+            ass = self.libvirt_conn.lookupByName(assembly_data.prop('name'))
+            if ass is None:
+                print '*** couldn\'t stop %s' % assembly_data.prop('name')
+            else:
+                ass.destroy()
 
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")

@@ -95,6 +95,18 @@ class pcloudsh(cmd.Cmd, object):
         else:
             self.d.start(options[0])
 
+    def do_deployable_stop(self, s):
+        """
+  deployable_stop <deployable_name> - stop a new deployable
+
+  The deployable_stop action stop a new deployable in the system
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_stop")
+        else:
+            self.d.stop(options[0])
+
     def do_deployable_assembly_add(self, s):
         """
   deployable_assembly_add <deployable_name> <assembly_name>
