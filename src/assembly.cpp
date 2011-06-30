@@ -418,7 +418,7 @@ Assembly::state_online_to_offline(void)
 {
 	map<uint32_t, struct pe_operation*>::iterator iter;
 	struct pe_operation *op;
-	Resource *rsc = (Resource *)op->resource;
+	Resource *rsc;
 
 	_dead_agents.push_back(_mh_serv_class.getAgent().getName());
 	_dead_agents.push_back(_mh_rsc_class.getAgent().getName());
@@ -434,6 +434,7 @@ Assembly::state_online_to_offline(void)
 
 	for (iter = _ops.begin(); iter != _ops.end(); iter++) {
 		op = iter->second;
+		rsc = (Resource *)op->resource;
 		rsc->completed(op, OCF_UNKNOWN_ERROR);
 	}
 
