@@ -28,10 +28,9 @@ import jeos
 import assembly
 import deployable
 import cmd
+import event_receiver
 
 class pcloudsh(cmd.Cmd, object):
-
-
 
     prompt = 'pcloudsh# '
     intro = "Welcome to pcloudsh, the Pacemaker Cloud Interface terminal\n\ntype \"help\" for help and quit to exit.\n"
@@ -323,4 +322,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
     else:
-         pcloudsh().cmdloop()
+        er = event_receiver.EventRunner()
+        er.setDaemon(True)
+        er.start()
+        pcloudsh().cmdloop()
+
