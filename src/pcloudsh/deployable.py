@@ -126,11 +126,11 @@ class Deployable(object):
         for assembly_data in assembly_list:
             print (" - Stopping Assembly %s" % assembly_data.prop('name'))
 
-            ass = self.libvirt_conn.lookupByName(assembly_data.prop('name'))
-            if ass is None:
-                print '*** couldn\'t stop %s' % assembly_data.prop('name')
-            else:
+            try:
+                ass = self.libvirt_conn.lookupByName(assembly_data.prop('name'))
                 ass.destroy()
+            except:
+                print '*** couldn\'t stop %s (already stopped?)' % assembly_data.prop('name')
 
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")
