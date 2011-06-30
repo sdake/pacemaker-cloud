@@ -79,9 +79,10 @@ class pcloudsh(cmd.Cmd, object):
         """
         deployable_names = []
         self.d.list(deployable_names)
-        print 'Deployable names:'
+        print ' Name'
+        print '--------------'
         for deployable_name in deployable_names:
-            print 'name:%s' % (deployable_name)
+            print ' %-12s' % (deployable_name)
 
     def do_deployable_start(self, s):
         """
@@ -99,13 +100,25 @@ class pcloudsh(cmd.Cmd, object):
         """
   deployable_stop <deployable_name> - stop a new deployable
 
-  The deployable_stop action stop a new deployable in the system
+  The deployable_stop action stops a deployable in the system
         """
         options = s.split()
         if not len(options) == 1:
             self.do_help("deployable_stop")
         else:
             self.d.stop(options[0])
+
+    def do_deployable_status(self, s):
+        """
+  deployable_status <deployable_name> - Get the status of a deployable
+
+  The deployable_status action queries a deployable in the system
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_status")
+        else:
+            self.d.status(options[0])
 
     def do_deployable_assembly_add(self, s):
         """
@@ -205,8 +218,10 @@ class pcloudsh(cmd.Cmd, object):
             self.do_help("assembly_delete");
         else:
             all = self.a.all_get()
+            print ' %-12s %-32s' % ('Name', 'UUID')
+            print '------------------------------------------------'
             for a in all:
-                print '  %s' % a
+                print ' %-12s %-32s' % (a.name, a.uuid)
 
     def do_jeos_create(self, s):
         """
@@ -298,9 +313,10 @@ class pcloudsh(cmd.Cmd, object):
                 return
             a = self.a.get(options[0])
             rscs = a.resources_get()
-            print '  %8s %6s %6s %4s' % ('name', 'type', 'class', 'monitor_interval')
+            print ' %-12s %-6s %-6s %-4s' % ('Name', 'Type', 'Class', 'Monitor interval')
+            print '----------------------------------------------'
             for r in rscs:
-                print '  %8s %6s %6s %4s' % (r.name, r.type, r.klass, r.monitor_interval)
+                print ' %-12s %-6s %-6s %-4s' % (r.name, r.type, r.klass, r.monitor_interval)
 
 if __name__ == '__main__':
 

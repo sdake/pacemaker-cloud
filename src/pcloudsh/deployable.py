@@ -137,3 +137,21 @@ class Deployable(object):
         deployable_list = self.doc.xpathEval("/deployables/deployable")
         for deployable_data in deployable_list:
             listiter.append("%s" % (deployable_data.prop('name')))
+
+    def status(self, name):
+        if self.libvirt_conn is None:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        name_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % name)
+        print ' %-12s %-12s' % ('Assembly', 'Status')
+        print '------------------------'
+        for a in name_list:
+            name = a.prop('name')
+            try:
+                ass = self.libvirt_conn.lookupByName(name)
+                if ass.isActive():
+                    print " %-12s %-12s" % (name, 'Running')
+                else:
+                    print " %-12s %-12s" % (name, 'Stopped')
+            except:
+                print " %-12s %-12s" % (name, 'Undefined')
+
