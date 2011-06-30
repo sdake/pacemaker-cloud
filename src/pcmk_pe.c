@@ -155,6 +155,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	const char *target_rc_s = crm_meta_value(action->params, XML_ATTR_TE_TARGET_RC);
 	xmlNode *action_rsc = first_named_child(action->xml, XML_CIB_TAG_RESOURCE);
 	char *node = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
+	char *uuid;
 	const char *tmp_provider;
 	xmlNode *params_all;
 
@@ -175,10 +176,12 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 		crm_free(node);
 		return FALSE;
 	}
+	uuid = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET_UUID);
 
 	pe_op = calloc(1, sizeof(struct pe_operation));
 	pe_op->refcount = 1;
 	pe_op->hostname = node;
+	pe_op->node_uuid = uuid;
 	pe_op->user_data = run_user_data;
 	pe_op->rname = strdup(ID(action_rsc));
 	pe_op->rclass = strdup(crm_element_value(action_rsc, XML_AGENT_ATTR_CLASS));

@@ -115,8 +115,8 @@ Resource::__execute(struct pe_operation *op)
 	qpid::types::Variant::Map in_args;
 	qpid::types::Variant::Map in_params;
 	const char *rmethod = op->method;
-	string name = op->hostname;
-	Assembly *ass = _dep->assembly_get(name);
+	string node_uuid = op->node_uuid;
+	Assembly *ass = _dep->assembly_get(node_uuid);
 	assert(ass != NULL);
 
 	qb_enter();
@@ -184,8 +184,8 @@ Resource::save(struct pe_operation *op, enum ocf_exitcode ec)
 {
 	struct operation_history *oh;
 	stringstream id;
-	string node_name = op->hostname;
-	Assembly* a = _dep->assembly_get(node_name);
+	string node_uuid = op->node_uuid;
+	Assembly* a = _dep->assembly_get(node_uuid);
 
 	if (strstr(op->rname, op->hostname) == NULL) {
 		return;
@@ -223,8 +223,8 @@ Resource::save(struct pe_operation *op, enum ocf_exitcode ec)
 void
 Resource::delete_op_history(struct pe_operation *op)
 {
-	string node_name = op->hostname;
-	Assembly* a = _dep->assembly_get(node_name);
+	string node_uuid = op->node_uuid;
+	Assembly* a = _dep->assembly_get(node_uuid);
 
 	/* delete the op history
 	 */
@@ -251,8 +251,8 @@ Resource::delete_op_history(struct pe_operation *op)
 void
 Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 {
-	string name = op->hostname;
-	Assembly *ass = _dep->assembly_get(name);
+	string node_uuid = op->node_uuid;
+	Assembly *ass = _dep->assembly_get(node_uuid);
 	assert(ass != NULL);
 
 	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:%d target_rc:%d",

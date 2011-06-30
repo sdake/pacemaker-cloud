@@ -56,7 +56,6 @@ private:
 
 	std::string _name;
 	std::string _uuid;
-	std::string _ipaddr;
 	int _refcount;
 
 	std::map<uint32_t, struct pe_operation*> _ops;
@@ -81,7 +80,7 @@ public:
 
 	Assembly();
 	Assembly(Deployable *dep, std::string& name,
-		 std::string& uuid, std::string& ipaddr);
+		 std::string& uuid);
 	~Assembly();
 
 	void matahari_discover(qmf::ConsoleSession *session);

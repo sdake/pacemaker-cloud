@@ -57,8 +57,7 @@ private:
 	void create_services(std::string& ass_name, xmlNode * services);
 
 	int32_t assembly_add(std::string& name,
-			     std::string& uuid,
-			     std::string& ipaddr);
+			     std::string& uuid);
 	int32_t assembly_remove(std::string& name,
 				std::string& uuid);
 
@@ -71,7 +70,7 @@ public:
 	const std::string& uuid_get() const { return _uuid; }
 	const std::string& dc_uuid_get() const { return _dc_uuid; }
 	const std::string& crmd_uuid_get() const { return _crmd_uuid; }
-	Assembly* assembly_get(std::string& hostname);
+	Assembly* assembly_get(std::string& node_uuid);
 	Resource* resource_get(struct pe_operation * op);
 
 	void reload(void);

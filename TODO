@@ -30,11 +30,9 @@ SHELL
 -----
 Add the following commands:
 u1) deployable_status
-    show guest running/stopped
     show assembly online/offline
     show resource status
 a1) receive dped notifications
 s1) launching of assembly via vm launcher so we can do stop/start of vm
 s2) restart of vm/application on vm after failure detected
 u7) add setup.py to install python scripts
-a2) get dped to use assembly uuid's more correctly

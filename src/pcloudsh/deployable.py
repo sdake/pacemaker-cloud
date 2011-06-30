@@ -78,9 +78,8 @@ class Deployable(object):
             a = fac.get(a_data.prop('name'))
 
             n_ass = n_asses.newChild(None, 'assembly', None)
-            n_ass.setProp("name", a.name_get())
-            n_ass.setProp("uuid", a.name_get()) # FIXME
-            n_ass.setProp("ipaddr", '1.2.3.4')
+            n_ass.setProp("name", a.name)
+            n_ass.setProp("uuid", a.uuid)
             n_servs = n_ass.newChild(None, "services", None)
 
             for r in a.resources_get():

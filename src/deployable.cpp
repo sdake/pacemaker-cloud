@@ -182,7 +182,6 @@ Deployable::create_assemblies(xmlNode * assemblies)
 {
 	string ass_name;
 	string ass_uuid;
-	string ass_ip;
 	xmlNode *cur_node = NULL;
 	xmlNode *child_node = NULL;
 
@@ -191,9 +190,7 @@ Deployable::create_assemblies(xmlNode * assemblies)
 			continue;
 		}
 		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
-		ass_uuid = ass_name/* FIXME (char*)xmlGetProp(cur_node, BAD_CAST "uuid")*/;
-		ass_ip = (char*)xmlGetProp(cur_node, BAD_CAST "ipaddr");
-		assert(ass_ip.length() > 0);
+		ass_uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
 		qb_log(LOG_DEBUG, "node name: %s", ass_name.c_str());
 
 		for (child_node = cur_node->children; child_node; child_node = child_node->next) {
@@ -204,7 +201,7 @@ Deployable::create_assemblies(xmlNode * assemblies)
 				create_services(ass_name, child_node->children);
 			}
 		}
-		assembly_add(ass_name, ass_uuid, ass_ip);
+		assembly_add(ass_name, ass_uuid);
 	}
 }
 
@@ -313,11 +310,9 @@ Deployable::resource_get(struct pe_operation *op)
 }
 
 Assembly*
-Deployable::assembly_get(std::string& hostname)
+Deployable::assembly_get(std::string& node_uuid)
 {
-	// FIXME we need to convert from hostname to uuid
-	// atm they are the same but they won't be forever.
-	return _assemblies[hostname];
+	return _assemblies[node_uuid];
 }
 
 void
@@ -432,7 +427,7 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 }
 
 int32_t
-Deployable::assembly_add(string& name, string& uuid, string& ip)
+Deployable::assembly_add(string& name, string& uuid)
 {
 	Assembly *a = _assemblies[uuid];
 	if (a) {
@@ -441,7 +436,7 @@ Deployable::assembly_add(string& name, string& uuid, string& ip)
 	}
 
 	try {
-		a = new Assembly(this, name, uuid, ip);
+		a = new Assembly(this, name, uuid);
 	} catch (qpid::types::Exception e) {
 		qb_log(LOG_ERR, "Exception creating Assembly %s",
 		       e.what());

@@ -47,6 +47,7 @@ enum ocf_exitcode {
 
 struct pe_operation {
 	char *hostname;
+	char *node_uuid;
 	char *method;
 	char *rname;
 	char *rclass;

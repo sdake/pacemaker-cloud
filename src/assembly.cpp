@@ -486,7 +486,7 @@ Assembly::stop(void)
 Assembly::Assembly() :
 	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
 	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(NULL),
-	_name(""), _uuid(""), _ipaddr(""), _state(STATE_OFFLINE)
+	_name(""), _uuid(""), _state(STATE_OFFLINE)
 {
 	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
 	state_table[STATE_ONLINE] = &Assembly::check_state_online;
@@ -506,10 +506,10 @@ Assembly::~Assembly()
 }
 
 Assembly::Assembly(Deployable *dep, std::string& name,
-		   std::string& uuid, std::string& ipaddr) :
+		   std::string& uuid) :
 	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
 	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(dep),
-	_name(name), _uuid(uuid), _ipaddr(ipaddr), _state(STATE_OFFLINE)
+	_name(name), _uuid(uuid), _state(STATE_OFFLINE)
 {
 
 	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
@@ -521,7 +521,7 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &Assembly::state_online_to_offline;
 	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
 
-	qb_log(LOG_INFO, "Assembly(%s:%s)", name.c_str(), ipaddr.c_str());
+	qb_log(LOG_INFO, "Assembly(%s:%s)", name.c_str(), uuid.c_str());
 
 	_last_heartbeat = g_timer_new();
 	_refcount++;
