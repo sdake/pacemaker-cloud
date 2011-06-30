@@ -39,8 +39,8 @@ class Cpe(object):
         agents = self.session.getAgents()
         for a in agents:
             self.l.debug('agent: %s' % str(a))
-            if 'cloudpolicyengine.org' in a.getVendor():
-                    result = a.query("{class:cpe, package:'org.cloudpolicyengine'}")
+            if 'pacemakercloud.org' in a.getVendor():
+                    result = a.query("{class:cpe, package:'org.pacemakercloud'}")
                     if len(result) >= 1:
                         self.cpe_obj = result[0]
 
@@ -57,8 +57,8 @@ class Cpe(object):
             time.sleep(1)
             agents = self.session.getAgents()
             for a in agents:
-                if 'cloudpolicyengine.org' in a.getVendor():
-                    result = a.query("{class:dpe, package:'org.cloudpolicyengine'}")
+                if 'pacemakercloud.org' in a.getVendor():
+                    result = a.query("{class:dpe, package:'org.pacemakercloud'}")
                     if len(result) >= 1:
                         self.dpe_obj = result[0]
                         return True

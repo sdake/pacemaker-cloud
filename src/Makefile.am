@@ -38,10 +38,10 @@ sbin_PROGRAMS = cped dped
 noinst_PROGRAMS = cpe-tool2 pe_test
 noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
-	schema.xml org/cloudpolicyengine/QmfPackage.cpp \
-	org/cloudpolicyengine/QmfPackage.h resource.h
+	schema.xml org/pacemakercloud/QmfPackage.cpp \
+	org/pacemakercloud/QmfPackage.h resource.h
 
-qmfauto_path = org/cloudpolicyengine
+qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 
 $(qmfauto_c): schema.xml

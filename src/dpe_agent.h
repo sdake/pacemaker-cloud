@@ -28,7 +28,7 @@
 
 #include <qpid/sys/Mutex.h>
 
-#include "org/cloudpolicyengine/QmfPackage.h"
+#include "org/pacemakercloud/QmfPackage.h"
 #include "common_agent.h"
 
 class Deployable;

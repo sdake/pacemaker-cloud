@@ -37,7 +37,7 @@ using namespace std;
 using namespace qmf;
 using namespace qpid::log;
 
-#include "org/cloudpolicyengine/QmfPackage.h"
+#include "org/pacemakercloud/QmfPackage.h"
 
 class CommonAgent
 {
@@ -51,7 +51,7 @@ public:
 	~CommonAgent() {};
 	AgentSession agent_session;
 	qpid::messaging::Connection agent_connection;
-	qmf::org::cloudpolicyengine::PackageDefinition package;
+	qmf::org::pacemakercloud::PackageDefinition package;
 
 	virtual void setup(void) {};
 	virtual bool event_dispatch(AgentEvent *event) { return false; };

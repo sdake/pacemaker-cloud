@@ -52,7 +52,7 @@ extern "C" {
 
 using namespace std;
 using namespace qmf;
-namespace _qmf = qmf::org::cloudpolicyengine;
+namespace _qmf = qmf::org::pacemakercloud;
 
 static char* program_name;
 
@@ -325,7 +325,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	agent_connection.open();
 
 	agent_session = AgentSession(agent_connection, "{interval:30}");
-	agent_session.setVendor("cloudpolicyengine.org");
+	agent_session.setVendor("pacemakercloud.org");
 	agent_session.setProduct(proc_name);
 
 	package.configure(agent_session);

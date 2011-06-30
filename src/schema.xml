@@ -1,4 +1,4 @@
-<schema package="org.cloudpolicyengine">
+<schema package="org.pacemakercloud">
 
 <!-- The cpe daemon will implement this API  -->
 <!-- Once running it will wait to start deployments -->
