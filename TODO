@@ -25,52 +25,21 @@ s - VML - start of vm on assembly_start
 s - VML - stop of vm on assembly_stop
 a - DPE - have DPE send vm deployable start event
 a - DPE - have DPE send vm deployable stop event
-s - SHL - Feed events into shell and display them
 a - DPE - restart deployable when deployable failure deteted
-a - DPE - generate QMF events for changes in state for deployables
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
 u - CPE - at startup use config_list() to get initial deployables
           failed)
 u - DPE - add support for failure escalations
 u - TST - Convert test cases to use the shell
-u - SHL - Add command assembly_resource_remove
-u - SHL - Add command assembly_resource_add
-u - SHL - Add command handle errors better
-u - SHL - Add command deployable_status
-u - SHL - show guest running/stopped
 u - SHL - show assembly online/offline
 u - SHL - show resource status
-u - SHL -  receive dped notifications
 u - SHL - launching of assembly via vm launcher so we can do stop/start of vm
 u - SHL -  add setup.py to install python scripts
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_get(deployment_uuid)
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_list()
 u - DEP - Get rid of all the deps that pengine has that it doesn't require
 
-<<<<<<< HEAD
 Open Questions List
 ===================
 
-=======
-TESTS
------
-a4) Convert tests to use the shell
-
-Common lib
-----------
-u2) add API to access deployable config from exteranl API (cloud specific managemnt DB)
-        config_get(deployment_uuid)
-        config_list()
-
-SHELL
------
-Add the following commands:
-u1) deployable_status
-    show assembly online/offline
-    show resource status
-a1) receive dped notifications
-s1) launching of assembly via vm launcher so we can do stop/start of vm
-s2) restart of vm/application on vm after failure detected
-u7) add setup.py to install python scripts
->>>>>>> 54f48f4bfe86f9fdd8d19f95b3de8f26dcc62a20
