@@ -17,12 +17,14 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 import time
 import re
 import random
 import logging
 import libxml2
 import exceptions
+import libvirt
 
 class Jeos(object):
 
@@ -51,12 +53,21 @@ class Jeos(object):
             raise
 
         os.system("qemu-img convert -O qcow2 %s %s" % (dsk_filename, qcow2_filename));
+
+        libvirt_xml = libxml2.parseFile(xml_filename)
+        source_xml = libvirt_xml.xpathEval('/domain/devices/disk')
+        driver = source_xml[0].newChild (None, "driver", None);
+        driver.newProp ("type", "qcow2");
+        source_xml = libvirt_xml.xpathEval('/domain/devices/disk/source')
+        source_xml[0].setProp('file', qcow2_filename)
+        libvirt_xml.saveFormatFile(xml_filename, format=1)
+
         doc_jeos = self.doc_images.newChild(None, "jeos", None);
         doc_xml_path = doc_jeos.newProp("arch", arch);
         doc_xml_path = doc_jeos.newProp("name", name);
         doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename);
         doc_xml_path = doc_jeos.newProp("xml_path", xml_filename);
-        self.doc.serialize(None, 1)
+
         self.doc.saveFormatFile(self.xml_file, format=1);
 
     def list(self, listiter):

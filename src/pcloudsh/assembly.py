@@ -171,14 +171,9 @@ class Assembly(object):
         print "source = %s.xml" % source
         self.jeos_doc = libxml2.parseFile("%s.xml" % source_jeos)
 
-        source_xml = self.jeos_doc.xpathEval('/domain/devices/disk')
-        driver = source_xml[0].newChild (None, "driver", None);
-        driver.newProp ("type", "qcow2");
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
         jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source
-        # attempted a copy on write image, but they wont boot (perhaps guestfs bug)
-        # os.system("qemu-img create -f qcow2 -b %s %s" % (jeos_disk_name, self.disk));
-        print 'Coping %s to %s' % (jeos_disk_name, self.disk)
+        print 'Copying %s to %s' % (jeos_disk_name, self.disk)
         shutil.copy2(jeos_disk_name, self.disk)
         source_xml = self.jeos_doc.xpathEval('/domain/name')
         source_xml[0].setContent(self.name)
