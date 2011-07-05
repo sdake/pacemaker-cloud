@@ -43,8 +43,8 @@ class Jeos(object):
         for jeos_data in jeos_list:
             if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
                 raise
-        xml_filename = '%s-%s-jeos.xml' % (name, arch)
-        tdl_filename = '%s-%s-jeos.tdl' % (name, arch)
+        xml_filename = '/var/lib/pacemaker-cloud/%s-%s-jeos.xml' % (name, arch)
+        tdl_filename = '/var/lib/pacemaker-cloud/%s-%s-jeos.tdl' % (name, arch)
         dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
         qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
 

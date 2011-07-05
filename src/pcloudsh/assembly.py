@@ -169,7 +169,7 @@ class Assembly(object):
             return -1
 
         print "source = %s.xml" % source
-        self.jeos_doc = libxml2.parseFile("%s.xml" % source_jeos)
+        self.jeos_doc = libxml2.parseFile("/var/lib/pacemaker-cloud/%s.xml" % source_jeos)
 
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
         jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source
@@ -196,8 +196,8 @@ class Assembly(object):
         self.clone_network_setup(macaddr, iface_info.addr_get())
         self.guest_unmount()
 
-        self.jeos_doc.saveFormatFile("%s.xml" % self.name, format=1)
-        os.system("oz-customize -d3 %s-assembly.tdl %s.xml" % (source_jeos, self.name))
+        self.jeos_doc.saveFormatFile("/var/lib/pacemaker-cloud/%s.xml" % self.name, format=1)
+        os.system("oz-customize -d3 /var/lib/pacemaker-cloud/%s-assembly.tdl /var/lib/pacemaker-cloud/%s.xml" % (source_jeos, self.name))
         self.save()
         return 0
 
@@ -258,13 +258,13 @@ class AssemblyFactory(object):
         a.clone_from(source, "%s-jeos" % source_jeos);
 
     def create(self, name, source):
-        if not os.access('%s.tdl' % name, os.R_OK):
-            print '*** please provide %s.tdl to customize your assembly' % name
+        if not os.access('/var/lib/pacemaker-cloud/%s.tdl' % name, os.R_OK):
+            print '*** please provide /var/lib/pacemaker-cloud/%s.tdl to customize your assembly' % name
             return
 
         a = self.get(name)
         if a.clone_from("%s-jeos" % source, "%s-jeos" % source) == 0:
-            os.system ("oz-customize -d3 %s.tdl %s.xml" % (name, name))
+            os.system ("oz-customize -d3 /var/lib/pacemaker-cloud/%s.tdl /var/lib/pacemaker-cloud/%s.xml" % (name, name))
 
     def exists(self, name):
         if name in self.all:
