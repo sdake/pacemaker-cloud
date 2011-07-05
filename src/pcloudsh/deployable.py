@@ -87,7 +87,7 @@ class Deployable(object):
                 n_srv.setProp("name", r.type)
                 n_srv.setProp("monitor_interval", r.monitor_interval)
 
-        filename = '/var/lib/pacemaker-cloud/%s.xml' % name
+        filename = '/var/run/%s.xml' % name
         open(filename, 'w').write(doc.serialize(None, 1))
         doc.freeDoc()
 
@@ -100,7 +100,7 @@ class Deployable(object):
         print ("Starting Deployable %s" % deployable_name);
         for assembly_data in assembly_list:
             print (" - Starting Assembly %s" % assembly_data.prop('name'))
-            libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/%s.xml' % assembly_data.prop('name'))
+            libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % assembly_data.prop('name'))
             libvirt_doc = libvirt_xml.serialize(None, 1);
             libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
 

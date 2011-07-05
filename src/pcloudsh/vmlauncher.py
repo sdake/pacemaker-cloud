@@ -78,7 +78,7 @@ class VMLauncher(AgentHandler):
             try:
                 if methodName == "start":
 
-                    libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/%s.xml' % name)
+                    libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
                     libvirt_doc = libvirt_xml.serialize(None, 1);
                     libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
 

@@ -24,6 +24,7 @@ WHO CMP   Description
 a - VML - start of vm on assembly_start
 a - VML - stop of vm on assembly_stop
 s - PKG - python install/packaging of pcloudsh and vmlauncher
+s - PKG - sort out directory structure of installed software
 s - PKG - init script (qpidd, cped, vmlauncher starting)
 s - PKG - refine spec.in
 s - ALL - support for F14/F16

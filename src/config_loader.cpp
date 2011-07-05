@@ -26,7 +26,7 @@
 int32_t
 config_get(std::string& uuid, xmlDoc** doc)
 {
-	std::string filename = "/var/lib/pacemaker-cloud/";
+	std::string filename = "/var/run/";
 	filename +=  uuid + ".xml";
 
 	*doc = xmlParseFile(filename.c_str());
