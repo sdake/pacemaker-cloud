@@ -16,16 +16,22 @@ CPE = Cloud Policy Engine main binary
 DPE = Deployable Policy Engine bnary
 PSH = Pacemaker Cloud Shell
 DEP = A dependency needing work
-
+PKG = Packaging 
 
 --- ---   ------------------------------------------------------------------
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
-s - VML - start of vm on assembly_start
-s - VML - stop of vm on assembly_stop
+a - VML - start of vm on assembly_start
+a - VML - stop of vm on assembly_stop
+s - PKG - python install/packaging of pcloudsh and vmlauncher
+s - PKG - init script (qpidd, cped, vmlauncher starting)
+s - PKG - refine spec.in
+s - ALL - support for F14/F16
 a - DPE - have DPE send vm deployable start event
 a - DPE - have DPE send vm deployable stop event
-a - DPE - restart deployable when deployable failure deteted
+a - DPE - ocf support in DPE
+a - DPE - restart deployable when deployable failure detected
+a - ALL - improve QMF code handling and classes
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
 u - CPE - at startup use config_list() to get initial deployables
