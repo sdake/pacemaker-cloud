@@ -55,7 +55,9 @@ tools, and man pages.
 %{_localstatedir}/lib/pacemaker-cloud/jeos/F15-x86_64-jeos.tdl
 %{_localstatedir}/lib/pacemaker-cloud/jeos/rhel61-x86_64-jeos-assembly.tdl
 %{_localstatedir}/lib/pacemaker-cloud/jeos/rhel61-x86_64-jeos.tdl
-
+%{_bindir}/pcloudsh.py
+%{_bindir}/vmlauncher.py
+%{python_sitelib}/pcloudsh/*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@

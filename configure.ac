@@ -7,6 +7,8 @@ AM_INIT_AUTOMAKE([-Wno-portability])
 AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 
+AM_PATH_PYTHON
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC

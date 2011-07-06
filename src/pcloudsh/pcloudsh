@@ -24,11 +24,11 @@ import sys
 import time
 import random
 import logging
-import jeos
-import assembly
-import deployable
 import cmd
-import event_receiver
+import pcloudsh.jeos
+import pcloudsh.assembly
+import pcloudsh.deployable
+import pcloudsh.event_receiver
 
 class pcloudsh(cmd.Cmd, object):
 
