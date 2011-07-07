@@ -18,6 +18,9 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef DEPLOYABLE_H__DEFINED
+#define DEPLOYABLE_H__DEFINED
+
 #include <string>
 #include <map>
 
@@ -25,16 +28,15 @@
 
 #include "pcmk_pe.h"
 #include "common_agent.h"
+#include "qmf_multiplexer.h"
 
 class Assembly;
 class Resource;
 
-class Deployable {
+class Deployable : public QmfMultiplexer {
 private:
 	CommonAgent *_agent;
-	qpid::messaging::Connection *connection;
-	qmf::ConsoleSession *session;
-
+	QmfObject _vm_launcher;
 	std::string _name;
 	std::string _uuid;
 	std::string _dc_uuid;
@@ -43,7 +45,6 @@ private:
 
 	std::map<std::string, Assembly*> _assemblies;
 	std::map<std::string, Resource*> _resources;
-	std::map<std::string, Assembly*> _agents_ass;
 
 	xmlDocPtr _config;
 	xmlDocPtr _pe;
@@ -83,8 +84,6 @@ public:
 				  std::string &state, std::string &reason);
 	void assembly_state_changed(Assembly *a, std::string state,
 				    std::string reason);
-
-	bool process_qmf_events(void);
-	void map_agents_ass(string &agent_name, Assembly *a);
 };
 
+#endif /* DEPLOYABLE_H__DEFINED */

@@ -18,11 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <string>
+#ifndef ASSEMBLY_H_DEFINED
+#define ASSEMBLY_H_DEFINED
 
-#include <qmf/ConsoleSession.h>
-#include <qmf/ConsoleEvent.h>
-#include <qmf/Data.h>
+#include "qmf_multiplexer.h"
 
 class Deployable;
 
@@ -36,14 +35,9 @@ private:
 	typedef uint32_t (Assembly::*fsm_state_fn)(void);
 	typedef void (Assembly::*fsm_action_fn)(void);
 
-	qmf::Data _mh_serv_class;
-	bool _mh_serv_class_found;
-
-	qmf::Data _mh_rsc_class;
-	bool _mh_rsc_class_found;
-
-	qmf::Data _mh_host_class;
-	bool _mh_host_class_found;
+	QmfObject _mh_serv;
+	//QmfObject _mh_rsc;
+	QmfObject _mh_host;
 
 	uint32_t _hb_state;
 	uint32_t _state;
@@ -59,7 +53,6 @@ private:
 	int _refcount;
 
 	std::map<uint32_t, struct pe_operation*> _ops;
-	std::list<std::string> _dead_agents;
 
 	uint32_t check_state_online(void);
 	uint32_t check_state_offline(void);
@@ -67,12 +60,13 @@ private:
 	void state_offline_to_online(void);
 	void state_online_to_offline(void);
 
-	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
-	void check_state(void);
 	void deref(void);
 	void insert_op_history(xmlNode *rsc, struct operation_history *oh);
 
 public:
+	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
+	void check_state(void);
+
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
 	static const uint32_t STATE_ONLINE = 2;
@@ -97,3 +91,4 @@ public:
 	bool process_qmf_events(qmf::ConsoleEvent &event);
 
 };
+#endif /* ASSEMBLY_H_DEFINED */

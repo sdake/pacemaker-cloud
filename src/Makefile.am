@@ -39,7 +39,7 @@ noinst_PROGRAMS = cpe-tool2 pe_test
 noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
-	org/pacemakercloud/QmfPackage.h resource.h
+	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h qmf_multiplexer.h
 
 qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -57,7 +57,7 @@ cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \
-		resource.cpp
+		resource.cpp qmf_multiplexer.cpp qmf_object.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 		-I$(qmfauto_path) $(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_CFLAGS)

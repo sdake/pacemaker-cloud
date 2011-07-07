@@ -15,8 +15,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#ifndef __MH_MAINLOOP__
-#define __MH_MAINLOOP__
+#ifndef MAINLOOP_H_DEFINED
+#define MAINLOOP_H_DEFINED
 
 #include <stdbool.h>
 #include <qb/qbloop.h>
@@ -61,6 +61,4 @@ bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
 }
 #endif /* __cplusplus */
 
-
-#endif
-
+#endif /* MAINLOOP_H_DEFINED */

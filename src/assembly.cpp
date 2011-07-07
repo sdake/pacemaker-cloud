@@ -35,65 +35,31 @@
 using namespace std;
 using namespace qmf;
 
-struct pe_operation *
-Assembly::op_remove_by_correlator(uint32_t correlator)
+static void
+service_method_response(QmfAsyncRequest* ar,
+			qpid::types::Variant::Map out_args,
+			enum QmfObject::rpc_result rpc_rc)
 {
-	struct pe_operation *op = _ops[correlator];
-	_ops.erase(correlator);
-	return op;
-}
-
-bool
-Assembly::process_qmf_events(ConsoleEvent &event)
-{
-	enum ocf_exitcode rc = OCF_OK;
-	bool got_event = false;
+	enum ocf_exitcode rc;
 	struct pe_operation *op;
 	Resource *rsc;
 
-	if (_state == Assembly::STATE_INIT) {
-		deref();
-		return FALSE;
-	}
-
-	if (event.getType() == CONSOLE_EVENT) {
-		const Data& event_data(event.getData(0));
-
-		if (event_data.getSchemaId().getName() == "heartbeat") {
-			uint32_t seq = event_data.getProperty("sequence");
-			uint32_t tstamp = event_data.getProperty("timestamp");
-
-			heartbeat_recv(tstamp, seq);
-			got_event = true;
-		}
-
-	} else if (event.getType() == CONSOLE_AGENT_DEL) {
-		if (event.getAgentDelReason() == AGENT_DEL_AGED) {
-			qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (aged) %s",
-			       event.getAgent().getName().c_str());
-		} else {
-			qb_log(LOG_NOTICE, "CONSOLE_AGENT_DEL (filtered) %s",
-			       event.getAgent().getName().c_str());
-		}
-		_dead_agents.remove(event.getAgent().getName());
-
-	} else if (event.getType() == CONSOLE_METHOD_RESPONSE) {
-		qpid::types::Variant::Map my_map = event.getArguments();
-		op = op_remove_by_correlator(event.getCorrelator());
+	if (rpc_rc == QmfObject::RPC_OK) {
+		op = (struct pe_operation *)ar->user_data;
 		rsc = (Resource *)op->resource;
-		rc = pe_resource_ocf_exitcode_get(op, my_map["rc"].asUint32());
+		rc = pe_resource_ocf_exitcode_get(op, out_args["rc"].asUint32());
 		op->times_executed++;
 
 		rsc->completed(op, rc);
 		// remove the ref for putting the op in the map
 		pe_resource_unref(op);
-	} else if (event.getType() == CONSOLE_EXCEPTION) {
+	} else {
 		rc = OCF_UNKNOWN_ERROR;
-		op = op_remove_by_correlator(event.getCorrelator());
+		op = (struct pe_operation *)ar->user_data;
 		rsc = (Resource *)op->resource;
 
-		if (event.getDataCount() >= 1) {
-			string error(event.getData(0).getProperty("error_text"));
+		if (out_args.size() >= 1) {
+			string error(out_args["error_text"]);
 			qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
 			       op->interval, error.c_str());
@@ -104,105 +70,40 @@ Assembly::process_qmf_events(ConsoleEvent &event)
 		}
 		rsc->completed(op, rc);
 	}
-	check_state();
-	return TRUE;
 }
 
-void
-Assembly::matahari_discover(ConsoleSession *session)
+static void
+connection_event_handler(void *user_data)
 {
-	int32_t ai;
-	int32_t ac;
-	int32_t q;
-	bool dont_use;
+	Assembly *a = (Assembly*)user_data;
+	a->check_state();
+}
 
-	if (_mh_serv_class_found && _mh_rsc_class_found && _mh_host_class_found) {
-		return;
+static void
+heartbeat_check_tmo(void *data)
+{
+	Assembly *a = (Assembly*)data;
+	qb_loop_timer_handle th;
+
+	a->check_state();
+	if (a->state_get() == Assembly::STATE_ONLINE) {
+		mainloop_timer_add(4000, a,
+				   heartbeat_check_tmo, &th);
 	}
-	string common = "package:org.matahariproject";
-	//	common += ", where:[eq, uuid, [quote, " + string(_uuid) + "]]";
-	//common += ", where:[eq, hostname, [quote, " + _name + "]]";
-	common += "}";
+}
 
-	ac = session->getAgentCount();
-	qb_log(LOG_TRACE, "session has %d agents", ac);
-	for (ai = 0; ai < ac; ai++) {
-		ConsoleEvent ce;
-		Agent a = session->getAgent(ai);
+static void
+host_event_handler(ConsoleEvent &event, void *user_data)
+{
+	Assembly *a = (Assembly*)user_data;
+	const Data& event_data(event.getData(0));
 
-		dont_use = false;
+	if (event_data.getSchemaId().getName() == "heartbeat") {
+		uint32_t seq = event_data.getProperty("sequence");
+		uint32_t tstamp = event_data.getProperty("timestamp");
 
-		qb_log(LOG_TRACE, "looking at agent %s", a.getName().c_str());
-		for (list<string>::iterator it = _dead_agents.begin();
-		     it != _dead_agents.end(); ++it) {
-			if (*it == a.getName()) {
-				dont_use = true;
-				break;
-			}
-		}
-		if (dont_use) {
-			qb_log(LOG_DEBUG, "ignoring dead agent %s",
-			       a.getName().c_str());
-			continue;
-		}
-
-		if (!_mh_host_class_found) {
-			ce = a.query("{class:Host, " + common);
-			for (q = 0; q < ce.getDataCount(); q++) {
-				string hostname = ce.getData(q).getProperty("hostname");
-				qb_log(LOG_TRACE, "found Host class %d of %d hostname %s (looking for %s)",
-				       q, ce.getDataCount(), hostname.c_str(),
-				       _name.c_str());
-				if (hostname == _name) {
-					string agent_name = ce.getAgent().getName();
-					qb_log(LOG_INFO, "choosing agent %s", a.getName().c_str());
-					_mh_host_class_found = true;
-					_mh_host_class = ce.getData(q);
-
-					_dep->map_agents_ass(agent_name, this);
-					break;
-				}
-			}
-		}
-		if (!_mh_serv_class_found && _hb_state == HEARTBEAT_OK) {
-			ce = a.query("{class:Services, " + common);
-			for (q = 0; q < ce.getDataCount(); q++) {
-				string hostname = ce.getData(q).getProperty("hostname");
-				qb_log(LOG_TRACE, "found Servicest class %d of %d hostname %s (looking for %s)",
-				       q, ce.getDataCount(), hostname.c_str(),
-				       _name.c_str());
-				if (hostname == _name) {
-					string agent_name = ce.getAgent().getName();
-					qb_log(LOG_INFO, "choosing agent %s", a.getName().c_str());
-					_mh_serv_class_found = true;
-					_mh_serv_class = ce.getData(q);
-
-					_dep->map_agents_ass(agent_name, this);
-					break;
-				}
-			}
-		}
-		if (!_mh_rsc_class_found && _hb_state == HEARTBEAT_OK) {
-			ce = a.query("{class:Resources, " + common);
-			for (q = 0; q < ce.getDataCount(); q++) {
-				string hostname = ce.getData(q).getProperty("hostname");
-				qb_log(LOG_TRACE, "found Resources class %d of %d hostname %s (looking for %s)",
-				       q, ce.getDataCount(), hostname.c_str(),
-				       _name.c_str());
-				if (hostname == _name) {
-					string agent_name = ce.getAgent().getName();
-					_mh_rsc_class_found = true;
-					_mh_rsc_class = ce.getData(q);
-					qb_log(LOG_TRACE, "found Resources class");
-
-					_dep->map_agents_ass(agent_name, this);
-					break;
-				}
-			}
-		}
-		if (_mh_serv_class_found && _mh_rsc_class_found && _mh_host_class_found) {
-			break;
-		}
+		a->heartbeat_recv(tstamp, seq);
+		a->check_state();
 	}
 }
 
@@ -210,13 +111,7 @@ void
 Assembly::resource_execute(struct pe_operation *op, std::string method,
 			   qpid::types::Variant::Map in_args)
 {
-	uint32_t correlation_id;
-	Agent a = _mh_serv_class.getAgent();
-
-	correlation_id = a.callMethodAsync(method, in_args, _mh_serv_class.getAddr());
-	qb_log(LOG_DEBUG, "callMethodAsync: correlation id = %d", correlation_id);
-	_ops[correlation_id] = op;
-	qb_leave();
+	_mh_serv.method_call_async(method, in_args, op, op->timeout);
 }
 
 void
@@ -397,8 +292,8 @@ Assembly::check_state_offline(void)
 {
 	uint32_t new_state = _state;
 	if (_hb_state == HEARTBEAT_OK &&
-	    _mh_serv_class_found && _mh_host_class_found &&
-	    _mh_rsc_class_found) {
+	    _mh_serv.is_connected() &&
+	    _mh_host.is_connected()) {
 		new_state = STATE_ONLINE;
 	}
 	return new_state;
@@ -407,36 +302,24 @@ Assembly::check_state_offline(void)
 void
 Assembly::state_offline_to_online(void)
 {
+	qb_loop_timer_handle th;
+
 	qb_log(LOG_NOTICE, "Assembly (%s) STATE_ONLINE.",
 	       _name.c_str());
 	_dep->assembly_state_changed(this, "running", "All good");
+
+	mainloop_timer_add(4000, this,
+			   heartbeat_check_tmo, &th);
 }
 
 
 void
 Assembly::state_online_to_offline(void)
 {
-	map<uint32_t, struct pe_operation*>::iterator iter;
-	struct pe_operation *op;
-	Resource *rsc;
+	_mh_serv.disconnect();
+	_mh_host.disconnect();
 
-	_dead_agents.push_back(_mh_serv_class.getAgent().getName());
-	_dead_agents.push_back(_mh_rsc_class.getAgent().getName());
-	_dead_agents.push_back(_mh_host_class.getAgent().getName());
-	// TODO we need a timer -
-	// the same as the qmf agent ageing one to
-	// remove these agents from the _dead_agents list
-	// incase of network down/up (so the agent uuid will
-	// be the same)
-	_mh_serv_class_found = false;
-	_mh_rsc_class_found = false;
-	_mh_host_class_found = false;
-
-	for (iter = _ops.begin(); iter != _ops.end(); iter++) {
-		op = iter->second;
-		rsc = (Resource *)op->resource;
-		rsc->completed(op, OCF_UNKNOWN_ERROR);
-	}
+	_hb_state = Assembly::HEARTBEAT_INIT;
 
 	qb_log(LOG_NOTICE, "Assembly (%s) STATE_OFFLINE.",
 	       _name.c_str());
@@ -485,7 +368,6 @@ Assembly::stop(void)
 }
 
 Assembly::Assembly() :
-	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
 	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(NULL),
 	_name(""), _uuid(""), _state(STATE_OFFLINE)
 {
@@ -508,11 +390,9 @@ Assembly::~Assembly()
 
 Assembly::Assembly(Deployable *dep, std::string& name,
 		   std::string& uuid) :
-	_mh_serv_class_found(false), _mh_rsc_class_found(false), _mh_host_class_found(false),
 	_hb_state(HEARTBEAT_INIT), _refcount(1), _dep(dep),
 	_name(name), _uuid(uuid), _state(STATE_OFFLINE)
 {
-
 	state_table[STATE_OFFLINE] = &Assembly::check_state_offline;
 	state_table[STATE_ONLINE] = &Assembly::check_state_online;
 	state_table[STATE_INIT] = NULL;
@@ -522,8 +402,21 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &Assembly::state_online_to_offline;
 	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
 
-	qb_log(LOG_INFO, "Assembly(%s:%s)", name.c_str(), uuid.c_str());
+	qb_log(LOG_DEBUG, "Assembly(%s:%s)", name.c_str(), uuid.c_str());
+
+	_mh_host.query_set("{class:Host, package:org.matahariproject}");
+	_mh_host.prop_set("hostname", _name);
+	_mh_host.event_handler_set(host_event_handler, this);
+	_mh_host.connection_event_handler_set(connection_event_handler, this);
+	_dep->qmf_object_add(&_mh_host);
+
+	_mh_serv.query_set("{class:Services, package:org.matahariproject}");
+	_mh_serv.prop_set("hostname", _name);
+	_mh_serv.method_response_handler_set(service_method_response);
+	_mh_serv.connection_event_handler_set(connection_event_handler, this);
+	_dep->qmf_object_add(&_mh_serv);
 
 	_last_heartbeat = g_timer_new();
+
 	_refcount++;
 }

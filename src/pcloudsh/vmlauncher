@@ -62,6 +62,18 @@ class VMLauncher(AgentHandler):
             self.session.close()
         self.connection.close()
 
+    def start(self, name, uuid):
+        libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
+        libvirt_doc = libvirt_xml.serialize(None, 1);
+        libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+
+    def stop(self, name, uuid):
+        try:
+            ass = self.libvirt_conn.lookupByName(name)
+            ass.destroy()
+        except:
+            print '*** couldn\'t stop %s (already stopped?)' % name
+
     def method(self, handle, methodName, args, subtypes, addr, userId):
         """
         Handle incoming method calls.
@@ -77,19 +89,16 @@ class VMLauncher(AgentHandler):
             print 'MSG %s %s %s' % (methodName, name, uuid)
             try:
                 if methodName == "start":
-
-                    libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
-                    libvirt_doc = libvirt_xml.serialize(None, 1);
-                    libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
-
+                    self.start(name, uuid)
                     self.session.methodSuccess(handle)
 
                 elif methodName == "stop":
-                    try:
-                        ass = self.libvirt_conn.lookupByName(name)
-                        ass.destroy()
-                    except:
-                        print '*** couldn\'t stop %s (already stopped?)' % name
+                    self.stop(name, uuid)
+                    self.session.methodSuccess(handle)
+
+                elif methodName == "restart":
+                    self.stop(name, uuid)
+                    self.start(name, uuid)
                     self.session.methodSuccess(handle)
 
                 elif methodName == "status":
@@ -123,17 +132,22 @@ class VMLauncher(AgentHandler):
         self.sch_control.addProperty(SchemaProperty("state", SCHEMA_DATA_STRING))
         self.sch_control.addProperty(SchemaProperty("methodCount", SCHEMA_DATA_INT))
 
-        startMethod = SchemaMethod("start", desc="Start Assmebly")
+        startMethod = SchemaMethod("start", desc="Start Assembly")
         startMethod.addArgument(SchemaProperty("name", SCHEMA_DATA_STRING, direction=DIR_IN))
         startMethod.addArgument(SchemaProperty("uuid", SCHEMA_DATA_STRING, direction=DIR_IN))
         self.sch_control.addMethod(startMethod)
 
-        stopMethod = SchemaMethod("stop", desc="Stop Assmebly")
+        stopMethod = SchemaMethod("stop", desc="Stop Assembly")
         stopMethod.addArgument(SchemaProperty("name", SCHEMA_DATA_STRING, direction=DIR_IN))
         stopMethod.addArgument(SchemaProperty("uuid", SCHEMA_DATA_STRING, direction=DIR_IN))
         self.sch_control.addMethod(stopMethod)
 
-        statusMethod = SchemaMethod("status", desc="Assmebly Status")
+        restartMethod = SchemaMethod("restart", desc="Restart Assembly")
+        restartMethod.addArgument(SchemaProperty("name", SCHEMA_DATA_STRING, direction=DIR_IN))
+        restartMethod.addArgument(SchemaProperty("uuid", SCHEMA_DATA_STRING, direction=DIR_IN))
+        self.sch_control.addMethod(restartMethod)
+
+        statusMethod = SchemaMethod("status", desc="Assembly Status")
         statusMethod.addArgument(SchemaProperty("name", SCHEMA_DATA_STRING, direction=DIR_IN))
         statusMethod.addArgument(SchemaProperty("uuid", SCHEMA_DATA_STRING, direction=DIR_IN))
         statusMethod.addArgument(SchemaProperty("status", SCHEMA_DATA_STRING, direction=DIR_OUT))

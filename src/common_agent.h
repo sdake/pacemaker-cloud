@@ -17,9 +17,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
-#ifndef __COMMON_AGENT_H
-#define __COMMON_AGENT_H
+#ifndef COMMON_AGENT_H_DEFINED
+#define COMMON_AGENT_H_DEFINED
 
 #include <string>
 #include <iostream>
@@ -59,4 +58,4 @@ public:
 	void run();
 };
 
-#endif
+#endif /* COMMON_AGENT_H_DEFINED */

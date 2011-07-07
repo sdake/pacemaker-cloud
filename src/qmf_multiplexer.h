@@ -18,36 +18,29 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef DPE_AGENT_H_DEFINED
-#define DPE_AGENT_H_DEFINED
+#ifndef QMF_MULTIPLEXER_H_DEFINED
+#define QMF_MULTIPLEXER_H_DEFINED
 
-#include <qmf/ConsoleSession.h>
-#include <qmf/ConsoleEvent.h>
-#include <qmf/Agent.h>
+#include "qmf_object.h"
 
-#include <qpid/sys/Mutex.h>
-
-#include "org/pacemakercloud/QmfPackage.h"
-#include "common_agent.h"
-
-class Deployable;
-
-class DpeAgent : public CommonAgent
-{
+class QmfMultiplexer {
 private:
-	qmf::Data _dpe;
-	qpid::sys::Mutex map_lock;
-	std::map<std::string, Deployable*> deployments;
-	uint32_t num_deps;
-	uint32_t num_ass;
+	qpid::messaging::Connection *connection;
+	qmf::ConsoleSession *session;
 
-	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
+	std::string _url;
+	std::string _filter;
 
+	std::list<QmfObject*> _objects;
+	std::map<std::string, QmfObject*> _agent_to_obj;
 public:
-	uint32_t dep_load(std::string& name, std::string& uuid);
-	uint32_t dep_unload(std::string& name, std::string& uuid);
+	QmfMultiplexer() {};
+	~QmfMultiplexer() {};
+	void qmf_object_add(QmfObject *qc);
+	void url_set(std::string s) { _url = s; };
+	void filter_set(std::string s) { _filter = s; };
 
-	void setup(void);
-	bool event_dispatch(AgentEvent *event);
+	bool process_events(void);
+	void start(void);
 };
-#endif /* DPE_AGENT_H_DEFINED */
+#endif /* QMF_MULTIPLEXER_H_DEFINED */

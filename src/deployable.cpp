@@ -39,60 +39,20 @@
 
 using namespace std;
 
-bool
-Deployable::process_qmf_events(void)
-{
-	uint32_t rc = 0;
-	ConsoleEvent event;
-	Assembly *a;
-	map<string, Assembly*>::iterator iter;
-
-	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
-		a = iter->second;
-		if (a->state_get() != Assembly::STATE_ONLINE) {
-			a->matahari_discover(session);
-		}
-	}
-	a = NULL;
-	while (session->nextEvent(event, qpid::messaging::Duration::IMMEDIATE)) {
-		a = _agents_ass[event.getAgent().getName()];
-		if (a) {
-			a->process_qmf_events(event);
-		}
-		if (event.getType() == CONSOLE_AGENT_DEL) {
-			_agents_ass.erase(event.getAgent().getName());
-		}
-	}
-	return true;
-}
-
-void
-Deployable::map_agents_ass(string &agent_name, Assembly *a)
-{
-	_agents_ass[agent_name] = a;
-}
-
 static void
-_poll_for_qmf_events(gpointer data)
+my_method_response(QmfAsyncRequest* ar,
+		   qpid::types::Variant::Map out_args,
+		   enum QmfObject::rpc_result rc)
 {
-	Deployable *d = (Deployable *)data;
-	qb_loop_timer_handle timer_handle;
-
-	if (d->process_qmf_events()) {
-		mainloop_timer_add(1000, data,
-				   _poll_for_qmf_events,
-				   &timer_handle);
-	}
+	qb_log(LOG_INFO, "%s result: %d", ar->method.c_str(), rc);
 }
+
 
 Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
 	_status_changed(false), _agent(agent), _file_count(0),
 	_resource_counter(0)
 {
-	qb_loop_timer_handle timer_handle;
-	std::stringstream filter;
-	string url("localhost:49000");
 	uuid_t tmp_id;
 	char tmp_id_s[37];
 
@@ -102,50 +62,19 @@ Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	uuid_unparse(tmp_id, tmp_id_s);
 	_crmd_uuid.insert(0, (char*)tmp_id_s, sizeof(tmp_id_s));
 
+	url_set("localhost:49000");
+	filter_set("[or, [eq, _vendor, [quote, 'matahariproject.org']], [eq, _vendor, [quote, 'pacemakercloud.org']]]");
+
+	_vm_launcher.query_set("{class:Vmlauncher, package:org.pacemakercloud}");
+	_vm_launcher.method_response_handler_set(my_method_response);
+	qmf_object_add(&_vm_launcher);
+
+	start();
 	reload();
-
-	connection = new qpid::messaging::Connection(url, "");
-	connection->open();
-
-	session = new ConsoleSession(*connection, "max-agent-age:1");
-
-	filter << "[and";
-	filter << ", [eq, _vendor, [quote, 'matahariproject.org']]";
-//	filter << ", [eq, _product, [quote, 'service']]";
-//	filter << ", [or";
-//	for (iter = _assemblies.begin(); iter != _assemblies.end(); iter++) {
-//		filter << ", [eq, hostname, [quote, '" << iter->second->name_get() << "']]";
-//	}
-//	filter << "]";
-	filter << "]";
-
-	session->setAgentFilter(filter.str());
-
-	session->open();
-
-	qb_log(LOG_INFO, "session open. Filter is: %s", filter.str().c_str());
-
-	mainloop_timer_add(1000, this,
-			   _poll_for_qmf_events,
-			   &timer_handle);
 }
 
 Deployable::~Deployable()
 {
-	map<string, Assembly*>::iterator kill;
-	map<string, Assembly*>::iterator iter;
-	Assembly *a;
-
-	for (iter = _assemblies.begin(); iter != _assemblies.end(); ) {
-		kill = iter;
-		a = kill->second;
-		iter++;
-		_assemblies.erase(kill);
-		a->stop();
-	}
-	session->close();
-	connection->close();
-
 	/* Shutdown libxml */
 	xmlCleanupParser();
 }
@@ -182,6 +111,7 @@ Deployable::create_assemblies(xmlNode * assemblies)
 {
 	string ass_name;
 	string ass_uuid;
+	string start = "start";
 	xmlNode *cur_node = NULL;
 	xmlNode *child_node = NULL;
 
@@ -192,6 +122,11 @@ Deployable::create_assemblies(xmlNode * assemblies)
 		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
 		ass_uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
 		qb_log(LOG_DEBUG, "node name: %s", ass_name.c_str());
+
+		qpid::types::Variant::Map in_args;
+		in_args["name"] = ass_name;
+		in_args["uuid"] = ass_uuid;
+		_vm_launcher.method_call_async("start", in_args, this, 5000);
 
 		for (child_node = cur_node->children; child_node; child_node = child_node->next) {
 			if (child_node->type != XML_ELEMENT_NODE) {
@@ -424,6 +359,12 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
 	schedule_processing();
+	if (state == "failed") {
+		qpid::types::Variant::Map in_args;
+		in_args["name"] = a->name_get();
+		in_args["uuid"] = a->uuid_get();
+		_vm_launcher.method_call_async("restart", in_args, this, 5000);
+	}
 }
 
 int32_t

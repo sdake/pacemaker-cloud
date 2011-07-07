@@ -18,36 +18,54 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef DPE_AGENT_H_DEFINED
-#define DPE_AGENT_H_DEFINED
+#ifndef QMF_JOB_H_DEFINED
+#define QMF_JOB_H_DEFINED
+
+#include <string>
+#include <glib.h>
 
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
-#include <qmf/Agent.h>
+#include <qmf/Data.h>
 
-#include <qpid/sys/Mutex.h>
+class QmfObject;
 
-#include "org/pacemakercloud/QmfPackage.h"
-#include "common_agent.h"
-
-class Deployable;
-
-class DpeAgent : public CommonAgent
-{
+class QmfAsyncRequest {
 private:
-	qmf::Data _dpe;
-	qpid::sys::Mutex map_lock;
-	std::map<std::string, Deployable*> deployments;
-	uint32_t num_deps;
-	uint32_t num_ass;
-
-	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
-
+	uint32_t ref_count;
 public:
-	uint32_t dep_load(std::string& name, std::string& uuid);
-	uint32_t dep_unload(std::string& name, std::string& uuid);
+	enum job_state {
+		JOB_INIT,
+		JOB_SCHEDULED,
+		JOB_RUNNING,
+		JOB_COMPLETED,
+	};
+	enum job_state state;
+	QmfObject *obj;
+	qpid::types::Variant::Map args;
+	std::string method;
+	void *user_data;
+	uint32_t timeout;
+	GTimer* time_queued;
+	GTimer* time_execed;
 
-	void setup(void);
-	bool event_dispatch(AgentEvent *event);
+	void ref() { ref_count++; };
+	void unref() {
+		ref_count--;
+		if (ref_count == 0) {
+			delete this;
+		}
+	};
+
+	QmfAsyncRequest() : ref_count(1), state(JOB_INIT) {
+		time_execed = g_timer_new();
+		time_queued = g_timer_new();
+	};
+	~QmfAsyncRequest() {
+		g_timer_destroy(time_execed);
+		g_timer_destroy(time_queued);
+	};
+	void log(void);
 };
-#endif /* DPE_AGENT_H_DEFINED */
+
+#endif /* QMF_JOB_H_DEFINED */

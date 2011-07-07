@@ -93,17 +93,7 @@ class Deployable(object):
 
 
     def start(self, deployable_name):
-        if self.libvirt_conn is None:
-            self.libvirt_conn = libvirt.open("qemu:///system")
-
-        assembly_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % deployable_name)
         print ("Starting Deployable %s" % deployable_name);
-        for assembly_data in assembly_list:
-            print (" - Starting Assembly %s" % assembly_data.prop('name'))
-            libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % assembly_data.prop('name'))
-            libvirt_doc = libvirt_xml.serialize(None, 1);
-            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
-
         self.generate_config(deployable_name)
 
         if self.cpe.deployable_start(deployable_name, deployable_name) == 0:
@@ -118,19 +108,6 @@ class Deployable(object):
     def stop(self, deployable_name):
         if self.cpe.deployable_stop(deployable_name, deployable_name) != 0:
             print "deployable_stop FAILED!!"
-
-        if self.libvirt_conn is None:
-            self.libvirt_conn = libvirt.open("qemu:///system")
-        assembly_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % deployable_name)
-        print ("Stopping Deployable %s" % deployable_name);
-        for assembly_data in assembly_list:
-            print (" - Stopping Assembly %s" % assembly_data.prop('name'))
-
-            try:
-                ass = self.libvirt_conn.lookupByName(assembly_data.prop('name'))
-                ass.destroy()
-            except:
-                print '*** couldn\'t stop %s (already stopped?)' % assembly_data.prop('name')
 
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")

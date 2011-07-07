@@ -18,6 +18,8 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef RESOURCE_H_DEFINED
+#define RESOURCE_H_DEFINED
 
 #include <string>
 #include <libxml/parser.h>
@@ -66,3 +68,4 @@ public:
 	void failed(struct pe_operation *op);
 	xmlNode * insert_status(xmlNode *rscs);
 };
+#endif  /* RESOURCE_H_DEFINED */
