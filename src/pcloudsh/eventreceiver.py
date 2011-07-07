@@ -27,21 +27,3 @@ class EventReceiver(qmf2.ConsoleHandler):
 
     def eventRaised(self, agent, data, timestamp, severity):
         print "Event: %r" % (data.getProperties())
-
-class EventRunner(threading.Thread):
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-        self.connection = cqpid.Connection('localhost:49000', '')
-        self.connection.open()
-
-        self.session = qmf2.ConsoleSession(self.connection)
-        self.session.open()
-        self.session.setAgentFilter("[eq, _vendor, [quote, 'pacemakercloud.org']]")
-
-        self.receiver = EventReceiver(self.session)
-
-    def run(self):
-        self.receiver.run()
-

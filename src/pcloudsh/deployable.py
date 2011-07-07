@@ -24,8 +24,8 @@ import random
 import logging
 import libxml2
 import exceptions
-import cpe
-import assembly
+from pcloudsh import cpe
+from pcloudsh import assembly
 
 class Deployable(object):
 

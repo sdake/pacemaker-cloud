@@ -25,10 +25,10 @@ import time
 import random
 import logging
 import cmd
-import pcloudsh.jeos
-import pcloudsh.assembly
-import pcloudsh.deployable
-import pcloudsh.event_receiver
+from pcloudsh import jeos
+from pcloudsh import assembly
+from pcloudsh import deployable
+from pcloudsh import eventrunner
 
 class pcloudsh(cmd.Cmd, object):
 
@@ -322,7 +322,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
     else:
-        er = event_receiver.EventRunner()
+        er = eventrunner.EventRunner()
         er.setDaemon(True)
         er.start()
         pcloudsh().cmdloop()

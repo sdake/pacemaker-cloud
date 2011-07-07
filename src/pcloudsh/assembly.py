@@ -29,8 +29,8 @@ import shutil
 import uuid
 import guestfs
 import fileinput
-import ifconfig
-import resource
+from pcloudsh import ifconfig
+from pcloudsh import resource
 
 class Assembly(object):
 

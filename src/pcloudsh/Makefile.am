@@ -22,11 +22,11 @@ MAINTAINERCLEANFILES	= Makefile.in
 rscsdir = $(datadir)/pacemaker-cloud/resource_templates
 rscs_DATA = resource_templates/httpd.xml
 
-bin_SCRIPTS = pcloudsh.py vmlauncher.py
+bin_SCRIPTS = pcloudsh vmlauncher
 
 pcloudshdir = $(pythondir)/pcloudsh
 pcloudsh_PYTHON = assembly.py deployable.py ifconfig.py \
-	cpe.py event_receiver.py jeos.py resource.py __init__.py
+	cpe.py eventreceiver.py eventrunner.py jeos.py resource.py __init__.py
 
 jeosdir = $(localstatedir)/lib/pacemaker-cloud/jeos/
 jeos_DATA = F15-x86_64-jeos.tdl F15-x86_64-jeos-assembly.tdl rhel61-x86_64-jeos.tdl rhel61-x86_64-jeos-assembly.tdl 
