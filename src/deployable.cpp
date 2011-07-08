@@ -22,15 +22,13 @@
 
 #include <qb/qblog.h>
 #include <uuid/uuid.h>
-
 #include <libxml/parser.h>
 #include <libxslt/transform.h>
-
-#include "pcmk_pe.h"
 
 #include <string>
 #include <map>
 
+#include "pcmk_pe.h"
 #include "mainloop.h"
 #include "config_loader.h"
 #include "deployable.h"
@@ -301,7 +299,7 @@ Deployable::process(void)
 
 #if 0
 	stringstream nf;
-	nf << "pe-out-" << _file_count <<  ".xml";
+	nf << "/var/lib/pacemaker-cloud/pe-input-" << _file_count <<  ".xml";
 	_file_count++;
 
 	qb_log(LOG_INFO, "processing new state with %s", nf.str().c_str());

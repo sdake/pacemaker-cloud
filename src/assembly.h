@@ -24,6 +24,7 @@
 #include "qmf_multiplexer.h"
 
 class Deployable;
+class Resource;
 
 class Assembly {
 private:
@@ -52,43 +53,40 @@ private:
 	std::string _uuid;
 	int _refcount;
 
-	std::map<uint32_t, struct pe_operation*> _ops;
+	std::map<std::string, struct operation_history*> op_history;
 
 	uint32_t check_state_online(void);
 	uint32_t check_state_offline(void);
-
 	void state_offline_to_online(void);
 	void state_online_to_offline(void);
-
 	void deref(void);
-	void insert_op_history(xmlNode *rsc, struct operation_history *oh);
 
 public:
 	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
 	void check_state(void);
+	bool process_qmf_events(qmf::ConsoleEvent &event);
 
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
 	static const uint32_t STATE_ONLINE = 2;
-	std::map<std::string, struct operation_history*> op_history;
 
 	Assembly();
 	Assembly(Deployable *dep, std::string& name,
 		 std::string& uuid);
 	~Assembly();
 
-	void matahari_discover(qmf::ConsoleSession *session);
 	void stop(void);
 	uint32_t state_get(void) { return _state; };
 	const std::string& name_get(void) const { return _name; }
 	const std::string& uuid_get(void) const { return _uuid; }
 
+	void resource_execute(struct pe_operation *op, std::string method, qpid::types::Variant::Map args);
 	void insert_status(xmlNode *status);
 
-	void resource_execute(struct pe_operation *op, std::string method, qpid::types::Variant::Map args);
-	struct pe_operation * op_remove_by_correlator(uint32_t correlator);
-
-	bool process_qmf_events(qmf::ConsoleEvent &event);
-
+	void op_history_del_by_resource(Resource* r);
+	void op_history_save(Resource* r, struct pe_operation *op,
+			     enum ocf_exitcode ec);
+	void op_history_clear(void);
+	void op_history_insert(xmlNode *rsc, struct operation_history *oh);
 };
 #endif /* ASSEMBLY_H_DEFINED */

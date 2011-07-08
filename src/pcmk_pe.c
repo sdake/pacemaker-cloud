@@ -216,8 +216,15 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 		g_hash_table_foreach(op->params, dup_attr, pe_op->params);
 	}
 
-	pe_op->timeout = op->timeout;
 	pe_op->interval = op->interval;
+	pe_op->timeout = op->timeout;
+	if (pe_op->timeout == 0) {
+		if (pe_op->interval == 0) {
+			pe_op->timeout = PE_DEFAULT_TIMEOUT;
+		} else {
+			pe_op->timeout = pe_op->interval / 2;
+		}
+	}
 	pe_op->action = action;
 	pe_op->graph = graph;
 	pe_op->action_id = action->id;

@@ -30,6 +30,7 @@ extern "C" {
 #include <libxml/parser.h>
 
 #define PE_CRM_VERSION "3.0.5"
+#define PE_DEFAULT_TIMEOUT 30000
 
 enum ocf_exitcode {
 	OCF_PENDING = -1,

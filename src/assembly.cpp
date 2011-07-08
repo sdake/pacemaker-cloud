@@ -32,6 +32,8 @@
 #include "resource.h"
 #include "deployable.h"
 
+static uint32_t call_order = 0;
+
 using namespace std;
 using namespace qmf;
 
@@ -182,7 +184,7 @@ xml_new_time_prop(xmlNode *n, const char *name, time_t val)
  *  queue-time="0"/>
  */
 void
-Assembly::insert_op_history(xmlNode *rsc, struct operation_history *oh)
+Assembly::op_history_insert(xmlNode *rsc, struct operation_history *oh)
 {
 	xmlNode *op;
 	char key[255];
@@ -215,6 +217,70 @@ Assembly::insert_op_history(xmlNode *rsc, struct operation_history *oh)
 }
 
 void
+Assembly::op_history_save(Resource* r, struct pe_operation *op,
+			  enum ocf_exitcode ec)
+{
+	struct operation_history *oh;
+	stringstream id;
+
+	id << op->rname << "_" << op->method << "_" << op->interval;
+
+	oh = op_history[id.str()];
+	if (oh == NULL) {
+		oh = (struct operation_history *)calloc(1, sizeof(struct operation_history));
+		oh->resource = r;
+		oh->rsc_id = new string(id.str());
+		oh->operation = new string(op->method);
+		oh->target_outcome = op->target_outcome;
+		oh->interval = op->interval;
+		oh->rc = OCF_PENDING;
+		oh->op_digest = op->op_digest;
+
+		op_history[id.str()] = oh;
+	} else if (strcmp(oh->op_digest, op->op_digest) != 0) {
+		free(oh->op_digest);
+		oh->op_digest = op->op_digest;
+	}
+	if (oh->rc != ec) {
+		oh->last_rc_change = time(NULL);
+		oh->rc = ec;
+	}
+
+	oh->last_run = time(NULL);
+	oh->call_id = call_order++;
+	oh->graph_id = op->graph_id;
+	oh->action_id = op->action_id;
+}
+
+void
+Assembly::op_history_del_by_resource(Resource* r)
+{
+	for (map<string, struct operation_history*>::iterator iter = op_history.begin();
+	     iter != op_history.end(); iter++) {
+		struct operation_history *oh = iter->second;
+		if (r == oh->resource) {
+			op_history.erase(iter);
+			delete oh->rsc_id;
+			delete oh->operation;
+			free(oh);
+		}
+	}
+}
+
+void
+Assembly::op_history_clear(void)
+{
+	for (map<string, struct operation_history*>::iterator iter = op_history.begin();
+	     iter != op_history.end(); iter++) {
+		struct operation_history *oh = iter->second;
+		op_history.erase(iter);
+		delete oh->rsc_id;
+		delete oh->operation;
+		free(oh);
+	}
+}
+
+void
 Assembly::insert_status(xmlNode *status)
 {
 	xmlNode *node_state = xmlNewChild(status, NULL, BAD_CAST "node_state", NULL);
@@ -237,16 +303,16 @@ Assembly::insert_status(xmlNode *status)
 	if (op_history.size() > 0) {
 		xmlNode *lrm = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
 		xmlNode *rscs = xmlNewChild(lrm, NULL, BAD_CAST "lrm_resources", NULL);
+		xmlNode *rsc = NULL;
 
 		for (map<string, struct operation_history*>::iterator iter = op_history.begin();
 		     iter != op_history.end(); iter++) {
 			struct operation_history *oh = iter->second;
-			xmlNode *rsc = NULL;
-			if (r != oh->resource) {
+			if (r != oh->resource || rsc == NULL) {
 				r = (Resource*)oh->resource;
 				rsc = r->insert_status(rscs);
 			}
-			insert_op_history(rsc, oh);
+			op_history_insert(rsc, oh);
 		}
 	}
 
@@ -312,14 +378,19 @@ Assembly::state_offline_to_online(void)
 			   heartbeat_check_tmo, &th);
 }
 
-
 void
 Assembly::state_online_to_offline(void)
 {
 	_mh_serv.disconnect();
 	_mh_host.disconnect();
 
+	/* re-init the heartbeat state
+	 */
 	_hb_state = Assembly::HEARTBEAT_INIT;
+
+	/* kill the resource history
+	 */
+	op_history_clear();
 
 	qb_log(LOG_NOTICE, "Assembly (%s) STATE_OFFLINE.",
 	       _name.c_str());

@@ -49,8 +49,6 @@ private:
 	std::string _provider;
 	Deployable *_dep;
 
-	void save(struct pe_operation *op, enum ocf_exitcode ec);
-
 public:
 	qb_loop_timer_handle _monitor_timer;
 	struct pe_operation *_monitor_op;
