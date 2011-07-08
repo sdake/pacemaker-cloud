@@ -23,17 +23,11 @@ In priority order
 --- ---   ------------------------------------------------------------------
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
-a - VML - start of vm on assembly_start
-a - VML - stop of vm on assembly_stop
 s - PKG - sort out directory structure of installed software
 s - PKG - init script (qpidd, cped, vmlauncher starting)
 s - PKG - refine spec.in
 s - ALL - support for F14/F16
-a - DPE - have DPE send vm deployable start event
-a - DPE - have DPE send vm deployable stop event
-a - DPE - restart deployable when deployable failure detected
 a - DPE - ocf support in DPE
-a - ALL - improve QMF code handling and classes
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
 u - CPE - at startup use config_list() to get initial deployables
@@ -42,7 +36,6 @@ u - DPE - add support for failure escalations
 u - TST - Convert test cases to use the shell
 u - SHL - show assembly online/offline
 u - SHL - show resource status
-u - SHL - launching of assembly via vm launcher so we can do stop/start of vm
 u - SHL -  add setup.py to install python scripts
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_get(deployment_uuid)
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_list()
