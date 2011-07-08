@@ -303,12 +303,12 @@ Assembly::insert_status(xmlNode *status)
 	if (op_history.size() > 0) {
 		xmlNode *lrm = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
 		xmlNode *rscs = xmlNewChild(lrm, NULL, BAD_CAST "lrm_resources", NULL);
+		xmlNode *rsc = NULL;
 
 		for (map<string, struct operation_history*>::iterator iter = op_history.begin();
 		     iter != op_history.end(); iter++) {
 			struct operation_history *oh = iter->second;
-			xmlNode *rsc = NULL;
-			if (r != oh->resource) {
+			if (r != oh->resource || rsc == NULL) {
 				r = (Resource*)oh->resource;
 				rsc = r->insert_status(rscs);
 			}
