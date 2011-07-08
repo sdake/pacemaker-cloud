@@ -64,12 +64,6 @@ if test "x${ac_cv_header_rpc_netdb_h}" != "xyes" ; then
 	touch src/rpc/netdb.h
 fi
 
-AC_ARG_WITH([systemd],
-	    [AS_HELP_STRING([--with-systemd],
-			    [compile systemd support])],
-	    [AC_DEFINE([WITH_SYSTEMD], 1, [with systemd])]
-	    [])
-
 fail=0
 
   AC_CHECK_HEADER([pacemaker/crm_config.h],,

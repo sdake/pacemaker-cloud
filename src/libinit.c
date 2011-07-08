@@ -21,32 +21,34 @@
 #include "config.h"
 
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <unistd.h>
 #include <errno.h>
-
 #include <qb/qblog.h>
-
 #include "init-dbus.h"
 
-#ifdef WITH_SYSTEMD
-#define START_STR "StartUnit"
-#define STOP_STR "StopUnit"
-#else
-#define START_STR "Start"
-#define STOP_STR "Stop"
-#endif
 #define SERVICE_PATH_SIZE 512
 
 static DBusConnection *connection;
+static bool init_use_systemd;
 
 int
 dbus_init(void)
 {
 	DBusError error;
+	char link_name[PATH_MAX];
+	ssize_t res;
+
+	init_use_systemd = false;
+	res = readlink("/sbin/init", link_name, sizeof(link_name));
+	if (res != -1 && (strstr(link_name, "systemd") != NULL)) {
+		init_use_systemd = true;
+	}
 
 	/* Get a connection to the session bus */
 	dbus_error_init(&error);
@@ -70,11 +72,10 @@ dbus_fini(void)
 
 }
 
-#ifdef WITH_SYSTEMD
 static int
-_init_job(const char *method,
-	  const char *name,
-	  const char *instance)
+_systemd_init_job(const char *method,
+		  const char *name,
+		  const char *instance)
 {
 	int32_t rc = 0;
 	DBusMessage *m = NULL;
@@ -137,12 +138,10 @@ finish:
 	return rc;
 }
 
-#else
-
 static int
-_init_job(const char* method,
-	  const char* service,
-	  const char* instance)
+_upstart_init_job(const char* method,
+		  const char* service,
+		  const char* instance)
 {
 	int32_t         rc = 0;
 	DBusMessage    *m = NULL;
@@ -241,14 +240,17 @@ finish:
 	}
 	return rc;
 }
-#endif /* ! WITH_SYSTEMD */
 
 int
 init_job_start(const char* service, const char* instance)
 {
 	assert(service);
 	assert(instance);
-	return _init_job(START_STR, service, instance);
+	if (init_use_systemd) {
+		return _systemd_init_job("StartUnit", service, instance);
+	} else {
+		return _upstart_init_job("Start", service, instance);
+	}
 }
 
 int
@@ -256,6 +258,10 @@ init_job_stop(const char * service, const char * instance)
 {
 	assert(service);
 	assert(instance);
-	return _init_job(STOP_STR, service, instance);
+	if (init_use_systemd) {
+		return _systemd_init_job("StopUnit", service, instance);
+	} else {
+		return _upstart_init_job("Stop", service, instance);
+	}
 }
 
