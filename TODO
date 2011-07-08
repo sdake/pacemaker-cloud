@@ -26,7 +26,6 @@ WHO CMP   Description
 s - PKG - sort out directory structure of installed software
 s - PKG - init script (qpidd, cped, vmlauncher starting)
 s - PKG - refine spec.in
-s - ALL - support for F14/F16
 a - DPE - ocf support in DPE
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
