@@ -136,11 +136,7 @@ Resource::__execute(struct pe_operation *op)
 	if (strcmp(op->method, "monitor") == 0) {
 		in_args["interval"] = 0;
 	}
-	if (op->timeout < 20000) {
-		in_args["timeout"] = 20000;
-	} else {
-		in_args["timeout"] = op->timeout;
-	}
+	in_args["timeout"] = op->timeout;
 
 	if (strcmp(op->rclass, "lsb") == 0) {
 		if (strcmp(op->method, "monitor") == 0) {
