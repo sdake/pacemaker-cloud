@@ -29,9 +29,9 @@ pcloudsh_PYTHON = assembly.py deployable.py ifconfig.py \
 	cpe.py eventreceiver.py eventrunner.py jeos.py resource.py __init__.py
 
 jeosdir = $(localstatedir)/lib/pacemaker-cloud/jeos/
-jeos_DATA = F15-x86_64-jeos.tdl F15-x86_64-jeos-assembly.tdl rhel61-x86_64-jeos.tdl rhel61-x86_64-jeos-assembly.tdl 
+jeos_DATA = F14-x86_64-jeos.tdl F14-x86_64-jeos-assembly.tdl F15-x86_64-jeos.tdl F15-x86_64-jeos-assembly.tdl rhel61-x86_64-jeos.tdl rhel61-x86_64-jeos-assembly.tdl 
 
 assydir = $(localstatedir)/lib/pacemaker-cloud/assemblies
-assy_DATA = assy1.tdl
+assy_DATA = assy1.tdl assy1-F14.tdl
 
 EXTRA_DIST = $(rscs_DATA) $(jeos_DATA) $(assy_DATA) $(bin_SCRIPTS) $(pcloudsh_PYTHON)

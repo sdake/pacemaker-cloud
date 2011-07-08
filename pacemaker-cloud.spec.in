@@ -51,6 +51,9 @@ tools, and man pages.
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/assemblies
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/jeos
 %{_localstatedir}/lib/pacemaker-cloud/assemblies/assy1.tdl
+%{_localstatedir}/lib/pacemaker-cloud/assemblies/assy1-F14.tdl
+%{_localstatedir}/lib/pacemaker-cloud/jeos/F14-x86_64-jeos-assembly.tdl
+%{_localstatedir}/lib/pacemaker-cloud/jeos/F14-x86_64-jeos.tdl
 %{_localstatedir}/lib/pacemaker-cloud/jeos/F15-x86_64-jeos-assembly.tdl
 %{_localstatedir}/lib/pacemaker-cloud/jeos/F15-x86_64-jeos.tdl
 %{_localstatedir}/lib/pacemaker-cloud/jeos/rhel61-x86_64-jeos-assembly.tdl

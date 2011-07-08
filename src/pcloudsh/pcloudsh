@@ -168,7 +168,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_assembly_create(self, s):
         """
-  assembly_create <assembly_name> <F15|rhel61> <x86_64>'
+  assembly_create <assembly_name> <F14|F15|rhel61> <x86_64>'
 
   SYNOPSIS: Create an assembly
 
@@ -180,9 +180,9 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         if not len(options) == 3:
             self.do_help("assembly_create");
-        elif not options[1] == 'F15' and not options[1] == 'rhel61':
+        elif not options[1] == 'F14' and not options[1] == 'F15' and not options[1] == 'rhel61':
             self.do_help("assembly_create");
-            print 'supported platforms: F15, rhel61'
+            print 'supported platforms: F14, F15, rhel61'
         elif not options[2] == 'x86_64':
             self.do_help("assembly_create");
         else:
@@ -224,7 +224,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_jeos_create(self, s):
         """
-  jeos_create <F15|rhel61> <x86_64>'
+  jeos_create <F14|F15|rhel61> <x86_64>'
 
   SYNOPSIS: Creates a JEOS image
 
@@ -237,7 +237,7 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         if not len(options) == 2:
             self.do_help("jeos_create");
-        elif not options[0] == 'F15' and not options[0] == 'rhel61':
+        elif not options[0] == 'F14' and not options[0] == 'F15' and not options[0] == 'rhel61':
             self.do_help("jeos_create");
         elif not options[1] == 'x86_64':
             self.do_help("jeos_create");
