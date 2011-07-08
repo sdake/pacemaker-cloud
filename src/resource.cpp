@@ -32,8 +32,6 @@
 #include "assembly.h"
 #include "deployable.h"
 
-static uint32_t call_order = 0;
-
 using namespace std;
 using namespace qmf;
 
@@ -180,47 +178,6 @@ Resource::insert_status(xmlNode *rscs)
 }
 
 void
-Resource::save(struct pe_operation *op, enum ocf_exitcode ec)
-{
-	struct operation_history *oh;
-	stringstream id;
-	string node_uuid = op->node_uuid;
-	Assembly* a = _dep->assembly_get(node_uuid);
-
-	if (strstr(op->rname, op->hostname) == NULL) {
-		return;
-	}
-
-	id << op->rname << "_" << op->method << "_" << op->interval;
-
-	oh = a->op_history[id.str()];
-	if (oh == NULL) {
-		oh = (struct operation_history *)calloc(1, sizeof(struct operation_history));
-		oh->resource = this;
-		oh->rsc_id = new string(id.str());
-		oh->operation = new string(op->method);
-		oh->target_outcome = op->target_outcome;
-		oh->interval = op->interval;
-		oh->rc = OCF_PENDING;
-		oh->op_digest = op->op_digest;
-
-		a->op_history[id.str()] = oh;
-	} else if (strcmp(oh->op_digest, op->op_digest) != 0) {
-		free(oh->op_digest);
-		oh->op_digest = op->op_digest;
-	}
-	if (oh->rc != ec) {
-		oh->last_rc_change = time(NULL);
-		oh->rc = ec;
-	}
-
-	oh->last_run = time(NULL);
-	oh->call_id = call_order++;
-	oh->graph_id = op->graph_id;
-	oh->action_id = op->action_id;
-}
-
-void
 Resource::delete_op_history(struct pe_operation *op)
 {
 	string node_uuid = op->node_uuid;
@@ -228,13 +185,8 @@ Resource::delete_op_history(struct pe_operation *op)
 
 	/* delete the op history
 	 */
-	for (map<string, struct operation_history*>::iterator iter = a->op_history.begin();
-	     iter != a->op_history.end(); iter++) {
-		struct operation_history *oh = iter->second;
-		if (this == oh->resource) {
-			a->op_history.erase(iter);
-		}
-	}
+	a->op_history_del_by_resource(this);
+
 	/* stop the recurring monitor.
 	 */
 	if (mainloop_timer_is_running(_monitor_timer)) {
@@ -268,7 +220,9 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 		return;
 	}
 
-	save(op, ec);
+	if (strstr(op->rname, op->hostname) != NULL) {
+		ass->op_history_save(this, op, ec);
+	}
 
 	if (ec != op->target_outcome) {
 		_dep->schedule_processing();
