@@ -17,6 +17,7 @@ DPE = Deployable Policy Engine bnary
 PSH = Pacemaker Cloud Shell
 DEP = A dependency needing work
 PKG = Packaging 
+MAN = Manual Pages
 
 In priority order
 
@@ -24,8 +25,14 @@ In priority order
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
 s - PKG - sort out directory structure of installed software
+s - PKG - systemd boot files
 s - PKG - init script (qpidd, cped, vmlauncher starting)
 s - PKG - refine spec.in
+a - VML - daemonize vmlauncher on startup
+a - CPE - daemonize cpe on startup
+a - PSH - add input checking into pcloudsh to prevent bad input
+s - MAN - write a man page for pcloudsh
+s - MAN - write an overview man page
 a - DPE - ocf support in DPE
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
