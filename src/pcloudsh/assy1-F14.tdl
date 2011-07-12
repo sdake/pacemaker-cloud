@@ -1,15 +1,15 @@
 <template>
-  <name>rhel61-jeos</name>
+  <name>f14-x86_64-jeos</name>
   <os>
-    <name>RHEL-6</name>
-    <version>0</version>
+    <name>Fedora</name>
+    <version>14</version>
     <arch>x86_64</arch>
     <install type='iso'>
-      <iso>file:/var/lib/libvirt/images/RHEL6.1-20110510.1-Server-x86_64-DVD1.iso</iso>
+      <iso>file:/var/lib/libvirt/images/Fedora-14-x86_64-DVD.iso</iso>
     </install>
     <rootpw>password</rootpw>
   </os>
-  <description>RHEL 6.1 (Santiago) Assembly1</description>
+  <description>Fedora 14</description>
 
   <packages>
     <package name="httpd">

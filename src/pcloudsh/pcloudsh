@@ -168,7 +168,7 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 2:
             self.do_help("assembly_clone")
         else:
-            self.a.clone(options[1], options[0], "rhel61-x86_64")
+            self.a.clone(options[0], options[1])
 
     def do_assembly_create(self, s):
         """

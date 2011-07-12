@@ -34,40 +34,46 @@ from pcloudsh import resource
 
 class Assembly(object):
 
-    def __init__(self, factory):
+    def __init__(self, factory, name):
         self.factory = factory
-        self.name = ''
-        self.uuid = ''
-        self.disk = ''
-        self.xml_node = None
-        self.rf = None
-        self.gfs = None
+        self.xml_node = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
+	if (len (self.xml_node)):
+            self.name = self.xml_node[0].prop ("name")
+            self.jeos_name = self.xml_node[0].prop ("jeos_name")
+            self.image = self.xml_node[0].prop ("image")
+            self.uuid = self.xml_node[0].prop ("uuid")
+            print "ZZZZZZZ uuid %s" % self.uuid
+            self.rf = None
+            self.gfs = None
+        else:
+            self.factory = factory
+            self.name = name
+            self.image = '/var/lib/libvirt/images/%s.qcow2' % self.name
+            self.uuid = ''
+            self.xml_node = None
+            self.rf = None
+            self.gfs = None
 
     def resources_get(self):
         if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node)
+            self.rf = resource.ResourceFactory(self.xml_node[0])
 
         return self.rf.all_get()
-
-    def load_from_xml(self, xml):
-        self.xml_node = xml
-
-        self.name_set(xml.prop('name'))
-        self.uuid = xml.prop('uuid')
-        if not os.access(self.disk, os.R_OK):
-            print 'warning: assembly %s does not have a disk(%s).' % (self.name, self.disk)
-        self.rf = resource.ResourceFactory(xml)
 
     def save(self):
         if self.xml_node is None:
             ass = self.factory.root_get().newChild(None, "assembly", None)
             ass.newProp("name", self.name)
             ass.newProp("uuid", self.uuid)
+            ass.newProp("jeos_name", self.jeos_name)
+            ass.newProp("image", self.image)
             ass.newChild(None, "resources", None)
             self.xml_node = ass
         else:
-            self.xml_node.setProp('name', self.name)
-            self.xml_node.setProp('uuid', self.uuid)
+            self.xml_node[0].setProp('name', self.name)
+            self.xml_node[0].setProp('uuid', self.uuid)
+            self.xml_node[0].setProp('jeos_name', self.jeos_name)
+            self.xml_node[0].setProp('image', self.image)
 
         self.factory.save()
 
@@ -77,12 +83,15 @@ class Assembly(object):
     def name_get(self):
         return self.name
 
+    def name_jeos_get(self):
+        return self.jeos_name
+
     def uuid_get(self):
         return self.uuid
 
     def name_set(self, name):
         self.name = name
-        self.disk = '/var/lib/libvirt/images/%s.qcow2' % self.name
+        self.image = '/var/lib/libvirt/images/%s.qcow2' % self.name
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.uuid)
@@ -135,7 +144,7 @@ class Assembly(object):
             return
 
         self.gfs = guestfs.GuestFS()
-        self.gfs.add_drive_opts(self.disk, format='qcow2', readonly=0)
+        self.gfs.add_drive_opts(self.image, format='qcow2', readonly=0)
         self.gfs.launch()
         roots = self.gfs.inspect_os()
         for root in roots:
@@ -163,22 +172,21 @@ class Assembly(object):
         self.gfs = None
 
 
-    def clone_from(self, source, source_jeos):
-        if os.access(self.disk, os.R_OK):
-            print '*** Assembly %s already exists, delete first.' % (self.disk)
+    def clone_from(self, source):
+        if os.access(self.image, os.R_OK):
+            print '*** Assembly %s already exists, delete first.' % (self.image)
             return -1
 
-        print "source = %s.xml" % source
-        self.jeos_doc = libxml2.parseFile("/var/lib/pacemaker-cloud/jeos/%s.xml" % source_jeos)
+        print "source file is %s-jeos.xml" % source.jeos_name
+        self.jeos_doc = libxml2.parseFile("/var/lib/pacemaker-cloud/jeos/%s-jeos.xml" % source.jeos_name);
 
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
-        jeos_disk_name = '/var/lib/libvirt/images/%s.qcow2' % source
-        print 'Copying %s to %s' % (jeos_disk_name, self.disk)
-        shutil.copy2(jeos_disk_name, self.disk)
+        print 'Copying %s to %s' % (source.image, self.image)
+        shutil.copy2(source.image, self.image)
         source_xml = self.jeos_doc.xpathEval('/domain/name')
         source_xml[0].setContent(self.name)
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
-        source_xml[0].setProp('file', self.disk)
+        source_xml[0].setProp('file', self.image)
         mac = [0x52, 0x54, 0x00, random.randint(0x00, 0xff),
                random.randint(0x00, 0xff), random.randint(0x00, 0xff)]
         macaddr = ':'.join(map(lambda x:"%02x" % x, mac))
@@ -197,7 +205,10 @@ class Assembly(object):
         self.guest_unmount()
 
         self.jeos_doc.saveFormatFile("/var/lib/pacemaker-cloud/assemblies/%s.xml" % self.name, format=1)
-        os.system("oz-customize -d3 /var/lib/pacemaker-cloud/jeos/%s-assembly.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (source_jeos, self.name))
+        print "jeos assembly %s-assembly.tdl" % source.jeos_name
+        os.system("oz-customize -d3 /var/lib/pacemaker-cloud/jeos/%s-jeos-assembly.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (source.jeos_name, self.name))
+	self.jeos_name = source.jeos_name
+        self.factory.add(self)
         self.save()
         return 0
 
@@ -206,7 +217,7 @@ class Assembly(object):
         resource_add <resource name> <resource template>
         '''
         if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node)
+            self.rf = resource.ResourceFactory(self.xml_node[0])
 
         if self.rf.exists(rsc_name):
             print '*** Resource %s already in Assembly %s' % (rsc_name, self.name)
@@ -257,30 +268,33 @@ class AssemblyFactory(object):
         for assembly_data in assembly_list:
             n = assembly_data.prop('name')
             if n not in self.all:
-                self.all[n] = Assembly(self)
-                self.all[n].load_from_xml(assembly_data)
+                self.all[n] = Assembly(self, n)
 
     def root_get(self):
         return self.root_node
 
-    def clone(self, name, source, source_jeos):
-        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source_jeos, os.R_OK):
-            print '*** Please create the \"%s\" jeos first' % source_jeos
+    def clone(self, source, dest):
+        source_assy = self.get(source)
+        dest_assy = self.get(dest)
+	if source_assy.uuid == '':
+            print '*** The source assembly does not exist in the system \"%s\"' % source
             return
-        a = self.get(name)
-        a.clone_from(source, "%s-jeos" % source_jeos)
+        dest_assy.clone_from(source_assy)
 
     def create(self, name, source):
+        dest_assy = self.get(name)
         if not os.access('/var/lib/pacemaker-cloud/assemblies/%s.tdl' % name, os.R_OK):
             print '*** Please provide /var/lib/pacemaker-cloud/assemblies/%s.tdl to customize your assembly' % name
             return
-        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source, os.R_OK):
+
+	jeos_source = self.get("%s-jeos" % source);
+	jeos_source.jeos_name = source
+        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % jeos_source.jeos_name, os.R_OK):
             print '*** Please create the \"%s\" jeos first' % source
             return
 
-        a = self.get(name)
-        if a.clone_from("%s-jeos" % source, "%s-jeos" % source) == 0:
-            os.system ("oz-customize -d3 /var/lib/pacemaker-cloud/assemblies/%s.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (name, name))
+	if dest_assy.clone_from(jeos_source) == 0:
+            os.system ("oz-customize -d3 /var/lib/pacemaker-cloud/jeos/%s-jeos.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (jeos_source.jeos_name, dest_assy.name))
 
     def exists(self, name):
         if name in self.all:
@@ -292,10 +306,7 @@ class AssemblyFactory(object):
         if name in self.all:
             return self.all[name]
 
-        a = Assembly(self)
-        a.name_set(name)
-        self.all[name] = a
-        a.save()
+        a = Assembly(self, name)
         return a
 
     def delete(self, name):
@@ -303,6 +314,10 @@ class AssemblyFactory(object):
         root_node = assembly_path[0]
         root_node.unlinkNode()
         self.save()
+
+    def add(self, assy):
+        if assy.name not in self.all:
+            self.all[assy.name] = assy
 
     def save(self):
         self.doc.saveFormatFile(self.xml_file, format=1)
