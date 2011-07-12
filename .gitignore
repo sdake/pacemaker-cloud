@@ -15,3 +15,4 @@ install-sh
 missing
 stamp-h1
 *.pyc
+py-compile
