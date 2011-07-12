@@ -137,7 +137,7 @@ class Deployable(object):
             if self.cpe.wait_for_dpe_agent():
                 self.cpe.deployable_load(deployable_name, deployable_name)
             else:
-                print "*** given up waiting for dpe to start"
+                print "*** Given up waiting for dped to start"
         else:
             print "deployable_start FAILED!!"
 

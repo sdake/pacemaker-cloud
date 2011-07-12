@@ -28,8 +28,6 @@ s - PKG - sort out directory structure of installed software
 s - PKG - systemd boot files
 s - PKG - init script (qpidd, cped, vmlauncher starting)
 s - PKG - refine spec.in
-a - CPE - daemonize cpe on startup
-a - PSH - add input checking into pcloudsh to prevent bad input
 s - MAN - write a man page for pcloudsh
 s - MAN - write an overview man page
 a - DPE - ocf support in DPE

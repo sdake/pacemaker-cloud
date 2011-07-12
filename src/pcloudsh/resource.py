@@ -83,6 +83,10 @@ class ResourceFactory(object):
     def root_get(self):
         return self.root_node
 
+    def template_exists(self, template):
+            tn = '/usr/share/pacemaker-cloud/resource_templates/%s.xml' % (template)
+            return os.access(tn, os.R_OK)
+
     def exists(self, name):
         if name in self.all:
             return True

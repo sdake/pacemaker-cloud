@@ -165,7 +165,7 @@ class Assembly(object):
 
     def clone_from(self, source, source_jeos):
         if os.access(self.disk, os.R_OK):
-            print '*** assembly %s already exists, delete first.' % (self.disk)
+            print '*** Assembly %s already exists, delete first.' % (self.disk)
             return -1
 
         print "source = %s.xml" % source
@@ -203,11 +203,17 @@ class Assembly(object):
 
     def resource_add(self, rsc_name, rsc_type):
         '''
-        resource_add <resource name> <resource template> <assembly_name>
+        resource_add <resource name> <resource template>
         '''
         if self.rf == None:
             self.rf = resource.ResourceFactory(self.xml_node)
 
+        if self.rf.exists(rsc_name):
+            print '*** Resource %s already in Assembly %s' % (rsc_name, self.name)
+            return
+        if not self.rf.template_exists(rsc_type):
+            print '*** Resource template %s does not exist' % (rsc_type)
+            return
         r = self.rf.get(rsc_name)
         r.name = rsc_name
         r.type = rsc_type
@@ -221,6 +227,10 @@ class Assembly(object):
         '''
         if self.rf == None:
             self.rf = resource.ResourceFactory(self.xml_node)
+
+        if not self.rf.exists(rsc_name):
+            print '*** Resource %s is not in Assembly %s' % (rsc_name, self.name)
+            return
 
         self.rf.delete(rsc_name)
         self.save()
@@ -255,17 +265,17 @@ class AssemblyFactory(object):
 
     def clone(self, name, source, source_jeos):
         if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source, os.R_OK):
-            print '*** please create the \"%s\" jeos first' % source
+            print '*** Please create the \"%s\" jeos first' % source
             return
         a = self.get(name)
         a.clone_from(source, "%s-jeos" % source_jeos)
 
     def create(self, name, source):
         if not os.access('/var/lib/pacemaker-cloud/assemblies/%s.tdl' % name, os.R_OK):
-            print '*** please provide /var/lib/pacemaker-cloud/assemblies/%s.tdl to customize your assembly' % name
+            print '*** Please provide /var/lib/pacemaker-cloud/assemblies/%s.tdl to customize your assembly' % name
             return
         if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source, os.R_OK):
-            print '*** please create the \"%s\" jeos first' % source
+            print '*** Please create the \"%s\" jeos first' % source
             return
 
         a = self.get(name)
