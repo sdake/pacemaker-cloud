@@ -17,6 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
+import os
+import sys
+import argparse
+import signal
+import daemon
 import cqpid
 from qmf2 import *
 import libvirt
@@ -167,14 +172,52 @@ class VMLauncher(AgentHandler):
         self.control.methodCount = 0
         self.controlAddr = self.session.addData(self.control, "singleton")
 
+    def used_files_get(self):
+        fn = []
+        for f in range(3,1023):
+            fn.append(FileDummy(f))
 
-try:
+        return fn
+
+class FileDummy:
+    def __init__(self, file_no):
+        self.fn = file_no
+
+    def fileno(self):
+        return self.fn
+
+
+def program_cleanup():
+    agent.shutdown()
+
+def program_run():
+    agent.run()
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Pacemaker-Cloud VM Launcher')
+    parser.add_argument('--daemon', '-d',
+                        action="store_true",
+                        default=False,
+                        help='Daemonize the process')
+    opts = parser.parse_args()
+
     agent = VMLauncher("localhost:49000")
     agent.setupSchema()
     agent.populateData()
-    agent.run()  # Use agent.start() to launch the agent in a separate thread
-    agent.shutdown()
-except Exception, e:
-    print "Exception Caught:", e
 
+    cntx = daemon.DaemonContext()
+    cntx.prevent_core = False
+    cntx.working_directory = '/var/lib/pacemaker-cloud'
+    cntx.detach_process = opts.daemon
+    cntx.signal_map = { signal.SIGTERM: program_cleanup }
+
+    # By default DaemonContext will close all files (including sockets)
+    # I am not sure how to retrieve these from the qmf library
+    # so we generate some fake file objects for all most all possible
+    # files.
+    cntx.files_preserve = agent.used_files_get()
+
+    with cntx:
+        program_run()
 
