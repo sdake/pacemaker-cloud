@@ -63,7 +63,7 @@ class Assembly(object):
             ass = self.factory.root_get().newChild(None, "assembly", None)
             ass.newProp("name", self.name)
             ass.newProp("uuid", self.uuid)
-            ass.newChild(None, "resources", None);
+            ass.newChild(None, "resources", None)
             self.xml_node = ass
         else:
             self.xml_node.setProp('name', self.name)
@@ -239,7 +239,7 @@ class AssemblyFactory(object):
 
         if not it_exists:
             self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "assemblies", None);
+            self.doc.newChild(None, "assemblies", None)
 
         self.root_node = self.doc.getRootElement()
         self.all = {}
@@ -258,7 +258,7 @@ class AssemblyFactory(object):
             print '*** please create the \"%s\" jeos first' % source
             return
         a = self.get(name)
-        a.clone_from(source, "%s-jeos" % source_jeos);
+        a.clone_from(source, "%s-jeos" % source_jeos)
 
     def create(self, name, source):
         if not os.access('/var/lib/pacemaker-cloud/assemblies/%s.tdl' % name, os.R_OK):
@@ -291,7 +291,7 @@ class AssemblyFactory(object):
     def delete(self, name):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
         root_node = assembly_path[0]
-        root_node.unlinkNode();
+        root_node.unlinkNode()
         self.save()
 
     def save(self):
@@ -302,5 +302,5 @@ class AssemblyFactory(object):
 
     def list(self, listiter):
         for a in self.all:
-            listiter.append(str(a));
+            listiter.append(str(a))
 

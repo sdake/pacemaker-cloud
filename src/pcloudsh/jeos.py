@@ -35,7 +35,7 @@ class Jeos(object):
             self.doc_images = self.doc.getRootElement()
         except:
             self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "images", None);
+            self.doc.newChild(None, "images", None)
             self.doc_images = self.doc.getRootElement()
 
     def create(self, name, arch):
@@ -48,27 +48,27 @@ class Jeos(object):
         dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
         qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
 
-        res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename));
+        res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename))
         if res == 256:
             raise
 
-        os.system("qemu-img convert -O qcow2 %s %s" % (dsk_filename, qcow2_filename));
+        os.system("qemu-img convert -O qcow2 %s %s" % (dsk_filename, qcow2_filename))
 
         libvirt_xml = libxml2.parseFile(xml_filename)
         source_xml = libvirt_xml.xpathEval('/domain/devices/disk')
-        driver = source_xml[0].newChild (None, "driver", None);
-        driver.newProp ("type", "qcow2");
+        driver = source_xml[0].newChild (None, "driver", None)
+        driver.newProp ("type", "qcow2")
         source_xml = libvirt_xml.xpathEval('/domain/devices/disk/source')
         source_xml[0].setProp('file', qcow2_filename)
         libvirt_xml.saveFormatFile(xml_filename, format=1)
 
-        doc_jeos = self.doc_images.newChild(None, "jeos", None);
-        doc_xml_path = doc_jeos.newProp("arch", arch);
-        doc_xml_path = doc_jeos.newProp("name", name);
-        doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename);
-        doc_xml_path = doc_jeos.newProp("xml_path", xml_filename);
+        doc_jeos = self.doc_images.newChild(None, "jeos", None)
+        doc_xml_path = doc_jeos.newProp("arch", arch)
+        doc_xml_path = doc_jeos.newProp("name", name)
+        doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename)
+        doc_xml_path = doc_jeos.newProp("xml_path", xml_filename)
 
-        self.doc.saveFormatFile(self.xml_file, format=1);
+        self.doc.saveFormatFile(self.xml_file, format=1)
 
     def list(self, listiter):
         jeos_list = self.doc.xpathEval("/images/jeos")

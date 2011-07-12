@@ -36,13 +36,13 @@ class Deployable(object):
             self.doc_images = self.doc.getRootElement()
         except:
             self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "deployables", None);
+            self.doc.newChild(None, "deployables", None)
             self.doc_images = self.doc.getRootElement()
         self.cpe = cpe.Cpe()
         self.libvirt_conn = None
 
     def save(self):
-        self.doc.saveFormatFile(self.xml_file, format=1);
+        self.doc.saveFormatFile(self.xml_file, format=1)
 
     def create(self, name):
         if self.exists(deployable_name):
@@ -58,8 +58,8 @@ class Deployable(object):
             return
         deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % deployable_name)
         root_node = deployable_path[0]
-        assembly_root = root_node.newChild(None, "assembly", None);
-        assembly_root.newProp("name", assembly_name);
+        assembly_root = root_node.newChild(None, "assembly", None)
+        assembly_root.newProp("name", assembly_name)
         self.save()
 
     def assembly_remove(self, deployable_name, assembly_name):
@@ -68,7 +68,7 @@ class Deployable(object):
             return
         deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % assembly_name)
         root_node = deployable_path[0]
-        root_node.unlinkNode();
+        root_node.unlinkNode()
         self.save()
 
     def generate_config(self, name):

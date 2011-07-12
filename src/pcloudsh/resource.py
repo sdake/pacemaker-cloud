@@ -53,7 +53,7 @@ class Resource(object):
 
     def delete(self):
         if self.xml_node != None:
-            self.xml_node.unlinkNode();
+            self.xml_node.unlinkNode()
             self.xml_node = None
 
     def __str__(self):
