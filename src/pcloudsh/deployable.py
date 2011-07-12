@@ -52,21 +52,45 @@ class Deployable(object):
         deployable_path.newProp("name", name)
         self.save()
 
-    def assembly_add(self, deployable_name, assembly_name):
-        if not self.exists(deployable_name):
-            print '*** Deployable %s does not exist' % (deployable_name)
+    def assembly_add(self, dname, aname):
+        if not self.exists(dname):
+            print '*** Deployable %s does not exist' % (dname)
             return
-        deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % deployable_name)
+
+        fac = assembly.AssemblyFactory()
+        if not fac.exists(aname):
+            print '*** Assembly %s does not exist' % (aname)
+            return
+
+        q = "/deployables/deployable[@name='%s']/assembly[@name='%s']" % (dname, aname)
+        test_path = self.doc.xpathEval(q)
+        if len(test_path) > 0:
+            print '*** Assembly %s is already in Deployable %s' % (aname, dname)
+            return
+
+        deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % dname)
         root_node = deployable_path[0]
         assembly_root = root_node.newChild(None, "assembly", None)
-        assembly_root.newProp("name", assembly_name)
+        assembly_root.newProp("name", aname)
         self.save()
 
-    def assembly_remove(self, deployable_name, assembly_name):
-        if not self.exists(deployable_name):
-            print '*** Deployable %s does not exist' % (deployable_name)
+    def assembly_remove(self, dname, aname):
+        if not self.exists(dname):
+            print '*** Deployable %s does not exist' % (dname)
             return
-        deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % assembly_name)
+
+        fac = assembly.AssemblyFactory()
+        if not fac.exists(aname):
+            print '*** Assembly %s does not exist' % (aname)
+            return
+
+        q = "/deployables/deployable[@name='%s']/assembly[@name='%s']" % (dname, aname)
+        test_path = self.doc.xpathEval(q)
+        if len(test_path) is 0:
+            print '*** Assembly %s is not in Deployable %s' % (aname, dname)
+            return
+
+        deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % aname)
         root_node = deployable_path[0]
         root_node.unlinkNode()
         self.save()
