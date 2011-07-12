@@ -254,12 +254,18 @@ class AssemblyFactory(object):
         return self.root_node
 
     def clone(self, name, source, source_jeos):
+        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source, os.R_OK):
+            print '*** please create the \"%s\" jeos first' % source
+            return
         a = self.get(name)
         a.clone_from(source, "%s-jeos" % source_jeos);
 
     def create(self, name, source):
         if not os.access('/var/lib/pacemaker-cloud/assemblies/%s.tdl' % name, os.R_OK):
             print '*** please provide /var/lib/pacemaker-cloud/assemblies/%s.tdl to customize your assembly' % name
+            return
+        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % source, os.R_OK):
+            print '*** please create the \"%s\" jeos first' % source
             return
 
         a = self.get(name)
