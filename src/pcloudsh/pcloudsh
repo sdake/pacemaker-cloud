@@ -41,6 +41,10 @@ class pcloudsh(cmd.Cmd, object):
         self.d = deployable.Deployable()
         cmd.Cmd.__init__(self)
 
+    def emptyline(self):
+        # override the default behaviour of repeating the last command
+        return False
+
     def do_EOF(self, line):
         return True
 
