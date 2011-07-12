@@ -45,11 +45,17 @@ class Deployable(object):
         self.doc.saveFormatFile(self.xml_file, format=1);
 
     def create(self, name):
-        deployable_path = self.doc_images.newChild(None, "deployable", None);
-        deployable_path.newProp("name", name);
+        if self.exists(deployable_name):
+            print '*** Deployable %s already exist' % (deployable_name)
+            return
+        deployable_path = self.doc_images.newChild(None, "deployable", None)
+        deployable_path.newProp("name", name)
         self.save()
 
     def assembly_add(self, deployable_name, assembly_name):
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
         deployable_path = self.doc.xpathEval("/deployables/deployable[@name='%s']" % deployable_name)
         root_node = deployable_path[0]
         assembly_root = root_node.newChild(None, "assembly", None);
@@ -57,6 +63,9 @@ class Deployable(object):
         self.save()
 
     def assembly_remove(self, deployable_name, assembly_name):
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
         deployable_path = self.doc.xpathEval("/deployables/deployable/assembly[@name='%s']" % assembly_name)
         root_node = deployable_path[0]
         root_node.unlinkNode();
@@ -93,7 +102,11 @@ class Deployable(object):
 
 
     def start(self, deployable_name):
-        print ("Starting Deployable %s" % deployable_name);
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
+
+        print "Starting Deployable %s" % deployable_name
         self.generate_config(deployable_name)
 
         if self.cpe.deployable_start(deployable_name, deployable_name) == 0:
@@ -106,6 +119,9 @@ class Deployable(object):
 
 
     def stop(self, deployable_name):
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
         if self.cpe.deployable_stop(deployable_name, deployable_name) != 0:
             print "deployable_stop FAILED!!"
 
@@ -114,7 +130,17 @@ class Deployable(object):
         for deployable_data in deployable_list:
             listiter.append("%s" % (deployable_data.prop('name')))
 
+    def exists(self, name):
+        dlist = self.doc.xpathEval("/deployables/deployable")
+        for d in dlist:
+            if name == d.prop('name'):
+                return True
+        return False
+
     def status(self, name):
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
         if self.libvirt_conn is None:
             self.libvirt_conn = libvirt.open("qemu:///system")
         name_list = self.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % name)
