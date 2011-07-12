@@ -45,8 +45,8 @@ class Deployable(object):
         self.doc.saveFormatFile(self.xml_file, format=1)
 
     def create(self, name):
-        if self.exists(deployable_name):
-            print '*** Deployable %s already exist' % (deployable_name)
+        if self.exists(name):
+            print '*** Deployable %s already exist' % (name)
             return
         deployable_path = self.doc_images.newChild(None, "deployable", None)
         deployable_path.newProp("name", name)
