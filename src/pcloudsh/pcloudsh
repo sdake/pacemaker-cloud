@@ -218,7 +218,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 0:
-            self.do_help("assembly_delete");
+            self.do_help("assembly_list");
         else:
             all = self.a.all_get()
             print ' %-12s %-32s' % ('Name', 'UUID')
