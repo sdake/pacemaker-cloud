@@ -34,21 +34,24 @@ class Cpe(object):
         self.session.setAgentFilter('[]')
         self.session.open()
         self.l = logging.getLogger()
-        time.sleep(3)
 
-        agents = self.session.getAgents()
-        for a in agents:
-            self.l.debug('agent: %s' % str(a))
-            if 'pacemakercloud.org' in a.getVendor():
-                    result = a.query("{class:cpe, package:'org.pacemakercloud'}")
-                    if len(result) >= 1:
-                        self.cpe_obj = result[0]
+        attempts = 0
+        while self.cpe_obj is None:
+            agents = self.session.getAgents()
+            for a in agents:
+                self.l.debug('agent: %s' % str(a))
+                if 'pacemakercloud.org' in a.getVendor():
+                        result = a.query("{class:cpe, package:'org.pacemakercloud'}")
+                        if len(result) >= 1:
+                            self.cpe_obj = result[0]
 
-        if self.cpe_obj is None:
-            print ''
-            print 'No cpe agent!, aaarrggg'
-            print ''
-            sys.exit(3)
+            if self.cpe_obj is None:
+                attempts = attempts + 1
+                if attempts > 50:
+                    print '*** Could find cped agent...'
+                    sys.exit(3)
+                else:
+                    time.sleep(0.1)
 
     def wait_for_dpe_agent(self, timeout=6):
         waited = 0
