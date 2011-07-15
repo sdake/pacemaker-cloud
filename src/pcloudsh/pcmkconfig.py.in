@@ -1,0 +1,12 @@
+
+import string
+
+class Config(object):
+    def __init__(self):
+        self.version = '@VERSION@'
+        self.prefix = '@prefix@'
+        self.localstatedir = '@localstatedir@'
+        self.datarootdir = string.replace('@datarootdir@', '${prefix}', self.prefix)
+        self.dbdir = '%s/lib/pacemaker-cloud' % (self.localstatedir)
+        self.resource_templatesdir = '%s/pacemaker-cloud/resource_templates' % (self.datarootdir)
+

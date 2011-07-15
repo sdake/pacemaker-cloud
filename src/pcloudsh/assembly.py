@@ -31,13 +31,15 @@ import guestfs
 import fileinput
 from pcloudsh import ifconfig
 from pcloudsh import resource
+from pcloudsh import pcmkconfig
 
 class Assembly(object):
 
     def __init__(self, factory, name):
+        self.conf = pcmkconfig.Config()
         self.factory = factory
         self.xml_node = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
-	if (len (self.xml_node)):
+        if (len (self.xml_node)):
             self.name = self.xml_node[0].prop ("name")
             self.jeos_name = self.xml_node[0].prop ("jeos_name")
             self.image = self.xml_node[0].prop ("image")
@@ -177,7 +179,7 @@ class Assembly(object):
             return -1
 
         print "source file is %s-jeos.xml" % source.jeos_name
-        self.jeos_doc = libxml2.parseFile("/var/lib/pacemaker-cloud/jeos/%s-jeos.xml" % source.jeos_name);
+        self.jeos_doc = libxml2.parseFile("%s/jeos/%s-jeos.xml" % (self.conf.dbdir, source.jeos_name));
 
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
         print 'Copying %s to %s' % (source.image, self.image)
@@ -203,10 +205,11 @@ class Assembly(object):
         self.clone_network_setup(macaddr, iface_info.addr_get())
         self.guest_unmount()
 
-        self.jeos_doc.saveFormatFile("/var/lib/pacemaker-cloud/assemblies/%s.xml" % self.name, format=1)
+        self.jeos_doc.saveFormatFile("%s/assemblies/%s.xml" % (self.conf.dbdir, self.name), format=1)
         print "jeos assembly %s-assembly.tdl" % source.jeos_name
-        os.system("oz-customize -d3 /var/lib/pacemaker-cloud/jeos/%s-jeos-assembly.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (source.jeos_name, self.name))
-	self.jeos_name = source.jeos_name
+        os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
+                (self.conf.dbdir, self.conf.dbdir, source.jeos_name, self.name))
+        self.jeos_name = source.jeos_name
         self.factory.add(self)
         self.save()
         return 0
@@ -248,7 +251,8 @@ class Assembly(object):
 class AssemblyFactory(object):
 
     def __init__(self):
-        self.xml_file = '/var/lib/pacemaker-cloud/db_assemblies.xml'
+        self.conf = pcmkconfig.Config()
+        self.xml_file = '%s/db_assemblies.xml' % (self.conf.dbdir)
         it_exists = os.access(self.xml_file, os.R_OK)
 
         try:
@@ -259,9 +263,15 @@ class AssemblyFactory(object):
 
         if not it_exists:
             self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "assemblies", None)
+            ass_node = self.doc.newChild(None, "assemblies", None)
+            ass_node.setProp('pcmkc-version', self.conf.version)
 
         self.root_node = self.doc.getRootElement()
+        _ver = self.root_node.prop('pcmkc-version')
+        if not _ver is self.conf.version:
+            _msg = '*** warning xml and program version mismatch'
+            print '%s \"%s\" != \"%s\"' % (_msg, _ver, self.conf.version)
+
         self.all = {}
         assembly_list = self.doc.xpathEval("/assemblies/assembly")
         for assembly_data in assembly_list:
@@ -282,18 +292,19 @@ class AssemblyFactory(object):
 
     def create(self, name, source):
         dest_assy = self.get(name)
-        if not os.access('/var/lib/pacemaker-cloud/assemblies/%s.tdl' % name, os.R_OK):
-            print '*** Please provide /var/lib/pacemaker-cloud/assemblies/%s.tdl to customize your assembly' % name
+        if not os.access('%s/assemblies/%s.tdl' % (self.conf.dbdir, name), os.R_OK):
+            print '*** Please provide %s/assemblies/%s.tdl to customize your assembly' % (self.conf.dbdir, name)
             return
 
-	jeos_source = self.get("%s-jeos" % source);
-	jeos_source.jeos_name = source
-        if not os.access('/var/lib/pacemaker-cloud/jeos/%s-jeos.tdl' % jeos_source.jeos_name, os.R_OK):
+        jeos_source = self.get("%s-jeos" % source);
+        jeos_source.jeos_name = source
+        if not os.access('%s/jeos/%s-jeos.tdl' % (self.conf.dbdir, jeos_source.jeos_name), os.R_OK):
             print '*** Please create the \"%s\" jeos first' % source
             return
 
-	if dest_assy.clone_from(jeos_source) == 0:
-            os.system ("oz-customize -d3 /var/lib/pacemaker-cloud/jeos/%s-jeos.tdl /var/lib/pacemaker-cloud/assemblies/%s.xml" % (jeos_source.jeos_name, dest_assy.name))
+        if dest_assy.clone_from(jeos_source) == 0:
+            os.system ("oz-customize -d3 %s/jeos/%s-jeos.tdl %s/assemblies/%s.xml" % 
+                    (self.conf.dbdir, self.conf.dbdir, jeos_source.jeos_name, dest_assy.name))
 
     def exists(self, name):
         if name in self.all:

@@ -25,11 +25,13 @@ import logging
 import libxml2
 import exceptions
 import libvirt
+from pcloudsh import pcmkconfig
 
 class Jeos(object):
 
     def __init__(self):
-        self.xml_file = '/var/lib/pacemaker-cloud/db_jeos.xml'
+        self.conf = pcmkconfig.Config()
+        self.xml_file = '%s/db_jeos.xml' % (self.conf.dbdir)
         try:
             self.doc = libxml2.parseFile(self.xml_file)
             self.doc_images = self.doc.getRootElement()
@@ -37,14 +39,15 @@ class Jeos(object):
             self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "images", None)
             self.doc_images = self.doc.getRootElement()
+            self.doc_images.setProp('pcmkc-version', pcmkconfig.version)
 
     def create(self, name, arch):
         jeos_list = self.doc.xpathEval("/images/jeos")
         for jeos_data in jeos_list:
             if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
                 raise
-        xml_filename = '/var/lib/pacemaker-cloud/jeos/%s-%s-jeos.xml' % (name, arch)
-        tdl_filename = '/var/lib/pacemaker-cloud/jeos/%s-%s-jeos.tdl' % (name, arch)
+        xml_filename = '%s/jeos/%s-%s-jeos.xml' % (self.conf.dbdir, name, arch)
+        tdl_filename = '%s/jeos/%s-%s-jeos.tdl' % (self.conf.dbdir, name, arch)
         dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
         qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
 

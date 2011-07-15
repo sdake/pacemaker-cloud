@@ -26,11 +26,13 @@ import libxml2
 import exceptions
 from pcloudsh import cpe
 from pcloudsh import assembly
+from pcloudsh import pcmkconfig
 
 class Deployable(object):
 
     def __init__(self):
-        self.xml_file = '/var/lib/pacemaker-cloud/db_deployable.xml'
+        self.conf = pcmkconfig.Config()
+        self.xml_file = '%s/db_deployable.xml' % (self.conf.dbdir)
         try:
             self.doc = libxml2.parseFile(self.xml_file)
             self.doc_images = self.doc.getRootElement()
@@ -38,6 +40,8 @@ class Deployable(object):
             self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "deployables", None)
             self.doc_images = self.doc.getRootElement()
+            self.doc_images.setProp('pcmkc-version', self.conf.version)
+
         self.cpe = cpe.Cpe()
         self.libvirt_conn = None
 

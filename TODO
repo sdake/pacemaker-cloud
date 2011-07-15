@@ -28,9 +28,7 @@ WHO CMP   Description
 0.3.0
 -----
 s - PKG - sort out directory structure of installed software
-a - PKG - systemd boot files
 s - PKG - refine spec.in
-a - PKG - version number in database files
 s - MAN - write a man page for pcloudsh
 s - MAN - write an overview man page
 

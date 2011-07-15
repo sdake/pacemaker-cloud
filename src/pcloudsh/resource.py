@@ -20,10 +20,12 @@
 import os
 import libxml2
 import exceptions
+from pcloudsh import pcmkconfig
 
 class Resource(object):
 
     def __init__(self, factory):
+        self.conf = pcmkconfig.Config()
         self.factory = factory
         self.name = ''
         self.type = 'http'
@@ -40,7 +42,7 @@ class Resource(object):
 
     def save(self):
         if self.xml_node is None:
-            nd = libxml2.parseFile('/usr/share/pacemaker-cloud/resource_templates/%s.xml' % self.type)
+            nd = libxml2.parseFile('%s/%s.xml' % (self.conf.resource_templatesdir, self.type))
             n = nd.getRootElement()
             n.newProp('name', self.name)
             self.factory.root_get().addChild(n)
@@ -84,7 +86,7 @@ class ResourceFactory(object):
         return self.root_node
 
     def template_exists(self, template):
-            tn = '/usr/share/pacemaker-cloud/resource_templates/%s.xml' % (template)
+            tn = '%s/%s.xml' % (self.conf.resource_templatesdir, template)
             return os.access(tn, os.R_OK)
 
     def exists(self, name):
