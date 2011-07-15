@@ -24,22 +24,33 @@ In priority order
 --- ---   ------------------------------------------------------------------
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
+-----
+0.3.0
+-----
 s - PKG - sort out directory structure of installed software
-s - PKG - systemd boot files
-s - PKG - init script (qpidd, cped, vmlauncher starting)
+a - PKG - systemd boot files
 s - PKG - refine spec.in
+a - PKG - version number in database files
 s - MAN - write a man page for pcloudsh
 s - MAN - write an overview man page
+
+-----
+0.4.0
+-----
+a - TST - Convert test cases to use the shell
 a - DPE - ocf support in DPE
+
+-----
+later
+-----
 a - CPE - extend upstart/systemd client code to include getting events on
           failure.
+s - PKG - init script (qpidd, cped, vmlauncher starting)
 u - CPE - at startup use config_list() to get initial deployables
           failed)
 u - DPE - add support for failure escalations
-u - TST - Convert test cases to use the shell
 u - SHL - show assembly online/offline
 u - SHL - show resource status
-u - SHL -  add setup.py to install python scripts
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_get(deployment_uuid)
 u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_list()
 u - DEP - Get rid of all the deps that pengine has that it doesn't require
