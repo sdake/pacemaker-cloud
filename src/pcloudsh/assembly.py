@@ -42,7 +42,6 @@ class Assembly(object):
             self.jeos_name = self.xml_node[0].prop ("jeos_name")
             self.image = self.xml_node[0].prop ("image")
             self.uuid = self.xml_node[0].prop ("uuid")
-            print "ZZZZZZZ uuid %s" % self.uuid
             self.rf = None
             self.gfs = None
         else:
