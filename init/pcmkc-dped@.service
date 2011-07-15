@@ -1,5 +1,6 @@
 [Unit]
 Description=Deployable Policy Engine
+Requires=pcmkc-vmlauncher.service
 
 [Service]
 ExecStart=/usr/sbin/dped -v %i

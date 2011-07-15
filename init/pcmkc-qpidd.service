@@ -1,0 +1,6 @@
+[Unit]
+Description=qpidd for pacemaker-cloud
+
+[Service]
+ExecStart=/usr/sbin/qpidd --auth no -p 49000
+Type=simple

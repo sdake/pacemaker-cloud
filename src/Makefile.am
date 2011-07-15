@@ -21,16 +21,10 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CFLAGS = -Wall
 
-upstartconfdir = $(sysconfdir)/init
-upstartconf_DATA = dped.conf
-
-systemdconfdir = /lib/systemd/system
-systemdconf_DATA = dped@.service
-
 xsldir = $(datadir)/pacemaker-cloud
 xsl_DATA = cf2pe.xsl
 
-EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA) $(xsl_DATA)
+EXTRA_DIST = $(xsl_DATA)
 
 SUBDIRS = pcloudsh
 

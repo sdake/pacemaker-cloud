@@ -33,7 +33,7 @@ EXTRA_DIST		= autogen.sh COPYING pacemaker-cloud.spec.in
 
 dist_doc_DATA		= COPYING
 
-SUBDIRS = src src/pcloudsh
+SUBDIRS = init src src/pcloudsh
 
 $(TARFILE):
 	$(MAKE) dist
