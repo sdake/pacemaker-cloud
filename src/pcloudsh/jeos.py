@@ -42,6 +42,17 @@ class Jeos(object):
             self.doc_images.setProp('pcmkc-version', pcmkconfig.version)
 
     def create(self, name, arch):
+
+        iso = None
+        if name == 'F15':
+            iso = '/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso'
+        if name == 'F14':
+            iso = '/var/lib/libvirt/images/Fedora-14-x86_64-DVD.iso'
+        if iso:
+            if not os.access(iso, os.R_OK):
+                print '*** %s does not exist.' % (iso)
+                return
+
         jeos_list = self.doc.xpathEval("/images/jeos")
         for jeos_data in jeos_list:
             if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
