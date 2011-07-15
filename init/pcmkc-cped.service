@@ -1,0 +1,8 @@
+[Unit]
+Description=Cloud Policy Engine
+Requires=pcmkc-qpidd.service
+After=pcmkc-qpidd.service
+
+[Service]
+ExecStart=/usr/sbin/cped -v
+Type=simple
