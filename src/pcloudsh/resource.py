@@ -64,6 +64,7 @@ class Resource(object):
 class ResourceFactory(object):
 
     def __init__(self, assembly_node):
+        self.conf = pcmkconfig.Config()
         self.all = {}
 
         self.root_node = None

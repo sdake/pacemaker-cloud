@@ -208,7 +208,7 @@ class Assembly(object):
         self.jeos_doc.saveFormatFile("%s/assemblies/%s.xml" % (self.conf.dbdir, self.name), format=1)
         print "jeos assembly %s-assembly.tdl" % source.jeos_name
         os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
-                (self.conf.dbdir, self.conf.dbdir, source.jeos_name, self.name))
+                (self.conf.dbdir, source.jeos_name, self.conf.dbdir, self.name))
         self.jeos_name = source.jeos_name
         self.factory.add(self)
         self.save()
@@ -304,7 +304,7 @@ class AssemblyFactory(object):
 
         if dest_assy.clone_from(jeos_source) == 0:
             os.system ("oz-customize -d3 %s/jeos/%s-jeos.tdl %s/assemblies/%s.xml" % 
-                    (self.conf.dbdir, self.conf.dbdir, jeos_source.jeos_name, dest_assy.name))
+                    (self.conf.dbdir, jeos_source.jeos_name, self.conf.dbdir, dest_assy.name))
 
     def exists(self, name):
         if name in self.all:
