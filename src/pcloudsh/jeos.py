@@ -39,7 +39,7 @@ class Jeos(object):
             self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "images", None)
             self.doc_images = self.doc.getRootElement()
-            self.doc_images.setProp('pcmkc-version', pcmkconfig.version)
+            self.doc_images.setProp('pcmkc-version', self.conf.version)
 
     def create(self, name, arch):
 
