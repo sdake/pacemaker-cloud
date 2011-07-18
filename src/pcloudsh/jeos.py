@@ -32,10 +32,10 @@ class Jeos(object):
     def __init__(self):
         self.conf = pcmkconfig.Config()
         self.xml_file = '%s/db_jeos.xml' % (self.conf.dbdir)
-        try:
+	if os.access(self.xml_file, os.R_OK):
             self.doc = libxml2.parseFile(self.xml_file)
             self.doc_images = self.doc.getRootElement()
-        except:
+        else:
             self.doc = libxml2.newDoc("1.0")
             self.doc.newChild(None, "images", None)
             self.doc_images = self.doc.getRootElement()
