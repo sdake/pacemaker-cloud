@@ -239,7 +239,7 @@ class Assembly(object):
         resource_remove <resource name> <assembly_name>
         '''
         if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node)
+            self.rf = resource.ResourceFactory(self.xml_node[0])
 
         if not self.rf.exists(rsc_name):
             print '*** Resource %s is not in Assembly %s' % (rsc_name, self.name)
@@ -321,6 +321,9 @@ class AssemblyFactory(object):
 
     def delete(self, name):
         assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
+        if len(assembly_path) == 0:
+            print '*** assembly %s does not exist.' % name
+            return
         root_node = assembly_path[0]
         root_node.unlinkNode()
         self.save()
