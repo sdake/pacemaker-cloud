@@ -37,6 +37,16 @@ rm -rf %{buildroot}
 This package contains the Pacemaker Cloud Policy Engine services, command-line
 tools, and man pages.
 
+%post
+if [ $1 -eq 1 ] ; then
+	systemctl --system daemon-reload || :
+fi
+
+%preun
+if [ $1 -eq 0 ]; then
+	systemctl --system daemon-reload || :
+fi
+
 %files
 %defattr(-,root,root,-)
 %doc COPYING
