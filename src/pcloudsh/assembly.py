@@ -268,7 +268,7 @@ class AssemblyFactory(object):
 
         self.root_node = self.doc.getRootElement()
         _ver = self.root_node.prop('pcmkc-version')
-        if not _ver is self.conf.version:
+        if not _ver == self.conf.version:
             _msg = '*** warning xml and program version mismatch'
             print '%s \"%s\" != \"%s\"' % (_msg, _ver, self.conf.version)
 
