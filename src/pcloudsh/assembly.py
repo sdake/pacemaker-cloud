@@ -308,8 +308,8 @@ class AssemblyFactory(object):
             return
 
         if dest_assy.clone_from(jeos_source) == 0:
-            os.system ("oz-customize -d3 %s/jeos/%s-jeos.tdl %s/assemblies/%s.xml" % 
-                    (self.conf.dbdir, jeos_source.jeos_name, self.conf.dbdir, dest_assy.name))
+            os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" % 
+                    (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
 
     def exists(self, name):
         if name in self.all:
