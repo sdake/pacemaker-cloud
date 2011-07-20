@@ -61,6 +61,13 @@ class Assembly(object):
 
         return self.rf.all_get()
 
+    def resource_factory_setup(self):
+        if self.rf == None:
+            if self.xml_node is None:
+                self.save()
+
+            self.rf = resource.ResourceFactory(self.xml_node[0])
+
     def save(self):
         if self.xml_node is None:
             ass = self.factory.root_get().newChild(None, "assembly", None)
@@ -218,8 +225,7 @@ class Assembly(object):
         '''
         resource_add <resource name> <resource template>
         '''
-        if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node[0])
+        self.resource_factory_setup()
 
         if self.rf.exists(rsc_name):
             print '*** Resource %s already in Assembly %s' % (rsc_name, self.name)
@@ -238,8 +244,7 @@ class Assembly(object):
         '''
         resource_remove <resource name> <assembly_name>
         '''
-        if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node[0])
+        self.resource_factory_setup()
 
         if not self.rf.exists(rsc_name):
             print '*** Resource %s is not in Assembly %s' % (rsc_name, self.name)
