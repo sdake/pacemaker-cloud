@@ -38,12 +38,15 @@ class Assembly(object):
     def __init__(self, factory, name):
         self.conf = pcmkconfig.Config()
         self.factory = factory
-        self.xml_node = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
-        if (len (self.xml_node)):
-            self.name = self.xml_node[0].prop ("name")
-            self.jeos_name = self.xml_node[0].prop ("jeos_name")
-            self.image = self.xml_node[0].prop ("image")
-            self.uuid = self.xml_node[0].prop ("uuid")
+
+        query = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
+
+        if (len(query)):
+            self.xml_node = query[0]
+            self.name = self.xml_node.prop ("name")
+            self.jeos_name = self.xml_node.prop ("jeos_name")
+            self.image = self.xml_node.prop ("image")
+            self.uuid = self.xml_node.prop ("uuid")
             self.rf = None
             self.gfs = None
         else:
@@ -57,7 +60,7 @@ class Assembly(object):
 
     def resources_get(self):
         if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node[0])
+            self.rf = resource.ResourceFactory(self.xml_node)
 
         return self.rf.all_get()
 
@@ -66,7 +69,7 @@ class Assembly(object):
             if self.xml_node is None:
                 self.save()
 
-            self.rf = resource.ResourceFactory(self.xml_node[0])
+            self.rf = resource.ResourceFactory(self.xml_node)
 
     def save(self):
         if self.xml_node is None:
@@ -78,10 +81,10 @@ class Assembly(object):
             ass.newChild(None, "resources", None)
             self.xml_node = ass
         else:
-            self.xml_node[0].setProp('name', self.name)
-            self.xml_node[0].setProp('uuid', self.uuid)
-            self.xml_node[0].setProp('jeos_name', self.jeos_name)
-            self.xml_node[0].setProp('image', self.image)
+            self.xml_node.setProp('name', self.name)
+            self.xml_node.setProp('uuid', self.uuid)
+            self.xml_node.setProp('jeos_name', self.jeos_name)
+            self.xml_node.setProp('image', self.image)
 
         self.factory.save()
 
@@ -308,7 +311,7 @@ class AssemblyFactory(object):
             return
 
         if dest_assy.clone_from(jeos_source) == 0:
-            os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" % 
+            os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" %
                     (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
 
     def exists(self, name):
