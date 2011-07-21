@@ -43,6 +43,8 @@ class CommonAgent
 private:
 	mainloop_qmf_session_t *qmf_source;
 	Selector log_selector;
+protected:
+	list<string> _non_opt_args;
 
 public:
 	qb_loop_t *mainloop;
@@ -54,6 +56,7 @@ public:
 
 	virtual void setup(void) {};
 	virtual bool event_dispatch(AgentEvent *event) { return false; };
+	virtual void signal_handler(int32_t rsignal);
 	int init(int argc, char **argv, const char *proc_name);
 	void run();
 };

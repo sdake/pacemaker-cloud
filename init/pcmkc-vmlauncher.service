@@ -2,8 +2,8 @@
 Description=VM Launcher
 Requires=pcmkc-qpidd.service
 After=pcmkc-qpidd.service
-WorkingDirectory=/var/lib/pacemaker-cloud
 
 [Service]
+WorkingDirectory=/var/lib/pacemaker-cloud
 ExecStart=/usr/bin/vmlauncher
 Type=simple

@@ -78,12 +78,6 @@ struct LibqbLogger : public Logger::Output {
 Logger& l = Logger::instance();
 LibqbLogger* out;
 
-void
-shutdown(int /*signal*/)
-{
-	exit(0);
-}
-
 struct option opt[] = {
 	{"help", no_argument, NULL, 'h'},
 	{"daemon", no_argument, NULL, 'd'},
@@ -108,6 +102,22 @@ print_usage(const char *proc_name)
 	printf("\t-P | --password   password to use for authentication purproses.\n");
 	printf("\t-s | --service    service name to use for authentication purproses.\n");
 	printf("\t-p | --port       specify broker port.\n");
+}
+
+static int32_t
+sig_int_handler(int32_t rsignal, void *data)
+{
+	CommonAgent *agent = (CommonAgent *)data;
+	agent->signal_handler(rsignal);
+	return QB_FALSE;
+}
+
+void
+CommonAgent::signal_handler(int32_t rsignal)
+{
+	if (rsignal == SIGTERM) {
+		qb_loop_stop(mainloop);
+	}
 }
 
 static bool
@@ -279,6 +289,10 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 		}
 	}
 
+	while (optind < argc) {
+		_non_opt_args.push_back(argv[optind++]);
+	}
+
 	if (loglevel > LOG_TRACE) {
 		loglevel = LOG_TRACE;
 	}
@@ -331,16 +345,20 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	package.configure(agent_session);
 	agent_session.open();
 
-	setup();
-
-	signal(SIGINT, shutdown);
-	//mainloop = g_main_new(FALSE);
 	mainloop = qb_loop_create();
 	mainloop_default_set(mainloop);
+
+	setup();
+
 	qmf_source = mainloop_add_qmf_session(&agent_session,
 					      qpid_callback,
 					      this);
 
+	qb_loop_signal_handle sig_handle;
+	qb_loop_signal_add(mainloop, QB_LOOP_HIGH,
+			   SIGTERM, this,
+			   sig_int_handler,
+			   &sig_handle);
 	return 0;
 }
 
@@ -348,5 +366,4 @@ void
 CommonAgent::run()
 {
 	qb_loop_run(mainloop);
-//	g_main_run(this->mainloop);
 }

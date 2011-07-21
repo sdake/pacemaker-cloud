@@ -138,12 +138,7 @@ class Deployable(object):
         print "Starting Deployable %s" % deployable_name
         self.generate_config(deployable_name)
 
-        if self.cpe.deployable_start(deployable_name, deployable_name) == 0:
-            if self.cpe.wait_for_dpe_agent():
-                self.cpe.deployable_load(deployable_name, deployable_name)
-            else:
-                print "*** Given up waiting for dped to start"
-        else:
+        if self.cpe.deployable_start(deployable_name, deployable_name) != 0:
             print "deployable_start FAILED!!"
 
 

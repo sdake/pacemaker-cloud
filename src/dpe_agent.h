@@ -44,10 +44,12 @@ private:
 	void update_stats(uint32_t num_deployables, uint32_t num_assemblies);
 
 public:
-	uint32_t dep_load(std::string& name, std::string& uuid);
-	uint32_t dep_unload(std::string& name, std::string& uuid);
+	uint32_t dep_load(std::string& uuid);
+	uint32_t dep_unload(std::string& uuid);
 
 	void setup(void);
 	bool event_dispatch(AgentEvent *event);
+	void check_args(void);
+	void signal_handler(int32_t rsignal);
 };
 #endif /* DPE_AGENT_H_DEFINED */

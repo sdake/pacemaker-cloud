@@ -1,9 +1,9 @@
 [Unit]
 Description=qpidd for pacemaker-cloud
-User=qpidd
-Group=qpidd
-WorkingDirectory=/var/lib/pacemaker-cloud/qpidd
 
 [Service]
+WorkingDirectory=/var/lib/pacemaker-cloud/qpidd
 ExecStart=/usr/sbin/qpidd --auth no -p 49000 --data-dir /var/lib/pacemaker-cloud/qpidd
 Type=simple
+User=qpidd
+Group=qpidd

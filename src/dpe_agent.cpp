@@ -42,6 +42,22 @@ main(int argc, char **argv)
 }
 
 void
+DpeAgent::check_args(void)
+{
+	list<string>::iterator it;
+	for (it = _non_opt_args.begin(); it != _non_opt_args.end(); it++) {
+		dep_load(*it);
+	}
+}
+
+static void
+dpe_agent_check_args(void* data)
+{
+	DpeAgent *a = (DpeAgent*)data;
+	a->check_args();
+}
+
+void
 DpeAgent::setup(void)
 {
         _dpe = qmf::Data(package.data_dpe);
@@ -50,9 +66,23 @@ DpeAgent::setup(void)
 	num_deps = 1;
 	update_stats(0, 0);
 
+	mainloop_job_add(QB_LOOP_LOW, this,
+			 dpe_agent_check_args);
+
 	agent_session.addData(_dpe, "dpe");
 }
 
+void
+DpeAgent::signal_handler(int32_t rsignal)
+{
+	if (rsignal == SIGTERM) {
+		for (map<string, Deployable*>::iterator iter = deployments.begin();
+		     iter != deployments.end();  iter++) {
+			iter->second->stop();
+		}
+		qb_loop_stop(mainloop);
+	}
+}
 
 bool
 DpeAgent::event_dispatch(AgentEvent *event)
@@ -68,7 +98,7 @@ DpeAgent::event_dispatch(AgentEvent *event)
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = dep_load(name, uuid);
+			rc = dep_load(uuid);
 
 			event->addReturnArgument("rc", rc);
 
@@ -76,9 +106,10 @@ DpeAgent::event_dispatch(AgentEvent *event)
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = dep_unload(name, uuid);
+			rc = dep_unload(uuid);
 
 			event->addReturnArgument("rc", rc);
+
 		} else if (methodName == "deployable_list") {
 			::qpid::sys::Mutex::ScopedLock _lock(map_lock);
 			::qpid::types::Variant::List d_list;
@@ -121,13 +152,12 @@ DpeAgent::update_stats(uint32_t deployables, uint32_t assemblies)
 }
 
 uint32_t
-DpeAgent::dep_load(string& dep_name, string& dep_uuid)
+DpeAgent::dep_load(string& dep_uuid)
 {
         Deployable *child;
 
 	::qpid::sys::Mutex::ScopedLock _lock(map_lock);
-	qb_log(LOG_INFO, "loading deployment: %s:%s",
-	       dep_name.c_str(), dep_uuid.c_str());
+	qb_log(LOG_INFO, "loading deployment: %s", dep_uuid.c_str());
 
 	child = deployments[dep_uuid];
 	if (child != NULL) {
@@ -146,7 +176,7 @@ DpeAgent::dep_load(string& dep_name, string& dep_uuid)
 }
 
 uint32_t
-DpeAgent::dep_unload(string& name, string& uuid)
+DpeAgent::dep_unload(string& uuid)
 {
 	Deployable *child;
 
@@ -155,7 +185,7 @@ DpeAgent::dep_unload(string& name, string& uuid)
 	child = deployments[uuid];
 
 	if (child) {
-		qb_log(LOG_INFO, "request to unload %s", name.c_str());
+		qb_log(LOG_INFO, "request to unload %s", uuid.c_str());
 		update_stats(num_deps - 1, num_ass);
 		deployments.erase(uuid);
 		delete child;

@@ -2,8 +2,8 @@
 Description=Cloud Policy Engine
 Requires=pcmkc-qpidd.service
 After=pcmkc-qpidd.service
-WorkingDirectory=/var/lib/pacemaker-cloud
 
 [Service]
+WorkingDirectory=/var/lib/pacemaker-cloud
 ExecStart=/usr/sbin/cped -v
 Type=simple

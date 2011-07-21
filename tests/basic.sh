@@ -71,8 +71,6 @@ pcloudsh deployable_stop $dep
 for n in 1 2
 do
 	name=t_$distro\_$arch\_$n
-	#TODO move this in dped (deployable stop)
-	virsh destroy $name
 
 	pcloudsh assembly_resource_remove rcs_$n $name
 	pcloudsh deployable_assembly_remove $dep $name

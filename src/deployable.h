@@ -76,6 +76,7 @@ public:
 
 	void reload(void);
 	void process(void);
+	void stop(void);
 	void schedule_processing(void);
 	void resource_execute(struct pe_operation *op);
 	void transition_completed(int32_t result);

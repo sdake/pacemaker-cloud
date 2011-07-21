@@ -105,6 +105,18 @@ Deployable::create_services(string& ass_name, xmlNode * services)
 }
 
 void
+Deployable::stop(void)
+{
+	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
+	     a_iter != _assemblies.end(); a_iter++) {
+		qpid::types::Variant::Map in_args;
+		in_args["name"] = a_iter->second->name_get();
+		in_args["uuid"] = a_iter->second->uuid_get();
+		_vm_launcher.method_call_async("stop", in_args, this, 5000);
+	}
+}
+
+void
 Deployable::create_assemblies(xmlNode * assemblies)
 {
 	string ass_name;
