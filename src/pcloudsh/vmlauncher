@@ -186,9 +186,9 @@ class FileDummy:
     def fileno(self):
         return self.fn
 
-
-def program_cleanup():
+def program_terminate(signal_num, stackframe):
     agent.shutdown()
+    sys.exit(0)
 
 def program_run():
     agent.run()
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     cntx.prevent_core = False
     cntx.working_directory = '/var/lib/pacemaker-cloud'
     cntx.detach_process = opts.daemon
-    cntx.signal_map = { signal.SIGTERM: program_cleanup }
+    cntx.signal_map = { signal.SIGTERM: program_terminate }
 
     # By default DaemonContext will close all files (including sockets)
     # I am not sure how to retrieve these from the qmf library
