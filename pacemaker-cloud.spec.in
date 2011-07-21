@@ -76,6 +76,7 @@ fi
 %{_bindir}/pcloudsh
 %{_bindir}/vmlauncher
 %{python_sitelib}/pcloudsh/*
+%{_mandir}/man1/cped.1*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@

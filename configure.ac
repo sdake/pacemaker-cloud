@@ -153,7 +153,7 @@ AC_LANG_PUSH(C++)
 AC_LANG_POP([C++])
 test $fail = 1 && AC_MSG_ERROR([missing libraries; see above])
 
-AC_CONFIG_FILES([Makefile init/Makefile src/Makefile src/pcloudsh/Makefile src/pcloudsh/pcmkconfig.py])
+AC_CONFIG_FILES([Makefile init/Makefile man/Makefile src/Makefile src/pcloudsh/Makefile src/pcloudsh/pcmkconfig.py])
 
 AC_OUTPUT
 
