@@ -1,0 +1,54 @@
+.TH CPED 1 "Jul 2011" "cped"
+
+.SH NAME
+cped - Pacemaker Cloud High Availability Management Daemon
+
+.SH SYNOPSIS
+.B cped [OPTIONS]
+
+.SH DESCRIPTION
+This daemon maintains high availability of deployables in the system.  A
+deployable is a collection of assemblies that serve a common purpose, such
+as providing an end'user web service.  Assemblies are a composition of
+virtual machine base installs, Matahari monitoring and control agents, and
+user defined application resources.
+
+The default options will result in a working system.  These options are
+typically meant for developers.
+
+.SH OPTIONS
+.TP
+.B "\-d [--daemon ]
+Run as a daemon by detaching from the local terminal.
+
+.B "\-h [--help ]
+Display options to the cped daemon.
+
+.B "\-b [--broker ]
+Specify the qpidd broker host name.  Currently this option is not meant to
+be used, since only single node is currently supported.
+
+.B "\-p [--port ]
+Specify the qpidd port over which to communicate.
+
+.B "\-g [--gssapi ]
+Force GSSAPI authentication when communicating with other processes in the 
+system including Matahari agents.
+
+.B "\-u [--username ]
+Specify the username to use when communicating with other processes in the
+system including Matahari agents.
+
+.B "\-p [--password ]
+Specify the password to use when communicating with other processes in the
+system including Matahari agents.
+
+.B "\-p [--service ]
+Specify the service to use when communicating with other processes in the
+system including Matahari agents.
+
+.SH SEE ALSO
+pcloudsh(1), pacemaker-cloud-overview(8)
+
+.SH AUTHOR
+Steven Dake <sdake@redhat.com>
