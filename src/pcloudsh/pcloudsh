@@ -322,6 +322,10 @@ class pcloudsh(cmd.Cmd, object):
                 print ' %-12s %-6s %-6s %-4s' % (r.name, r.type, r.klass, r.monitor_interval)
 
 if __name__ == '__main__':
+    # if not running as root, return EPERM to command line
+    if os.geteuid() != 0:
+        print "pcloudsh must be run as root"
+        sys.exit(1)
 
     if len(sys.argv) > 1:
         pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
