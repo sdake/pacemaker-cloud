@@ -1,0 +1,28 @@
+.TH VMLAUNCHER 1 "Jul 2011" "vmlauncher"
+
+.SH NAME
+vmlauncher - Pacemaker Cloud Virtual Machine Assembly Launcher
+
+.SH SYNOPSIS
+.B vmlauncher [OPTIONS]
+
+.SH DESCRIPTION
+This daemon launches virtual machines at the request of the administrator
+when using pcloudsh.  This daemon starts automatically in systemd systems.
+
+The command line options are meant for developer use of the software.
+
+.SH OPTIONS
+.TP
+.B "\-d [ \-\-daemon ]"
+Run as a daemon by detaching from the local terminal.
+
+.TP
+.B "\-h [ \-\-help ]"
+Display options to the cped daemon.
+
+.SH SEE ALSO
+cped(1), pcloudsh(1), pacemaker-cloud-overview(8)
+
+.SH AUTHOR
+Steven Dake <sdake@redhat.com>
