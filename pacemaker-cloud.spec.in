@@ -78,5 +78,5 @@ fi
 %{_mandir}/man1/cped.1*
 
 %changelog
-* @date@ Autotools generated version <nobody@nowhere.org> - @version@
+* @date@ Autotools generated version <nobody@nowhere.org> - @version@-1
 - Autotools generated version
