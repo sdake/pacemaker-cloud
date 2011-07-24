@@ -1,17 +1,16 @@
-.TH CPED 1 "Jul 2011" "cped"
+.TH DPED 1 "Jul 2011" "dped"
 
 .SH NAME
-cped - Pacemaker Cloud High Availability Management Daemon
+dped - Deployable Policy Engine
 
 .SH SYNOPSIS
-.B cped [OPTIONS]
+.B dped [OPTIONS] <deployable-uuid>
 
 .SH DESCRIPTION
-This daemon maintains high availability of deployables in the system.  A
-deployable is a collection of assemblies that serve a common purpose, such
-as providing an end'user web service.  Assemblies are a composition of
-a virtual machine base install, Matahari monitoring and control agents, and
-user defined application resources.
+This daemon maintains the high availability of assemblies and resources
+in a deployable. dped will restart assemblies using vmlauncher and
+restart resources using Matahari. dped will also generate QMF events
+for all of these conditions (resource/assembly failure and restart).
 
 The default options will result in a working system.  These options are
 typically meant for developers.
@@ -23,7 +22,7 @@ Run as a daemon by detaching from the local terminal.
 
 .TP
 .B "\-h [ \-\-help ]"
-Display options to the cped daemon.
+Display options to the dped daemon.
 
 .TP
 .B "\-b [ \-\-broker ]"
@@ -36,7 +35,7 @@ Specify the qpidd port over which to communicate.
 
 .TP
 .B "\-g [ \-\-gssapi ]"
-Force GSSAPI authentication when communicating with other processes in the 
+Force GSSAPI authentication when communicating with other processes in the
 system including Matahari agents.
 
 .TP
@@ -55,7 +54,7 @@ Specify the service to use when communicating with other processes in the
 system including Matahari agents.
 
 .SH SEE ALSO
-dped(1), vmlauncher(1), pcloudsh(1), pacemaker-cloud-overview(8)
+cped(1). vmlauncher(1), pcloudsh(1), pacemaker-cloud-overview(8)
 
 .SH AUTHOR
-Steven Dake <sdake@redhat.com>
+Angus Salkeld <asalkeld@redhat.com>

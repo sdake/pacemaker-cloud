@@ -76,6 +76,7 @@ fi
 %{_bindir}/vmlauncher
 %{python_sitelib}/pcloudsh/*
 %{_mandir}/man1/cped.1*
+%{_mandir}/man1/dped.1*
 %{_mandir}/man1/vmlauncher.1*
 
 %changelog
