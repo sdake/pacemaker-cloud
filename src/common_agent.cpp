@@ -93,7 +93,7 @@ struct option opt[] = {
 static void
 print_usage(const char *proc_name)
 {
-	printf("Usage:\tcped <options>\n");
+	printf("Usage:\t%sd <options>\n", proc_name);
 	printf("\t-d | --daemon     run as a daemon.\n");
 	printf("\t-h | --help       print this help message.\n");
 	printf("\t-b | --broker     specify broker host name..\n");
