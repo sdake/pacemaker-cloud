@@ -1,0 +1,93 @@
+.TH PACEMAKER_CLOUD_OVERVIEW 8 "Jul 2011" "pacemaker_cloud_overview"
+
+.SH NAME
+pacemaker_cloud_overview - Pacemaker Cloud High Availability Overview
+
+.SH DESCRIPTION
+The pacemaker cloud project  provides high levels of service availability
+for high scale cloud deployments.  Our approach to high availability is to
+detect failures, isolate failures, followed by restart of the failed
+components. When repeated component failures occur the software escalates
+those failures into failures of higher level components.
+
+.SH MODEL
+.B "assembly"
+An assembly is a virtual machine image with active monitoring provided by
+Matahari.  Matahari monitors resources such as httpd.
+
+.B "deployable"
+A deployable is a collection of assemblies that serve a common task.  An example
+would be a collection of 3 images with one database, one web server, and one
+JBOSS server.
+
+.B "resource"
+An applicaton contained inside an assembly which is monitored and recovered
+in the event of failure.
+
+.B "jeos"
+A JEOS is an acronym meaning Just Enough Operating System.  It is the bare image
+necessary to boot an image in a libvirt managed cloud environment.
+
+.B "pcloudsh"
+The pcloudsh is a test harness which also provides user functionality for
+executing the behavior of the system.  This component would be an integration
+point for other cloud infrastructure software.
+
+.B "vmlauncher"
+The vmlauncher is a simple test harness daemon which launches assemblies on
+the local node.
+
+.B "cped"
+The Cloud Policy Engine Daemon launches a dped process for each deployable to
+manage the state of the deployable and ensure it remains as available as
+possible.
+
+.B "dped"
+The Deployable Policy Engine Daemon instructs vmlauncher to launch virtual
+machines (assemblies).  Once those assemblies are launched the application
+state and virtual machine state is monitored by Matahari.  If a failure of
+an application or virtual machine is detected, it is restarted.
+
+.SH FEATURES AVALABLE TODAY
+.B "Active monitoring and recovery of application failure"
+The software actively monitors resources using Matahari such as httpd and
+restarts them if they fail.
+
+.B "Active monitoring and recovery of assembly failure"
+The software actively monitors assemblies using Matahari and restarts them if
+they fail.
+
+.B "Active monitoring and recovery of deployable failure"
+The software actvel montors for a deployable failure and restarts them if
+they fail.
+
+.SH FEATURES PLANNED FOR THE FUTURE
+.B "Recovery escalation"
+The developers plan to add support for recovery escalation.  Recovery
+escalation works by escalating a lower level repetitive component failure into
+a higher level recovery action.  For example, if httpd fails 5 times in 1 hour,
+the software terminates the containing assembly and restarts it.  If that
+assembly then has repeated failures, the software would terminate the assembly
+and escalate the recovery by restarting the containing deployable.  If the 
+deployable fails repeatedly, the deployable is relocated to a different cloud
+provider.
+
+.B "Integraton with cloud management software"
+The developers intend to integrate with cloud management software such as
+Aeolus http://www.aeolus.org
+
+.SH LIMITATONS
+Pacemaker Cloud is demo-grade software using best known practices for 
+providing high levels of service availablity in a cloud environment.  Because
+of lacking integraton with cloud management software, we are not yet able to
+run assemblies on multple nodes or external cloud providers.
+
+.SH WEBSITE
+http://www.pacemaker-cloud.org
+
+.SH SEE ALSO
+cped(1). dped(1), vmlauncher(1), pcloudsh(1)
+
+.SH AUTHORS
+Steven Dake <sdake@redhat.com>
+Angus Salkeld <asalkeld@redhat.com>

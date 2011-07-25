@@ -19,4 +19,4 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-dist_man_MANS = cped.1 vmlauncher.1 dped.1 pcloudsh.1
+dist_man_MANS = cped.1 vmlauncher.1 dped.1 pcloudsh.1 pacemaker_cloud_overview.8
