@@ -1,0 +1,153 @@
+.TH PCLOUDSH 1 "Jul 2011" "pcloudsh"
+
+.SH NAME
+plcoudsh - Pacemaker Cloud High Availability Cloud Shell
+
+.SH SYNOPSIS
+.B pcloudsh [OPTIONS]
+
+.SH DESCRIPTION
+This command allows configuration, launching, and monitoring of assemblies and
+resources using Pacemaker Cloud.
+
+To configure Pacemaker Cloud, a deployable must be created.  A deployable
+is a collection of assemblies.  Assemblies are formed from JEOS (just enough
+operating system) images.  The first step is to create a JEOS image for a 
+specific distribution.  An assembly is then created from a JEOS image source
+and includes end-user applications that should be monitored.  Resources are
+configured for an assembly.  The assebles are added to a deployable.
+
+To launch deployables, the deployable_start command should be used.
+
+After a deployable is launched, any changes in its state, such as a failure of
+a resource or assembly will be displayed in the shell.  When a resource
+or assembly is recovered, the shell will display these events.
+
+The pcloudsh tool offers a command line operating mode as well as a shell mode.
+The tool contains built-in help for each command.  The pcloudsh tool must be
+run as root, as it creates QEMU images.
+
+.SH OPTIONS
+.TP
+.B "jeos_create <F14|F15|rhel61> <x86_64>"
+
+Create a JEOS image
+
+The jeos_create action creates a "(J)ust (E)nough (O)perating (S)ystem" image
+file.  This step should only be done once at initialization and can take up
+to 30 minutes to complete.  The current JEOS image types supported are either
+Fedora 14, 15, Fedora 16, or RHEL6.1.  The only supported architecture is
+x86_64.
+
+.TP
+.B "jeos_list"
+
+Lists the currently configured JEOS images
+
+.TP
+.B "assembly_create <assembly_name> <F14|F15|rhel61 <x86_64>"
+
+Create an assembly
+
+The assembly_create action creates an assembly from the JEOS base image.
+Some post processing is done of the assembly image to ensure it will boot
+such as changing its mac address.  A new mac address is randomly generated
+for the new assembly.
+
+.TP
+.B "assembly_clone <original_assembly> <new_assembly>"
+
+Clones an assembly
+
+The assembly_clone action creates a copy of the original assembly.  Some
+post processing is done of the assembly image to ensure it will boot such
+as changing its mac address.  A new mac address is randomly generated
+for the clone.
+
+.TP
+.B "assembly_delete <assembly_name>'"
+
+Delete an existing assembly
+
+The assembly_delete action deletes the named assembly.  No error checking is
+done to ensure it is not already part of an deployable.  Use this command with
+caution.
+
+.TP
+.B "assembly_list"
+
+List the assemblies
+
+The assembly_list action lists all assemblies in the database.
+
+.TP
+.B "assembly_resource_add <resource name> <resource template> <assembly_name>
+
+Add a resource to an assembly
+
+.TP
+.B "assembly_resource_list <assembly_name>"
+
+List resources for an assembly
+
+.TP
+.B "assembly_resource_remove <resource name> <assembly_name>"
+
+Remove a resource from an assembly
+
+.TP
+.B "deployable_assembly_add <deployable_name> <assembly_name>"
+
+Add an assembly to a deployable
+
+The deployable_assembly_add action adds the assembly <assembly_name> to the
+deployable <deployable_name> and stores it in the pcloudsh database.
+
+pcloudsh# help deployable_assembly_remove
+
+.TP
+.B "deployable_assembly_remove <deployable_name> <assembly_name>'"
+
+Remove an assembly from a deployable
+
+The deployable_assembly_remove action removes an existing assembly
+<assembly_name> from an existing deployable <deployable_name> and stores
+it in the pcloudsh database.
+
+.TP
+.B "deployable_create <deployable_name>"
+
+Create a new deployable
+
+The deployable_create action creates a new deployable and stores it in the
+pcloudsh database.
+
+.TP
+.B "deployable_list <deployable_list>"
+
+List all existing deployables
+
+The deployable_list action lists all deployables registered in the pcloudsh
+database.
+
+.TP
+.B "deployable_start <deployable_name>"
+
+Start a new deployable
+
+The deployable_start action starts a new deployable in the system
+
+.TP
+.B "deployable_status <deployable_name>"
+
+Get the status of a deployable
+
+The deployable_status action queries a deployable in the system
+
+.TP
+.B "deployable_stop <deployable_name> - stop a new deployable"
+
+The deployable_stop action stops a deployable in the system
+
+.SH AUTHOR
+Steven Dake <sdake@redhat.com>

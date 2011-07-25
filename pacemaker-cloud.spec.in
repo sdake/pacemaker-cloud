@@ -78,6 +78,7 @@ fi
 %{_mandir}/man1/cped.1*
 %{_mandir}/man1/dped.1*
 %{_mandir}/man1/vmlauncher.1*
+%{_mandir}/man1/pcloudsh.1*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1
