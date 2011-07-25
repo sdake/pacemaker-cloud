@@ -1,15 +1,15 @@
 <template>
-  <name>F15_x86_64_1</name>
+  <name>F14_x86_64_1</name>
   <os>
     <name>Fedora</name>
-    <version>15</version>
+    <version>14</version>
     <arch>x86_64</arch>
     <install type='iso'>
-      <iso>file:/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso</iso>
+      <iso>file:/var/lib/libvirt/images/Fedora-14-x86_64-DVD.iso</iso>
     </install>
     <rootpw>password</rootpw>
   </os>
-  <description>Fedora 15</description>
+  <description>Fedora 14</description>
   <commands>
     <command name='empty-root-pass'>
 passwd -d root
