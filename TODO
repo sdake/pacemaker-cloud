@@ -25,11 +25,6 @@ In priority order
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
 -----
-0.3.0
------
-s - MAN - write an overview man page
-
------
 0.4.0
 -----
 a - TST - Convert test cases to use the shell
