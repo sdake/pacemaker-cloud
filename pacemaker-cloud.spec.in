@@ -19,7 +19,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %build
 ./autogen.sh
-./configure
+./configure --libdir=%{_libdir}
 
 make %{_smp_mflags}
 
