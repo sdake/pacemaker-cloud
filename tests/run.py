@@ -22,89 +22,248 @@ import time
 import random
 import unittest
 import logging
-import manufacturer
-import deployable
-from process_monitor import ProcessMonitor
+import subprocess
 
-def hack():
-    only_startup = False
-    dist = "rhel6"
+class SimpleSetup(object):
+    def __init__(self, distro):
+        self.distro = distro
+        self.arch = 'x86_64'
+        self.templ = 't_%s_%s_1' % (self.distro, self.arch)
+        self.name = 'd_%s_%s' % (self.distro, self.arch)
+        self.assemblies = []
+        self.mac = {}
+        self.ip = {}
+        self.l = logging.getLogger()
 
-    qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
-    time.sleep(1)
-    cped = ProcessMonitor(['../src/cped', '-v', '-v', '-v'])
-    manu = manufacturer.Manufacturer(dist)
-    time.sleep(2)
+        for a in range(1, 3):
+            n = 't_%s_%s_%d' % (self.distro, self.arch, a)
+            self.assemblies.append(n)
+            self.mac[n] = None
+            self.ip[n] = None
 
-    print 'qpidd and cped running, moving on ...'
-    d = deployable.Deployable('test')
-    print 'assemling guest'
-    ai1 = manu.assemble('%s-cpe-test' % dist, 2)
-    print 'adding to dep'
-    d.assembly_add(ai1)
+        jl = subprocess.check_output(["pcloudsh", 'jeos_list'])
+        if self.distro in jl:
+            self.l.debug('jeos %s already created' % (self.distro))
+        else:
+            subprocess.call(['pcloudsh', 'jeos_create', self.distro, self.arch])
 
-    httpd = deployable.Service('httpd')
-    d.service_add(httpd)
+        dl = subprocess.check_output(["pcloudsh", 'deployable_list'])
+        if self.name in dl:
+            self.l.debug('deployable %s already created' % (self.name))
+        else:
+            subprocess.call(['pcloudsh', 'deployable_create', self.name])
 
-    print 'starting dep'
-    d.start(only_startup)
-    while (only_startup):
-        time.sleep(1)
+        al = subprocess.check_output(["pcloudsh", 'assembly_list'])
+        for a in self.assemblies:
+            if not a in al:
+                if a == self.templ:
+                    self.l.debug("Creating assembly %s..." % (a))
+                    subprocess.call(['pcloudsh', 'assembly_create', a, self.distro, self.arch])
+                else:
+                    self.l.debug("Cloning assembly %s from %s..." % (a, self.templ))
+                    subprocess.call(['pcloudsh', 'assembly_clone', self.templ, a])
+            else:
+                self.l.debug("assembly %s already created." % (a))
+            subprocess.call(['pcloudsh', 'deployable_assembly_add', self.name, a])
+            subprocess.call(['pcloudsh', 'assembly_resource_add', 'rcs_%s' % a, 'httpd', a])
 
-    ai1 = d.assemblies['%s-cpe-test-2' % dist]
-    print "rsh'ing to assembly"
-    ai1.rsh('hostname')
+    def victim_get(self):
+        return self.assemblies[0]
 
-    time.sleep(90)
+    def start(self):
+        subprocess.call(['pcloudsh', 'deployable_start', self.name])
+        self.discover_addresses()
 
-    d.stop()
-    time.sleep(10)
-    cped.stop()
-    qpidd.stop()
+    def stop(self):
+        subprocess.call(['pcloudsh', 'deployable_stop', self.name])
 
-class TestAeolusHA(unittest.TestCase):
+    def kill_node(self, name):
+        self.l.info('killing assembly %s', name)
+        subprocess.call(['virsh', 'destroy', name])
+        self.mac[name] = None
+        self.ip[name] = None
+        time.sleep(10)
+        self.discover_addresses()
+
+    def addr_get(self, a):
+
+        if self.mac[a] == None:
+            fn = '/var/lib/pacemaker-cloud/assemblies/%s.xml' % (a)
+            lines = open(fn, 'r').readlines()
+            for line in lines:
+                if 'mac address' in line:
+                    self.mac[a] = line.split('"')[1]
+                    break
+
+        if self.mac[a] == None:
+            self.l.debug('no mac for %s yet' % (a))
+            return
+
+        if self.ip[a] == None:
+            lines = open('/proc/net/arp', 'r').readlines()
+            for line in lines:
+                if self.mac[a] in line:
+                    self.ip[a] = line.split(' ')[0]
+                    break
+            if self.ip[a] != None:
+                self.l.debug("ip for %s : %s is %s" % (a, self.mac[a], self.ip[a]))
+            else:
+                self.l.debug('no ip for %s yet' % (self.mac[a]))
+
+    def discover_addresses(self):
+        all_done = False
+
+        while not all_done:
+            all_done = True
+            time.sleep(1)
+
+            for a in self.assemblies:
+                self.addr_get(a)
+
+                if self.ip[a] == None:
+                    all_done = False
+
+    def rsh(self, node, cmd):
+        p = subprocess.Popen(["ssh", "-o", 'StrictHostKeyChecking=no',
+                             self.ip[node], cmd],
+                             stderr=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+        (stdoutdata, stderrdata) = p.communicate()
+        #print '> ssh %s %s' % (node, cmd)
+        #print '< %d: %s' %(p.returncode, stdoutdata)
+        return (p.returncode, stdoutdata, stderrdata)
+
+
+    def wait_for_all_nodes_to_be_up(self, timeout):
+        slept = 0
+        started = False
+
+        while not started:
+            all_started = True
+            for a in self.assemblies:
+                vl = subprocess.check_output(['virsh', 'list'])
+                if not a in vl:
+                    self.l.debug("%s not started" % a)
+                    all_started = False
+                else:
+                    di = subprocess.check_output(['virsh', 'dominfo', a])
+                    if not 'running' in di:
+                        self.l.debug("%s not started" % a)
+                        all_started = False
+
+            started = all_started
+            if not started:
+                time.sleep(10)
+                slept = slept + 10
+                self.l.info("nodes are NOT all running %d/%d" % (slept, timeout))
+            else:
+                self.l.debug("nodes are all running %d/%d" % (slept, timeout))
+                return 0
+            if slept >= timeout:
+                return 1
+
+        return 1
+
+    def wait_for_all_resources_to_be_up(self, timeout):
+        slept = 0
+        started = False
+        all_started = False
+        rc = 1
+
+        while not started:
+            all_started = False
+            for a in self.assemblies:
+                rc = 7
+                if self.distro == 'F15':
+                    rc = 3
+                    (rc, o, e) = self.rsh(a, "service httpd status")
+                    for line in o.split('\n'):
+                        if 'Active: active (running)' in line:
+                            rc = 0
+                else:
+                    (rc, o, e) = self.rsh(a, "service httpd status")
+                if rc == 0:
+                    all_started = True
+
+            started = all_started
+            if not started:
+                time.sleep(10)
+                slept = slept + 10
+                self.l.debug('resources NOT all running (%d) %d/%d' % (rc, slept, timeout))
+            else:
+                self.l.debug('resources all running %d/%d' % (slept, timeout))
+                return 0
+            if slept >= timeout:
+                return 1
+        return 1
+
+class TestSimple(unittest.TestCase):
+
+    def test01_nodes_all_up(self):
+
+        rc = self.setup.wait_for_all_nodes_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+    def test02_resources_all_up(self):
+
+        rc = self.setup.wait_for_all_resources_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+    def test_assembly_restart(self):
+
+        victim = self.setup.victim_get()
+        rc = self.setup.wait_for_all_nodes_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+        self.setup.kill_node(victim)
+        rc = self.setup.wait_for_all_nodes_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+    def test_resources_restart(self):
+
+        victim = self.setup.victim_get()
+        rc = self.setup.wait_for_all_resources_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+        self.setup.rsh(victim, 'service httpd stop')
+
+        rc = self.setup.wait_for_all_resources_to_be_up(360)
+        self.assertEqual(rc, 0)
+
+class TestSimpleF15(TestSimple):
 
     def setUp(self):
-        self.qpidd = ProcessMonitor(['qpidd', '-p', '49000', '--auth', 'no'])
-        time.sleep(1)
-        self.cped = ProcessMonitor(['../src/cped', '-v', '-v', '-v'])
-        self.manufacturer = manufacturer.Manufacturer('rhel6')
-        time.sleep(2)
+        self.setup = simple_f15
 
-    def test_one_assembly(self):
-        '''
-        Start a deployable wth one assembly.
-        Assertion: it is started and we can run acommand on it.
-        '''
-        self.assertTrue(self.qpidd.is_running())
-        self.assertTrue(self.cped.is_running())
+class TestSimpleF14(TestSimple):
 
-        d = deployable.Deployable('test')
-        ai1 = self.manufacturer.assemble('rhel6-cpe-test', 2)
-        d.assembly_add(ai1)
-        d.start()
-        (rc, out) = d.assemblies['rhel6-cpe-test-2'].rsh('hostname')
-        self.assertEqual(rc, 0)
-        self.assertEqual(out.strip(), 'rhel6-cpe-test-2')
-        d.stop()
-
-        self.assertTrue(self.qpidd.is_running())
-        self.assertTrue(self.cped.is_running())
-
-    def tearDown(self):
-        #self.manufacturer.stop()
-        self.cped.stop()
-        self.qpidd.stop()
-        pass
+    def setUp(self):
+        self.setup = simple_f14
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="TEST %(message)s")
 
-    os.environ['CPE_CONFIG_DIR'] = os.getcwd()
+    subprocess.call(['systemctl', '--system', 'daemon-reload'])
+    subprocess.call(['systemctl', 'start', 'pcmkc-qpidd.service'])
+    subprocess.call(['systemctl', 'start', 'pcmkc-cped.service'])
 
-    hack()
+    logging.basicConfig(level=logging.INFO, format="F14: %(levelname)s %(funcName)s %(message)s")
+    simple_f14 = SimpleSetup('F14')
+    simple_f14.start()
+    time.sleep(2)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF14)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    simple_f14.stop()
+    del simple_f14
+    
+    logging.basicConfig(level=logging.INFO, format="F15: %(levelname)s %(funcName)s %(message)s")
+    simple_f15 = SimpleSetup('F15')
+    simple_f15.start()
+    time.sleep(2)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF15)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    simple_f15.stop()
+    del simple_f15
 
-    #suite = unittest.TestLoader().loadTestsFromTestCase(TestAeolusHA)
-    #unittest.TextTestRunner(verbosity=2).run(suite)
-
+    subprocess.call(['systemctl', 'stop', 'pcmkc-cped.service'])
+    subprocess.call(['systemctl', 'stop', 'pcmkc-vmlauncher.service'])
+    subprocess.call(['systemctl', 'stop', 'pcmkc-qpidd.service'])
 
