@@ -5,7 +5,7 @@ Release: 1%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 URL: http://github.com/cloud-policy-engine
-Source0: http://github.com/cloud-policy-engine/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
+Source0: http://pacemaker-cloud.org/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
 
 Requires: python-daemon python-qmf qpid-cpp-server
 Requires: oz > 0.5.0-1
