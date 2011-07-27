@@ -242,7 +242,6 @@ class TestSimpleF14(TestSimple):
 if __name__ == '__main__':
 
     subprocess.call(['systemctl', '--system', 'daemon-reload'])
-    subprocess.call(['systemctl', 'start', 'pcmkc-qpidd.service'])
     subprocess.call(['systemctl', 'start', 'pcmkc-cped.service'])
 
     logging.basicConfig(level=logging.INFO, format="F14: %(levelname)s %(funcName)s %(message)s")
@@ -263,6 +262,7 @@ if __name__ == '__main__':
     simple_f15.stop()
     del simple_f15
 
+    time.sleep(1)
     subprocess.call(['systemctl', 'stop', 'pcmkc-cped.service'])
     subprocess.call(['systemctl', 'stop', 'pcmkc-vmlauncher.service'])
     subprocess.call(['systemctl', 'stop', 'pcmkc-qpidd.service'])
