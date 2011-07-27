@@ -12,7 +12,7 @@
 
 ## 1) Dependencies
 
-* [libqb 0.5.0 or later](https://github.com/asalkeld/libqb)
+* [libqb 0.5.1 or later](https://github.com/asalkeld/libqb)
 
 * [pacemaker](http://www.clusterlabs.org/)
 
@@ -24,7 +24,7 @@
 
 * [libxml2](http://xmlsoft.org/)
 
-* [oz 0.4.0 or later](http://www.aeolusproject.org/oz.html)
+* [oz 0.5.0 or later](http://www.aeolusproject.org/oz.html)
 
 
 ## 2) Building on Specific Distributions
