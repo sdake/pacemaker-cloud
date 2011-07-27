@@ -35,6 +35,10 @@ class SimpleSetup(object):
         self.ip = {}
         self.l = logging.getLogger()
 
+        if not os.access('%s.tdl' % self.templ, os.R_OK):
+            raise Exception('missing template %s.tdl' % self.templ)
+        subprocess.call(['cp', '-f', '%s.tdl' % self.templ, '/var/lib/pacemaker-cloud/assemblies/'])
+
         for a in range(1, 3):
             n = 't_%s_%s_%d' % (self.distro, self.arch, a)
             self.assemblies.append(n)
