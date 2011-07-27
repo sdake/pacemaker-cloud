@@ -67,6 +67,18 @@ class SimpleSetup(object):
             subprocess.call(['pcloudsh', 'deployable_assembly_add', self.name, a])
             subprocess.call(['pcloudsh', 'assembly_resource_add', 'rcs_%s' % a, 'httpd', a])
 
+    def delete(self):
+        for a in self.assemblies:
+            subprocess.call(['pcloudsh', 'assembly_resource_remove', 'rcs_%s' % a, a])
+            subprocess.call(['pcloudsh', 'deployable_assembly_remove', self.name, a])
+            subprocess.call(['pcloudsh', 'assembly_delete', a])
+            subprocess.call(['rm', '-rf', '/var/lib/libvirt/images/%s.qcow2' % a])
+            #TODO this probably needs to be in assembly_delete
+            subprocess.call(['rm', '-f', '/var/lib/pacemaker-cloud/assemblies/%s.xml' % a])
+
+        # TODO need this command
+        #subprocess.call(['pcloudsh', 'deployable_delete', self.name])
+
     def victim_get(self):
         return self.assemblies[0]
 
@@ -251,7 +263,7 @@ if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF14)
     unittest.TextTestRunner(verbosity=2).run(suite)
     simple_f14.stop()
-    del simple_f14
+    simple_f14.delete()
     
     logging.basicConfig(level=logging.INFO, format="F15: %(levelname)s %(funcName)s %(message)s")
     simple_f15 = SimpleSetup('F15')
@@ -260,7 +272,7 @@ if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF15)
     unittest.TextTestRunner(verbosity=2).run(suite)
     simple_f15.stop()
-    del simple_f15
+    simple_f15.delete()
 
     time.sleep(1)
     subprocess.call(['systemctl', 'stop', 'pcmkc-cped.service'])
