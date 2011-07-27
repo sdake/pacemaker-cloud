@@ -1,8 +1,12 @@
 [Unit]
 Description=qpidd for pacemaker-cloud
+After=syslog.target
 
 [Service]
 ExecStart=/usr/sbin/qpidd --auth no -p 49000 --no-data-dir
 Type=simple
 User=qpidd
 Group=qpidd
+
+[Install]
+WantedBy=multi-user.target

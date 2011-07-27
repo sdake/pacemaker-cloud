@@ -1,9 +1,11 @@
 [Unit]
 Description=VM Launcher
-Requires=pcmkc-qpidd.service
 After=pcmkc-qpidd.service
 
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud
 ExecStart=/usr/bin/vmlauncher
 Type=simple
+
+[Install]
+WantedBy=multi-user.target
