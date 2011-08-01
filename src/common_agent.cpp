@@ -105,7 +105,7 @@ print_usage(const char *proc_name)
 }
 
 static int32_t
-sig_int_handler(int32_t rsignal, void *data)
+sig_handler(int32_t rsignal, void *data)
 {
 	CommonAgent *agent = (CommonAgent *)data;
 	agent->signal_handler(rsignal);
@@ -357,7 +357,11 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	qb_loop_signal_handle sig_handle;
 	qb_loop_signal_add(mainloop, QB_LOOP_HIGH,
 			   SIGTERM, this,
-			   sig_int_handler,
+			   sig_handler,
+			   &sig_handle);
+	qb_loop_signal_add(mainloop, QB_LOOP_HIGH,
+			   SIGHUP, this,
+			   sig_handler,
 			   &sig_handle);
 	return 0;
 }

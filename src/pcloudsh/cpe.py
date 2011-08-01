@@ -69,6 +69,19 @@ class Cpe(object):
         else:
             return 1
 
+    def deployable_reload(self, name, uuid):
+        result = None
+        if self.cpe_obj:
+            try:
+                result = self.cpe_obj.deployable_reload(name, uuid)
+            except:
+                return 1
+
+            for k,v in result.items():
+                return v
+        else:
+            return 1
+
     def deployable_stop(self, name, uuid):
         result = None
         if self.cpe_obj:

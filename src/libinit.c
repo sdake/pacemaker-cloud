@@ -254,6 +254,18 @@ init_job_start(const char* service, const char* instance)
 }
 
 int
+init_job_reload(const char* service, const char* instance)
+{
+	assert(service);
+	assert(instance);
+	if (init_use_systemd) {
+		return _systemd_init_job("ReloadUnit", service, instance);
+	} else {
+		return _upstart_init_job("Reload", service, instance);
+	}
+}
+
+int
 init_job_stop(const char * service, const char * instance)
 {
 	assert(service);

@@ -14,6 +14,11 @@
      <arg name="uuid"                 dir="I" type="sstr"/>
      <arg name="rc"                   dir="O"  type="uint32"/>
    </method>
+   <method name="deployable_reload"   desc="reload">
+     <arg name="name"                 dir="I" type="sstr"/>
+     <arg name="uuid"                 dir="I" type="sstr"/>
+     <arg name="rc"                   dir="O"  type="uint32"/>
+   </method>
 </class>
 
 <eventArguments>

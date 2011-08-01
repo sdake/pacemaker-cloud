@@ -149,6 +149,13 @@ class Deployable(object):
         if self.cpe.deployable_stop(deployable_name, deployable_name) != 0:
             print "deployable_stop FAILED!!"
 
+    def reload(self, deployable_name):
+        if not self.exists(deployable_name):
+            print '*** Deployable %s does not exist' % (deployable_name)
+            return
+        if self.cpe.deployable_reload(deployable_name, deployable_name) != 0:
+            print "deployable_stop FAILED!!"
+
     def list(self, listiter):
         deployable_list = self.doc.xpathEval("/deployables/deployable")
         for deployable_data in deployable_list:

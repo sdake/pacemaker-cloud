@@ -160,6 +160,7 @@ Deployable::reload(void)
 	const char *params[1];
 	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
 
+	qb_log(LOG_INFO, "reloading config for %s", _uuid.c_str());
 	if (_config != NULL) {
 		xmlFreeDoc(_config);
 		_config = NULL;
@@ -194,6 +195,15 @@ Deployable::reload(void)
 	}
 
 	xsltFreeStylesheet(ss);
+
+	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
+	     a_iter != _assemblies.end(); a_iter++) {
+		Assembly *a = a_iter->second;
+		if (a->state_get() == Assembly::STATE_ONLINE) {
+			schedule_processing();
+			break;
+		}
+	}
 }
 
 static void

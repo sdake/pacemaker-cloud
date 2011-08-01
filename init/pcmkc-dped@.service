@@ -5,6 +5,7 @@ Wants=pcmkc-vmlauncher.service
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud
 ExecStart=/usr/sbin/dped -v %i
+ExecReload=/bin/kill -HUP $MAINPID
 Type=simple
 TimeoutSec=5
 Restart=on-abort

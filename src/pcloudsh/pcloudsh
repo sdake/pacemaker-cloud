@@ -111,6 +111,18 @@ class pcloudsh(cmd.Cmd, object):
         else:
             self.d.stop(options[0])
 
+    def do_deployable_reload(self, s):
+        """
+  deployable_reload <deployable_name> - reload a deployable's config
+
+  The deployable_reload action reloads the deployable and the resources.
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_reload")
+        else:
+            self.d.reload(options[0])
+
     def do_deployable_status(self, s):
         """
   deployable_status <deployable_name> - Get the status of a deployable

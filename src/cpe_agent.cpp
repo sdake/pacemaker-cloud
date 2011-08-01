@@ -106,9 +106,9 @@ CpeAgent::event_dispatch(AgentEvent *event)
 		if (methodName == "deployable_start") {
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
-			
+
 			rc = dep_start(name, uuid);
-			
+
 			event->addReturnArgument("rc", rc);
 
 		} else if (methodName == "deployable_stop") {
@@ -116,7 +116,14 @@ CpeAgent::event_dispatch(AgentEvent *event)
 			uuid = event->getArguments()["uuid"].asString();
 
 			rc = dep_stop(name, uuid);
-			
+
+			event->addReturnArgument("rc", rc);
+		} else if (methodName == "deployable_reload") {
+			name = event->getArguments()["name"].asString();
+			uuid = event->getArguments()["uuid"].asString();
+
+			rc = dep_reload(name, uuid);
+
 			event->addReturnArgument("rc", rc);
 		}
 		if (rc == 0) {
@@ -126,7 +133,7 @@ CpeAgent::event_dispatch(AgentEvent *event)
 		}
 		break;
 
-	default:	
+	default:
 		break;
 	}
 	return true;
@@ -143,6 +150,21 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 	} else {
 		errno = -rc;
 		qb_perror(LOG_ERR, "Failed to start dped instance=%s", dep_uuid.c_str());
+		return -rc;
+	}
+}
+
+uint32_t
+CpeAgent::dep_reload(string& dep_name, string& dep_uuid)
+{
+	int32_t rc = init_job_reload("pcmkc-dped", dep_uuid.c_str());
+
+	if (rc == 0) {
+		qb_log(LOG_INFO, "reloaded dped instance=%s", dep_uuid.c_str());
+		return 0;
+	} else {
+		errno = -rc;
+		qb_perror(LOG_ERR, "Failed to reload dped instance=%s", dep_uuid.c_str());
 		return -rc;
 	}
 }

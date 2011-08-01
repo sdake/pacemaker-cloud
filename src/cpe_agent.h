@@ -40,6 +40,7 @@ private:
 
 	uint32_t dep_start(std::string& name, std::string& uuid);
 	uint32_t dep_stop(std::string& name, std::string& uuid);
+	uint32_t dep_reload(std::string& name, std::string& uuid);
 
 public:
 	void setup(void);

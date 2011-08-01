@@ -81,6 +81,11 @@ DpeAgent::signal_handler(int32_t rsignal)
 			iter->second->stop();
 		}
 		qb_loop_stop(mainloop);
+	} else if (rsignal == SIGHUP) {
+		for (map<string, Deployable*>::iterator iter = deployments.begin();
+		     iter != deployments.end();  iter++) {
+			iter->second->reload();
+		}
 	}
 }
 

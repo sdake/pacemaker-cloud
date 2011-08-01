@@ -36,6 +36,7 @@ void dbus_fini(void);
 
 int init_job_start(const char * service, const char * instance);
 int init_job_stop(const char * service, const char * instance);
+int init_job_reload(const char * service, const char * instance);
 
 #ifdef __cplusplus
 }
