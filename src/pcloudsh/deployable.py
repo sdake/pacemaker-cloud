@@ -169,8 +169,8 @@ class Deployable(object):
         return False
 
     def status(self, name):
-        if not self.exists(deployable_name):
-            print '*** Deployable %s does not exist' % (deployable_name)
+        if not self.exists(name):
+            print '*** Deployable %s does not exist' % (name)
             return
         if self.libvirt_conn is None:
             self.libvirt_conn = libvirt.open("qemu:///system")
