@@ -54,21 +54,19 @@ class Assembly(object):
             self.name = name
             self.image = '/var/lib/libvirt/images/%s.qcow2' % self.name
             self.uuid = ''
+            self.jeos_name = ''
             self.xml_node = None
             self.rf = None
             self.gfs = None
 
     def resources_get(self):
-        if self.rf == None:
-            self.rf = resource.ResourceFactory(self.xml_node)
-
+        self.resource_factory_setup()
         return self.rf.all_get()
 
     def resource_factory_setup(self):
         if self.rf == None:
             if self.xml_node is None:
                 self.save()
-
             self.rf = resource.ResourceFactory(self.xml_node)
 
     def save(self):
@@ -293,10 +291,11 @@ class AssemblyFactory(object):
     def clone(self, source, dest):
         source_assy = self.get(source)
         dest_assy = self.get(dest)
-	if source_assy.uuid == '':
+        if source_assy.uuid == '':
             print '*** The source assembly does not exist in the system \"%s\"' % source
             return
         dest_assy.clone_from(source_assy)
+        self.save()
 
     def create(self, name, source):
         dest_assy = self.get(name)
@@ -313,6 +312,7 @@ class AssemblyFactory(object):
         if dest_assy.clone_from(jeos_source) == 0:
             os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" %
                     (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
+        self.save()
 
     def exists(self, name):
         if name in self.all:
