@@ -65,7 +65,7 @@ public:
 		g_timer_destroy(time_execed);
 		g_timer_destroy(time_queued);
 	};
-	void log(void);
+	void log(int rc);
 };
 
 #endif /* QMF_JOB_H_DEFINED */

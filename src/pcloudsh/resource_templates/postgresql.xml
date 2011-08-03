@@ -1,0 +1,1 @@
+<resource type="postgresql" class="lsb" provider="heartbeat" monitor_interval="50s"/>

@@ -1,0 +1,1 @@
+<resource type="deltacloud-ec2-us-east-1" class="lsb" provider="pacemaker" monitor_interval="66s"/>

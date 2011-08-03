@@ -30,19 +30,25 @@
 
 #include "qmf_job.h"
 
+class QmfAgent;
+
 class QmfObject {
 private:
 	bool _connected;
 	qmf::Data _qmf_data;
+	QmfAgent * _qa;
 
 	std::string _agent_name;
 	std::string _query;
 	std::string _prop_name;
 	std::string _prop_value;
 
-	std::map<uint32_t, QmfAsyncRequest*> _outstanding_calls;
 	std::list<std::string> _dead_agents;
 	std::list<QmfAsyncRequest*> _pending_jobs;
+
+	void clean_schema_args(std::string& method,
+			       qpid::types::Variant::Map& in_args,
+			       qpid::types::Variant::Map& out_args);
 public:
 	enum rpc_result {
 		RPC_OK,
@@ -72,6 +78,7 @@ public:
 	bool is_connected(void) { return _connected; };
 	bool connect(qmf::Agent &a);
 	void disconnect(void);
+	void agent_set(QmfAgent *a) {_qa = a;};
 
 	void query_set(std::string q) { _query = q; };
 	void prop_set(std::string n, std::string v) {
@@ -103,10 +110,12 @@ public:
 			     enum rpc_result rc) {
 		g_timer_stop(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_COMPLETED;
-		ar->log();
+		if (rc != RPC_OK) {
+			ar->log(rc);
+		}
 		(_method_response_fn)(ar, out_args, rc);
 	};
-	bool process_event(qmf::ConsoleEvent &event);
+	void process_event(qmf::ConsoleEvent &event, QmfAsyncRequest *req);
 
 	void run_pending_calls(void);
 };

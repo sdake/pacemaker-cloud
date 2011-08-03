@@ -12,7 +12,7 @@
   <description>Fedora 15</description>
   <commands>
     <command name='commands'>
-yum -y update;yum -y install dmidecode;yum -y install matahari-host;yum -y install matahari-service;echo "while true; do" >> /etc/rc.local; echo "gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager/Devices/0 | grep \"State = 100\" > /dev/null" >> /etc/rc.local;echo "if [ \$? -eq 0 ]" >> /etc/rc.local;echo "then" >> /etc/rc.local;echo "  break" >> /etc/rc.local;echo "fi" >> /etc/rc.local;echo "sleep 1" >> /etc/rc.local;echo "done" >> /etc/rc.local; echo "service matahari-host start" >> /etc/rc.local; echo "service matahari-service start" >> /etc/rc.local
+yum -y update;yum -y install dmidecode matahari-host matahari-service resource-agents;echo "while true; do" >> /etc/rc.local; echo "gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager/Devices/0 | grep \"State = 100\" > /dev/null" >> /etc/rc.local;echo "if [ \$? -eq 0 ]" >> /etc/rc.local;echo "then" >> /etc/rc.local;echo "  break" >> /etc/rc.local;echo "fi" >> /etc/rc.local;echo "sleep 1" >> /etc/rc.local;echo "done" >> /etc/rc.local; echo "service matahari-host start" >> /etc/rc.local; echo "service matahari-service start" >> /etc/rc.local
     </command>
   </commands>
 </template>

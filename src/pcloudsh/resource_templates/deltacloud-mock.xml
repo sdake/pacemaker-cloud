@@ -1,0 +1,1 @@
+<resource type="deltacloud-mock" class="lsb" provider="pacemaker" monitor_interval="68s"/>

@@ -52,7 +52,7 @@ cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \
-		resource.cpp qmf_multiplexer.cpp qmf_object.cpp
+		resource.cpp qmf_multiplexer.cpp qmf_object.cpp qmf_agent.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 		-I$(qmfauto_path) $(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_CFLAGS)

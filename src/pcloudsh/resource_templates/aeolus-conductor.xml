@@ -1,0 +1,1 @@
+<resource type="aeolus-conductor" class="lsb" provider="pacemaker" monitor_interval="58s"/>

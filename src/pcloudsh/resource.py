@@ -30,6 +30,7 @@ class Resource(object):
         self.name = ''
         self.type = 'http'
         self.klass = 'lsb'
+        self.provider = 'heartbeat'
         self.monitor_interval = '60s'
         self.xml_node = None
 
@@ -39,6 +40,19 @@ class Resource(object):
         self.monitor_interval = xml.prop('monitor_interval')
         self.type = xml.prop('type')
         self.klass = xml.prop('class')
+        self.provider = xml.prop('provider')
+
+        self.params = {}
+        if xml.children == None:
+            return
+
+        for ps in xml.children:
+            if ps.name != 'parameters':
+                continue
+            for p in ps.children:
+                if p.name != 'parameter':
+                    continue
+                self.params[p.prop('name')] = p.prop('value')
 
     def save(self):
         if self.xml_node is None:
@@ -51,6 +65,7 @@ class Resource(object):
             self.xml_node.setProp('name', self.name)
             self.xml_node.setProp('type', self.type)
             self.xml_node.setProp('class', self.klass)
+            self.xml_node.setProp('provider', self.provider)
             self.xml_node.setProp('monitor_interval', self.monitor_interval)
 
     def delete(self):
@@ -78,10 +93,11 @@ class ResourceFactory(object):
 
         if self.root_node.children != None:
             for r in self.root_node.children:
-                n = r.prop('name')
-                if n not in self.all:
-                    self.all[n] = Resource(self)
-                    self.all[n].load_from_xml(r)
+                if r.name == 'resource':
+                    n = r.prop('name')
+                    if n not in self.all:
+                        self.all[n] = Resource(self)
+                        self.all[n].load_from_xml(r)
 
     def root_get(self):
         return self.root_node

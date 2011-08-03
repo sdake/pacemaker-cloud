@@ -1,0 +1,1 @@
+<resource type="conductor-dbomatic" class="lsb" provider="pacemaker" monitor_interval="61s"/>

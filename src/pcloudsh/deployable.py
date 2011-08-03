@@ -122,8 +122,18 @@ class Deployable(object):
 
             for r in a.resources_get():
                 n_srv = n_servs.newChild(None, 'service', None)
-                n_srv.setProp("name", r.type)
+                n_srv.setProp("name", r.name)
+                n_srv.setProp("provider", r.provider)
+                n_srv.setProp("class", r.klass)
+                n_srv.setProp("type", r.type)
                 n_srv.setProp("monitor_interval", r.monitor_interval)
+
+                if len(r.params) > 0:
+                    n_ps = n_srv.newChild(None, 'paramaters', None)
+                    for p in r.params.keys():
+                        n_p = n_ps.newChild(None, 'paramater', None)
+                        n_p.setProp("name", p)
+                        n_p.setProp("value", r.params[p])
 
         filename = '/var/run/%s.xml' % name
         open(filename, 'w').write(doc.serialize(None, 1))

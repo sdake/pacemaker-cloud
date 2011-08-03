@@ -37,7 +37,7 @@ private:
 	typedef void (Assembly::*fsm_action_fn)(void);
 
 	QmfObject _mh_serv;
-	//QmfObject _mh_rsc;
+	QmfObject _mh_rsc;
 	QmfObject _mh_host;
 
 	uint32_t _hb_state;
@@ -80,7 +80,10 @@ public:
 	const std::string& name_get(void) const { return _name; }
 	const std::string& uuid_get(void) const { return _uuid; }
 
-	void resource_execute(struct pe_operation *op, std::string method, qpid::types::Variant::Map args);
+	void service_execute(struct pe_operation *op, std::string method,
+			     qpid::types::Variant::Map in_args);
+	void resource_execute(struct pe_operation *op, std::string method,
+			      qpid::types::Variant::Map args);
 	void insert_status(xmlNode *status);
 
 	void op_history_del_by_resource(Resource* r);

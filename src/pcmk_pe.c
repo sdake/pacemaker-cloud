@@ -64,7 +64,8 @@ static void * run_user_data = NULL;
 static pe_working_set_t *working_set = NULL;
 static int graph_updated = FALSE;
 
-enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
+enum ocf_exitcode
+pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 {
 	if (strcmp(op->rclass, "lsb") == 0 && strcmp("monitor", op->method) == 0) {
 		switch(lsb_exitcode) {
@@ -85,6 +86,42 @@ enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_
 	 * for rc <= 7
 	 */
 	return (enum ocf_exitcode)lsb_exitcode;
+}
+
+static char * ocf_reasons[10] = {
+	"OK",
+	"unknown error",
+	"invalid paramter",
+	"unimplemented feature",
+	"insufficient privliges",
+	"not installed",
+	"not configured",
+	"not running",
+	"already running on the master",
+	"failed on the master",
+};
+
+bool
+pe_resource_is_hard_error(enum ocf_exitcode ec)
+{
+	return (ec == OCF_INVALID_PARAM ||
+		ec == OCF_UNIMPLEMENT_FEATURE ||
+		ec == OCF_INSUFFICIENT_PRIV ||
+		ec == OCF_NOT_INSTALLED ||
+		ec == OCF_NOT_CONFIGURED);
+}
+
+const char*
+pe_resource_reason_get(enum ocf_exitcode exitcode)
+{
+	if (exitcode == OCF_PENDING) {
+		return "Operation pending";
+	}
+	if (exitcode < OCF_OK || exitcode > OCF_FAILED_MASTER) {
+		return "Unknown Error";
+	} else {
+		return ocf_reasons[exitcode];
+	}
 }
 
 void pe_resource_ref(struct pe_operation *op)
@@ -162,8 +199,6 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	qb_enter();
 
 	if (safe_str_eq(crm_element_value(action->xml, "operation"), "probe_complete")) {
-		qb_log(LOG_INFO, "Skipping rsc %s op for %s\n",
-		       crm_element_value(action->xml, "operation"), node);
 		crm_free(node);
 		action->confirmed = TRUE;
 		update_graph(graph, action);
@@ -240,9 +275,6 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 static gboolean
 exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
 {
-	qb_log(LOG_INFO, "Skipping pseudo %s op \n",
-	       crm_element_value(action->xml, "operation"));
-
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
@@ -252,9 +284,6 @@ exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
 static gboolean
 exec_crmd_action(crm_graph_t *graph, crm_action_t *action)
 {
-	qb_log(LOG_INFO, "Skipping crmd %s op \n",
-	       crm_element_value(action->xml, "operation"));
-
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
@@ -302,7 +331,7 @@ process_next_job(void* data)
 	graph_updated = FALSE;
 	graph_rc = run_graph(transition);
 
-	qb_log(LOG_INFO, "run_graph returned: %s", transition_status(graph_rc));
+	qb_log(LOG_DEBUG, "run_graph returned: %s", transition_status(graph_rc));
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
 		mainloop_timer_add(1000,
@@ -311,9 +340,7 @@ process_next_job(void* data)
 		return;
 	}
 
-	if (graph_rc == transition_complete) {
-		qb_log(LOG_INFO, "Transition Completed");
-	} else {
+	if (graph_rc != transition_complete) {
 		qb_log(LOG_ERR, "Transition failed: %s",
 		       transition_status(graph_rc));
 	}
@@ -369,7 +396,6 @@ pe_process_state(xmlNode *xml_input,
 	}
 
 	set_crm_log_level(LOG_INFO);
-	//set_crm_log_level(12);
 
 	assert(validate_xml(xml_input, NULL, FALSE) == TRUE);
 

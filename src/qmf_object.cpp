@@ -20,9 +20,13 @@
  */
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
+#include <qmf/Schema.h>
+#include <qmf/SchemaMethod.h>
+#include <qmf/SchemaProperty.h>
 #include "mainloop.h"
 #include "qmf_job.h"
 #include "qmf_object.h"
+#include "qmf_agent.h"
 
 using namespace std;
 using namespace qmf;
@@ -66,19 +70,49 @@ method_call_tmo(void* data)
 void
 QmfObject::run_pending_calls(void)
 {
+	qb_loop_timer_handle th;
+	QmfAsyncRequest* ar;
 	Agent a = _qmf_data.getAgent();
+
 	for (list<QmfAsyncRequest*>::iterator it = _pending_jobs.begin();
 		     it != _pending_jobs.end(); ++it) {
-		QmfAsyncRequest* ar = *it;
-		qb_loop_timer_handle th;
-		uint32_t correlation_id = a.callMethodAsync(ar->method, ar->args, _qmf_data.getAddr());
-		_outstanding_calls[correlation_id] = ar;
+		ar = *it;
+		_qa->call_method_async(ar, _qmf_data.getAddr());
 		g_timer_stop(ar->time_queued);
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
 		mainloop_timer_add(ar->timeout, ar,
 				   method_call_tmo, &th);
+	}
+}
+
+void
+QmfObject::clean_schema_args(string& method,
+			     qpid::types::Variant::Map& in_args,
+			     qpid::types::Variant::Map& out_args)
+{
+	Agent a = _qmf_data.getAgent();
+	Schema s = a.getSchema(_qmf_data.getSchemaId());
+
+	for (int i = 0; i < s.getMethodCount(); i++) {
+		SchemaMethod sm = s.getMethod(i);
+
+		if (sm.getName() != method) {
+			continue;
+		}
+		for (int g = 0; g < sm.getArgumentCount(); g++) {
+			SchemaProperty sp = sm.getArgument(g);
+			if (sp.getDirection() != DIR_OUT) {
+				out_args[sp.getName()] = in_args[sp.getName()];
+			}
+		}
+		break;
+	}
+	if (in_args.size() != out_args.size()) {
+		qb_log(LOG_TRACE,
+		       "%s() args changed from %d to %d",
+		       method.c_str(), in_args.size(), out_args.size());
 	}
 }
 
@@ -99,16 +133,14 @@ QmfObject::method_call_async(std::string method,
 
 	ar = new QmfAsyncRequest();
 	ar->method = method;
-	ar->args = in_args;
 	ar->obj = this;
 	ar->user_data = user_data;
 	ar->timeout = timeout_ms;
+	ar->args = in_args;
 
 	if (_connected) {
 		qb_loop_timer_handle th;
-		Agent a = _qmf_data.getAgent();
-		correlation_id = a.callMethodAsync(method, in_args, _qmf_data.getAddr());
-		_outstanding_calls[correlation_id] = ar;
+		_qa->call_method_async(ar, _qmf_data.getAddr());
 		g_timer_stop(ar->time_queued);
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
@@ -122,58 +154,46 @@ QmfObject::method_call_async(std::string method,
 	}
 }
 
-bool
-QmfObject::process_event(ConsoleEvent &event)
+void
+QmfObject::process_event(ConsoleEvent &event, QmfAsyncRequest *ar)
 {
-	QmfAsyncRequest *ar;
-
 	if (event.getType() == CONSOLE_METHOD_RESPONSE) {
-		ar = _outstanding_calls[event.getCorrelator()];
-		if (ar) {
-			qpid::types::Variant::Map my_map = event.getArguments();
-			if (ar->state == QmfAsyncRequest::JOB_RUNNING) {
-				method_response(ar, my_map, RPC_OK);
-			} else {
-				qb_log(LOG_ERR, " method_response is too late! ");
-			}
-			_outstanding_calls.erase(event.getCorrelator());
-			ar->unref();
+		qpid::types::Variant::Map my_map = event.getArguments();
+		if (ar->state == QmfAsyncRequest::JOB_RUNNING) {
+			method_response(ar, my_map, RPC_OK);
+		} else {
+			qb_log(LOG_NOTICE, " method_response is too late! ");
 		}
+		ar->unref();
 	} else if (event.getType() == CONSOLE_EXCEPTION) {
-		ar = _outstanding_calls[event.getCorrelator()];
-		if (ar) {
-			qpid::types::Variant::Map my_map;
-			string error(" unknown ");
+		qpid::types::Variant::Map my_map;
+		string error(" unknown ");
 
-			if (event.getDataCount() >= 1) {
-				my_map = event.getData(0).getProperties();
-				error = (string)event.getData(0).getProperty("error_text");
-			}
-			qb_log(LOG_ERR, "%s'ing: EXCEPTION %s ",
-			       ar->method.c_str(), error.c_str());
-
-			method_response(ar, my_map, RPC_EXCEPTION);
-			_outstanding_calls.erase(event.getCorrelator());
-			ar->unref();
+		if (event.getDataCount() >= 1) {
+			my_map = event.getData(0).getProperties();
+			error = (string)event.getData(0).getProperty("error_text");
 		}
+		qb_log(LOG_INFO, "%s'ing: EXCEPTION %s ",
+		       ar->method.c_str(), error.c_str());
+
+		method_response(ar, my_map, RPC_EXCEPTION);
+		ar->unref();
 	} else if (event.getType() == CONSOLE_EVENT) {
 		if (_event_fn != NULL) {
 			_event_fn(event, _event_user_data);
 		}
 	}
-
-	return true;
 }
 
 void
-QmfAsyncRequest::log(void)
+QmfAsyncRequest::log(int rc)
 {
 	gdouble queued = 0;
 	gdouble execed = 0;
 	queued = g_timer_elapsed(time_queued, NULL);
 	execed = g_timer_elapsed(time_execed, NULL);
-	qb_log(LOG_DEBUG, "%s state:%d time_queued:%f run_time:%f (timeout:%d)",
-	       method.c_str(), state, queued, execed, timeout);
+	qb_log(LOG_INFO, "%s state:%d time_queued:%f run_time:%f (timeout:%d) rc:%d",
+	       method.c_str(), state, queued, execed, timeout, rc);
 }
 
 bool
@@ -210,23 +230,7 @@ QmfObject::connect(Agent &a)
 void
 QmfObject::disconnect(void)
 {
-	QmfAsyncRequest *ar;
-	qpid::types::Variant::Map empty_args;
-	map<uint32_t, QmfAsyncRequest*>::iterator iter;
-
-	if (!_connected) {
-		return;
-	}
 	_connected = false;
 	_agent_name = "";
-
-	for (iter = _outstanding_calls.begin();
-	     iter != _outstanding_calls.end(); iter++) {
-		ar = iter->second;
-		method_response(ar, empty_args, QmfObject::RPC_CANCELLED);
-	}
-
-//	if (_connection_event_fn) {
-//		_connection_event_fn(_connection_event_user_data);
-//	}
+	_qa = NULL;
 }

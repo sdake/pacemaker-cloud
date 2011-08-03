@@ -1,0 +1,5 @@
+<resource type="Dummy" class="ocf" provider="heartbeat" monitor_interval="70s">
+	<parameters>
+		<parameter name="fake" value="1"/>
+	</parameters>
+</resource>

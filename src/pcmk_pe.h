@@ -30,7 +30,7 @@ extern "C" {
 #include <libxml/parser.h>
 
 #define PE_CRM_VERSION "3.0.5"
-#define PE_DEFAULT_TIMEOUT 30000
+#define PE_DEFAULT_TIMEOUT 60000
 
 enum ocf_exitcode {
 	OCF_PENDING = -1,
@@ -74,6 +74,9 @@ typedef void (*pe_transition_completed_t)(void* user_data, int32_t result);
 
 enum ocf_exitcode pe_resource_ocf_exitcode_get(struct pe_operation *op,
 					       int lsb_exitcode);
+const char* pe_resource_reason_get(enum ocf_exitcode exitcode);
+bool pe_resource_is_hard_error(enum ocf_exitcode ec);
+
 void pe_resource_completed(struct pe_operation *op, uint32_t return_code);
 void pe_resource_ref(struct pe_operation *op);
 void pe_resource_unref(struct pe_operation *op);

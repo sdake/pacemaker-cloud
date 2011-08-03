@@ -20,7 +20,7 @@
   </repositories>
   <commands>
     <command name='commands'>
-yum -y update;yum -y install matahari;chkconfig matahari-host on; chkconfig matahari-service on
+yum -y update;yum -y install matahari resource-agents;chkconfig matahari-host on; chkconfig matahari-service on
     </command>
   </commands>
 </template>

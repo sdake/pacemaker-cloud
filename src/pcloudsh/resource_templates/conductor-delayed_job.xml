@@ -1,0 +1,1 @@
+<resource type="conductor-delayed_job" class="lsb" provider="pacemaker" monitor_interval="62s"/>

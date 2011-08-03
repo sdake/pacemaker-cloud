@@ -18,30 +18,33 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef QMF_MULTIPLEXER_H_DEFINED
-#define QMF_MULTIPLEXER_H_DEFINED
+#ifndef QMF_AGENT_DEFINED
+#define QMF_AGENT_DEFINED
 
-#include "qmf_agent.h"
+#include <string>
+
+#include <qmf/ConsoleSession.h>
+#include <qmf/ConsoleEvent.h>
+#include <qmf/Data.h>
+
 #include "qmf_object.h"
 
-class QmfMultiplexer {
+class QmfAgent {
 private:
-	qpid::messaging::Connection *connection;
-	qmf::ConsoleSession *session;
-
-	std::string _url;
-	std::string _filter;
-
+	qmf::Agent _agent;
 	std::list<QmfObject*> _objects;
-	std::map<std::string, QmfAgent*> _agents;
-public:
-	QmfMultiplexer() {};
-	~QmfMultiplexer() {};
-	void qmf_object_add(QmfObject *qc);
-	void url_set(std::string s) { _url = s; };
-	void filter_set(std::string s) { _filter = s; };
+	std::map<uint32_t, QmfAsyncRequest*> _outstanding_calls;
 
-	bool process_events(void);
-	void start(void);
+public:
+	QmfAgent(qmf::Agent& agent);
+	~QmfAgent();
+	void add(QmfObject *o);
+
+	void process_event(qmf::ConsoleEvent &event);
+	void call_method_async(QmfAsyncRequest *req,
+			       const qmf::DataAddr &addr);
 };
-#endif /* QMF_MULTIPLEXER_H_DEFINED */
+
+#endif /* QMF_AGENT_DEFINED */
+
+

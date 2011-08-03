@@ -38,7 +38,7 @@ using namespace std;
 using namespace qmf;
 
 static void
-service_method_response(QmfAsyncRequest* ar,
+resource_method_response(QmfAsyncRequest* ar,
 			qpid::types::Variant::Map out_args,
 			enum QmfObject::rpc_result rpc_rc)
 {
@@ -62,13 +62,13 @@ service_method_response(QmfAsyncRequest* ar,
 
 		if (out_args.size() >= 1) {
 			string error(out_args["error_text"]);
-			qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
+			qb_log(LOG_NOTICE, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
 			       op->interval, error.c_str());
 		} else {
-			qb_log(LOG_ERR, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%d",
+			qb_log(LOG_NOTICE, "%s'ing: %s [%s:%s] on %s (interval:%d ms) rpc_rc:%d",
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
-			       op->interval, rc);
+			       op->interval, rpc_rc);
 		}
 		rsc->completed(op, rc);
 	}
@@ -110,10 +110,18 @@ host_event_handler(ConsoleEvent &event, void *user_data)
 }
 
 void
-Assembly::resource_execute(struct pe_operation *op, std::string method,
+Assembly::service_execute(struct pe_operation *op, std::string method,
 			   qpid::types::Variant::Map in_args)
 {
 	_mh_serv.method_call_async(method, in_args, op, op->timeout);
+}
+
+
+void
+Assembly::resource_execute(struct pe_operation *op, std::string method,
+			   qpid::types::Variant::Map in_args)
+{
+	_mh_rsc.method_call_async(method, in_args, op, op->timeout);
 }
 
 void
@@ -358,6 +366,7 @@ Assembly::check_state_offline(void)
 {
 	uint32_t new_state = _state;
 	if (_hb_state == HEARTBEAT_OK &&
+	    _mh_rsc.is_connected() &&
 	    _mh_serv.is_connected() &&
 	    _mh_host.is_connected()) {
 		new_state = STATE_ONLINE;
@@ -381,6 +390,7 @@ Assembly::state_offline_to_online(void)
 void
 Assembly::state_online_to_offline(void)
 {
+	_mh_rsc.disconnect();
 	_mh_serv.disconnect();
 	_mh_host.disconnect();
 
@@ -483,9 +493,15 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 
 	_mh_serv.query_set("{class:Services, package:org.matahariproject}");
 	_mh_serv.prop_set("hostname", _name);
-	_mh_serv.method_response_handler_set(service_method_response);
+	_mh_serv.method_response_handler_set(resource_method_response);
 	_mh_serv.connection_event_handler_set(connection_event_handler, this);
 	_dep->qmf_object_add(&_mh_serv);
+
+	_mh_rsc.query_set("{class:Resources, package:org.matahariproject}");
+	_mh_rsc.prop_set("hostname", _name);
+	_mh_rsc.method_response_handler_set(resource_method_response);
+	_mh_rsc.connection_event_handler_set(connection_event_handler, this);
+	_dep->qmf_object_add(&_mh_rsc);
 
 	_last_heartbeat = g_timer_new();
 

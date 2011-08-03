@@ -42,7 +42,7 @@ my_method_response(QmfAsyncRequest* ar,
 		   qpid::types::Variant::Map out_args,
 		   enum QmfObject::rpc_result rc)
 {
-	qb_log(LOG_INFO, "%s result: %d", ar->method.c_str(), rc);
+	qb_log(LOG_DEBUG, "%s result: %d", ar->method.c_str(), rc);
 }
 
 
@@ -82,22 +82,28 @@ Deployable::create_services(string& ass_name, xmlNode * services)
 {
 	xmlNode *cur_node = NULL;
 	string name;
+	string nm;
 	string type;
+	string cl;
+	string pr;
 
 	for (cur_node = services; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
 			continue;
 		}
-		type = (char*)xmlGetProp(cur_node, BAD_CAST "name");
+		nm = (char*)xmlGetProp(cur_node, BAD_CAST "name");
+		type = (char*)xmlGetProp(cur_node, BAD_CAST "type");
 		name = "rsc_";
 		name += ass_name;
 		name += "_";
-		name += type;
-		qb_log(LOG_DEBUG, "service name: %s", name.c_str());
+		name += nm;
+
+		cl = (char*)xmlGetProp(cur_node, BAD_CAST "class");
+		pr = (char*)xmlGetProp(cur_node, BAD_CAST "provider");
+
+		qb_log(LOG_DEBUG, "loading service: %s", name.c_str());
 
 		if (_resources[name] == NULL) {
-			string cl = "lsb";
-			string pr = "pacemaker";
 			_resources[name] = new Resource(this, name, type,
 							cl, pr);
 		}
@@ -131,7 +137,7 @@ Deployable::create_assemblies(xmlNode * assemblies)
 		}
 		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
 		ass_uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
-		qb_log(LOG_DEBUG, "node name: %s", ass_name.c_str());
+		qb_log(LOG_DEBUG, "loading assembly: %s", ass_name.c_str());
 
 		qpid::types::Variant::Map in_args;
 		in_args["name"] = ass_name;
@@ -160,7 +166,7 @@ Deployable::reload(void)
 	const char *params[1];
 	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
 
-	qb_log(LOG_INFO, "reloading config for %s", _uuid.c_str());
+	qb_log(LOG_DEBUG, "reloading config for %s", _uuid.c_str());
 	if (_config != NULL) {
 		xmlFreeDoc(_config);
 		_config = NULL;
@@ -213,7 +219,7 @@ _status_timeout(void *data)
 
 	if (pe_is_busy_processing()) {
 		// try later
-		qb_log(LOG_INFO, "pe_is_busy_processing: trying later");
+		qb_log(LOG_DEBUG, "pe_is_busy_processing: trying later");
 		d->schedule_processing();
 	} else {
 		d->process();
@@ -254,7 +260,6 @@ transition_completed_cb(void* user_data, int32_t result)
 void
 Deployable::transition_completed(int32_t result)
 {
-	qb_log(LOG_INFO, "-- transition_completed -- %d", result);
 }
 
 Resource*
@@ -339,13 +344,12 @@ void
 Deployable::schedule_processing(void)
 {
 	if (_status_changed) {
-		qb_log(LOG_INFO, "not scheduling - collecting status");
-		// busy collecting status
+		qb_log(LOG_DEBUG, "not scheduling - collecting status");
 		return;
 	}
 
 	if (mainloop_timer_is_running(_processing_timer)) {
-		qb_log(LOG_INFO, "not scheduling - already scheduled");
+		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
 	} else {
 		mainloop_timer_add(1000, this,
 				   _status_timeout,

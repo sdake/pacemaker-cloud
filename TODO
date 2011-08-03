@@ -25,11 +25,6 @@ In priority order
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
 -----
-0.4.0
------
-a - DPE - ocf support in DPE
-
------
 later
 -----
 a - CPE - extend upstart/systemd client code to include getting events on

@@ -20,7 +20,20 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 rscsdir = $(datadir)/pacemaker-cloud/resource_templates
-rscs_DATA = resource_templates/httpd.xml
+rscs_DATA = resource_templates/dummy.xml \
+	    resource_templates/httpd.xml \
+	    resource_templates/aeolus-conductor.xml \
+	    resource_templates/conductor-dbomatic.xml \
+	    resource_templates/deltacloud-core.xml \
+	    resource_templates/deltacloud-ec2-us-west-1.xml \
+	    resource_templates/imagefactory.xml  \
+	    resource_templates/postgresql.xml \
+	    resource_templates/condor.xml \
+	    resource_templates/conductor-delayed_job.xml \
+	    resource_templates/deltacloud-ec2-us-east-1.xml \
+	    resource_templates/deltacloud-mock.xml \
+	    resource_templates/ntpd.xml \
+	    resource_templates/qpidd.xml
 
 bin_SCRIPTS = pcloudsh vmlauncher
 

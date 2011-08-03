@@ -1,0 +1,1 @@
+<resource type="deltacloud-core" class="lsb" provider="pacemaker" monitor_interval="64s"/>

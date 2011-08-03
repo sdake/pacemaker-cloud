@@ -106,10 +106,20 @@ Resource::start_recurring(struct pe_operation *op)
 	}
 }
 
+static void
+g_hash_to_variant_map(gpointer key, gpointer value, gpointer user_data)
+{
+	qpid::types::Variant::Map* the_args = (qpid::types::Variant::Map*)user_data;
+	char * s_key = (char *)key;
+	char * s_val = (char *)value;
+	(*the_args)[s_key] = s_val;
+}
+
 void
 Resource::__execute(struct pe_operation *op)
 {
 	Agent a;
+	bool is_monitor_op = false;
 	qpid::types::Variant::Map in_args;
 	qpid::types::Variant::Map in_params;
 	const char *rmethod = op->method;
@@ -124,8 +134,12 @@ Resource::__execute(struct pe_operation *op)
 		completed(op, OCF_UNKNOWN_ERROR);
 		return;
 	}
+
+	if (strcmp(op->method, "monitor") == 0) {
+		is_monitor_op = true;
+	}
 	if (strstr(_id.c_str(), op->hostname) == NULL) {
-		if (strcmp(op->method, "monitor") == 0) {
+		if (is_monitor_op) {
 			completed(op, OCF_NOT_RUNNING);
 		} else {
 			completed(op, OCF_UNKNOWN_ERROR);
@@ -133,25 +147,35 @@ Resource::__execute(struct pe_operation *op)
 		qb_leave();
 		return;
 	}
-	if (strcmp(op->method, "monitor") == 0) {
-		in_args["interval"] = 0;
-	}
 	in_args["timeout"] = op->timeout;
 
 	if (strcmp(op->rclass, "lsb") == 0) {
-		if (strcmp(op->method, "monitor") == 0) {
+		if (is_monitor_op) {
 			rmethod = "status";
+			in_args["interval"] = 0;
 		}
 		in_args["name"] = op->rtype;
 		pe_resource_ref(op);
-		ass->resource_execute(op, rmethod, in_args);
+		ass->service_execute(op, rmethod, in_args);
 	} else {
+		if (is_monitor_op) {
+			rmethod = "monitor";
+		} else {
+			rmethod = "invoke";
+			in_args["action"] = op->method;
+		}
+		in_args["interval"] = 0;
 		// make a non-empty parameters map
 		in_params["qmf"] = "frustrating";
+		g_hash_table_foreach(op->params, g_hash_to_variant_map, &in_params);
 
 		in_args["name"] = op->rname;
 		in_args["class"] = op->rclass;
-		in_args["provider"] = op->rprovider;
+		if (op->rprovider == NULL) {
+			in_args["provider"] = "heartbeat";
+		} else {
+			in_args["provider"] = op->rprovider;
+		}
 		in_args["type"] = op->rtype;
 		in_args["parameters"] = in_params;
 		pe_resource_ref(op);
@@ -189,7 +213,7 @@ Resource::delete_op_history(struct pe_operation *op)
 		pe_resource_unref(_monitor_op);
 		mainloop_timer_del(_monitor_timer);
 	}
-	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:0 target_rc:%d",
+	qb_log(LOG_DEBUG, "%s_%s_%d [%s] on %s rc:0 target_rc:%d",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       op->target_outcome);
 	pe_resource_completed(op, OCF_OK);
@@ -203,9 +227,11 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 	Assembly *ass = _dep->assembly_get(node_uuid);
 	assert(ass != NULL);
 
-	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:%d target_rc:%d",
-	       op->rname, op->method, op->interval, op->rclass, op->hostname,
-	       ec, op->target_outcome);
+	if (ec != op->target_outcome) {
+		qb_log(LOG_DEBUG, "%s_%s_%d [%s] on %s rc:%d (expecting:%d)",
+		       op->rname, op->method, op->interval, op->rclass, op->hostname,
+		       ec, op->target_outcome);
+	}
 
 	if (ass->state_get() != Assembly::STATE_ONLINE) {
 		if (op->interval == 0) {
@@ -224,10 +250,22 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 		_dep->schedule_processing();
 	}
 	if (op->interval == 0) {
-		if (strcmp(op->method, "start") == 0 && ec == OCF_OK) {
+		if (strcmp(op->method, "start") == 0) {
 			string rname = op->rtype;
-			string running = "running";
-			string reason = "started OK";
+			string running;
+			string reason;
+			if (ec == OCF_OK) {
+				running = "running";
+				reason = "Started OK";
+			} else {
+				running = "failed";
+				reason = pe_resource_reason_get(ec);
+			}
+			_dep->service_state_changed(ass->name_get(), rname, running, reason);
+		} else if (pe_resource_is_hard_error(ec)) {
+			string rname = op->rtype;
+			string running = "failed";
+			string reason = pe_resource_reason_get(ec);
 			_dep->service_state_changed(ass->name_get(), rname, running, reason);
 		}
 

@@ -124,7 +124,6 @@ static bool
 qpid_callback(AgentEvent *event, void* user_data)
 {
 	CommonAgent *agent = (CommonAgent *)user_data;
-	qb_log(LOG_NOTICE, "QMF callback");
 	return agent->event_dispatch(event);
 }
 

@@ -1,0 +1,1 @@
+<resource type="imagefactory" class="lsb" provider="pacemaker" monitor_interval="60s"/>

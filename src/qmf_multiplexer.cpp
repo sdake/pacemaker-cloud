@@ -26,7 +26,10 @@
 #include <string>
 #include <map>
 
+#include <qmf/DataAddr.h>
+
 #include "mainloop.h"
+#include "qmf_agent.h"
 #include "qmf_multiplexer.h"
 
 using namespace std;
@@ -37,39 +40,33 @@ QmfMultiplexer::process_events(void)
 {
 	uint32_t rc = 0;
 	ConsoleEvent event;
-	QmfObject *o;
+	QmfAgent *qa;
 	map<string, QmfObject*>::iterator iter;
 
-	o = NULL;
 	while (session->nextEvent(event, qpid::messaging::Duration::IMMEDIATE)) {
 		Agent a = event.getAgent();
 		if (event.getType() == CONSOLE_AGENT_ADD) {
-			qb_log(LOG_DEBUG, "CONSOLE_AGENT_ADD %s : %s",
-			       a.getName().c_str(),
-			       a.getProduct().c_str());
 			for (list<QmfObject*>::iterator it = _objects.begin();
 			     it != _objects.end(); ++it) {
-
-				o = *it;
-				if (o->connect(a)) {
-					qb_log(LOG_DEBUG, "connected to agent %s : %s",
-					       a.getName().c_str(),
-					       a.getProduct().c_str());
-					_agent_to_obj[a.getName()] = o;
+				if ((*it)->connect(a)) {
+					qa = _agents[a.getName()];
+					if (qa == NULL) {
+						qa = new QmfAgent(a);
+						_agents[a.getName()] = qa;
+					}
+					if (qa) {
+						qa->add(*it);
+					}
 				}
 			}
 		} else 	if (event.getType() == CONSOLE_AGENT_DEL) {
-			qb_log(LOG_DEBUG, "CONSOLE_AGENT_DEL %s",
-			       a.getName().c_str());
-			o = _agent_to_obj[a.getName()];
-			if (o) {
-				o->disconnect();
-			}
-			_agent_to_obj.erase(a.getName());
+			qa = _agents[a.getName()];
+			_agents.erase(a.getName());
+			delete qa;
 		} else {
-			o = _agent_to_obj[a.getName()];
-			if (o) {
-				o->process_event(event);
+			qa = _agents[a.getName()];
+			if (qa) {
+				qa->process_event(event);
 			}
 		}
 	}
