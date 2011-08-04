@@ -1,1 +1,1 @@
-<resource type="postgresql" class="lsb" provider="heartbeat" monitor_interval="50s"/>
+<resource type="pgsql" class="ocf" provider="heartbeat" monitor_interval="40s"/>
