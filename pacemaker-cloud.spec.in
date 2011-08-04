@@ -59,7 +59,7 @@ fi
 %{_unitdir}/pcmkc-qpidd.service
 %dir %attr(0755, root, root) %{_datadir}/pacemaker-cloud
 %{_datadir}/pacemaker-cloud/cf2pe.xsl
-%{_datadir}/pacemaker-cloud/resource_templates/httpd.xml
+%{_datadir}/pacemaker-cloud/resource_templates/
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/assemblies
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/jeos

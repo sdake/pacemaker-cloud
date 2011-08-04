@@ -34,7 +34,7 @@ noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
 	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h \
-	qmf_multiplexer.h qmf_job.h
+	qmf_multiplexer.h qmf_job.h qmf_agent.h
 
 qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
