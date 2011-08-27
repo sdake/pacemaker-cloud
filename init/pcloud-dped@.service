@@ -1,6 +1,6 @@
 [Unit]
 Description=Deployable Policy Engine
-Wants=pcmkc-vmlauncher.service
+Wants=pcloud-vmlauncher.service
 
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud

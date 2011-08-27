@@ -20,11 +20,11 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 upstartconfdir = $(sysconfdir)/init
-upstartconf_DATA = pcmkc-dped.conf
+upstartconf_DATA = pcloud-dped.conf
 
 systemdconfdir = /lib/systemd/system
-systemdconf_DATA = pcmkc-dped@.service pcmkc-cped.service \
-		   pcmkc-vmlauncher.service pcmkc-qpidd.service
+systemdconf_DATA = pcloud-dped@.service pcloud-cped.service \
+		   pcloud-vmlauncher.service pcloud-qpidd.service
 
 EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA)
 

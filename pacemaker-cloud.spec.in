@@ -52,11 +52,11 @@ fi
 %doc COPYING
 %{_sbindir}/cped
 %{_sbindir}/dped
-%{_sysconfdir}/init/pcmkc-dped.conf
-%{_unitdir}/pcmkc-dped@.service
-%{_unitdir}/pcmkc-cped.service
-%{_unitdir}/pcmkc-vmlauncher.service
-%{_unitdir}/pcmkc-qpidd.service
+%{_sysconfdir}/init/pcloud-dped.conf
+%{_unitdir}/pcloud-dped@.service
+%{_unitdir}/pcloud-cped.service
+%{_unitdir}/pcloud-vmlauncher.service
+%{_unitdir}/pcloud-qpidd.service
 %dir %attr(0755, root, root) %{_datadir}/pacemaker-cloud
 %{_datadir}/pacemaker-cloud/cf2pe.xsl
 %{_datadir}/pacemaker-cloud/resource_templates/

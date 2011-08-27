@@ -142,7 +142,7 @@ CpeAgent::event_dispatch(AgentEvent *event)
 uint32_t
 CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 {
-	int32_t rc = init_job_start("pcmkc-dped", dep_uuid.c_str());
+	int32_t rc = init_job_start("pcloud-dped", dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "started dped instance=%s", dep_uuid.c_str());
@@ -157,7 +157,7 @@ CpeAgent::dep_start(string& dep_name, string& dep_uuid)
 uint32_t
 CpeAgent::dep_reload(string& dep_name, string& dep_uuid)
 {
-	int32_t rc = init_job_reload("pcmkc-dped", dep_uuid.c_str());
+	int32_t rc = init_job_reload("pcloud-dped", dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "reloaded dped instance=%s", dep_uuid.c_str());
@@ -172,7 +172,7 @@ CpeAgent::dep_reload(string& dep_name, string& dep_uuid)
 uint32_t
 CpeAgent::dep_stop(string& dep_name, string& dep_uuid)
 {
-	int32_t rc = init_job_stop("pcmkc-dped", dep_uuid.c_str());
+	int32_t rc = init_job_stop("pcloud-dped", dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "stopped dped instance=%s", dep_uuid.c_str());

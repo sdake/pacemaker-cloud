@@ -1,6 +1,6 @@
 [Unit]
 Description=Cloud Policy Engine
-Wants=pcmkc-qpidd.service
+Wants=pcloud-qpidd.service
 
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud
