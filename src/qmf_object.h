@@ -45,10 +45,6 @@ private:
 
 	std::list<std::string> _dead_agents;
 	std::list<QmfAsyncRequest*> _pending_jobs;
-
-	void clean_schema_args(std::string& method,
-			       qpid::types::Variant::Map& in_args,
-			       qpid::types::Variant::Map& out_args);
 public:
 	enum rpc_result {
 		RPC_OK,

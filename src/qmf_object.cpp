@@ -20,9 +20,6 @@
  */
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
-#include <qmf/Schema.h>
-#include <qmf/SchemaMethod.h>
-#include <qmf/SchemaProperty.h>
 #include "mainloop.h"
 #include "qmf_job.h"
 #include "qmf_object.h"
@@ -77,42 +74,13 @@ QmfObject::run_pending_calls(void)
 	for (list<QmfAsyncRequest*>::iterator it = _pending_jobs.begin();
 		     it != _pending_jobs.end(); ++it) {
 		ar = *it;
-		_qa->call_method_async(ar, _qmf_data.getAddr());
+		_qa->call_method_async(ar, &_qmf_data);
 		g_timer_stop(ar->time_queued);
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
 		mainloop_timer_add(ar->timeout, ar,
 				   method_call_tmo, &th);
-	}
-}
-
-void
-QmfObject::clean_schema_args(string& method,
-			     qpid::types::Variant::Map& in_args,
-			     qpid::types::Variant::Map& out_args)
-{
-	Agent a = _qmf_data.getAgent();
-	Schema s = a.getSchema(_qmf_data.getSchemaId());
-
-	for (int i = 0; i < s.getMethodCount(); i++) {
-		SchemaMethod sm = s.getMethod(i);
-
-		if (sm.getName() != method) {
-			continue;
-		}
-		for (int g = 0; g < sm.getArgumentCount(); g++) {
-			SchemaProperty sp = sm.getArgument(g);
-			if (sp.getDirection() != DIR_OUT) {
-				out_args[sp.getName()] = in_args[sp.getName()];
-			}
-		}
-		break;
-	}
-	if (in_args.size() != out_args.size()) {
-		qb_log(LOG_TRACE,
-		       "%s() args changed from %d to %d",
-		       method.c_str(), in_args.size(), out_args.size());
 	}
 }
 
@@ -140,7 +108,7 @@ QmfObject::method_call_async(std::string method,
 
 	if (_connected) {
 		qb_loop_timer_handle th;
-		_qa->call_method_async(ar, _qmf_data.getAddr());
+		_qa->call_method_async(ar, &_qmf_data);
 		g_timer_stop(ar->time_queued);
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;

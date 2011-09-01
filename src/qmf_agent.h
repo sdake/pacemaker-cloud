@@ -42,7 +42,7 @@ public:
 
 	void process_event(qmf::ConsoleEvent &event);
 	void call_method_async(QmfAsyncRequest *req,
-			       const qmf::DataAddr &addr);
+				 qmf::Data *data);
 };
 
 #endif /* QMF_AGENT_DEFINED */

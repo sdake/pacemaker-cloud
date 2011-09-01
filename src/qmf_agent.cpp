@@ -20,6 +20,9 @@
  */
 #include <qb/qblog.h>
 #include "qmf_agent.h"
+#include <qmf/Schema.h>
+#include <qmf/SchemaMethod.h>
+#include <qmf/SchemaProperty.h>
 
 using namespace std;
 using namespace qmf;
@@ -54,12 +57,36 @@ QmfAgent::~QmfAgent()
 	}
 }
 
-
-void QmfAgent::call_method_async(QmfAsyncRequest *ar,
-				 const DataAddr &addr)
+void
+QmfAgent::call_method_async(QmfAsyncRequest *ar,
+			    qmf::Data *data)
 {
-	uint32_t correlation_id = _agent.callMethodAsync(ar->method, ar->args, addr);
-	_outstanding_calls[correlation_id] = ar;
+	uint32_t cid;
+	qpid::types::Variant::Map in_args;
+	Schema s = _agent.getSchema(data->getSchemaId());
+
+	for (int i = 0; i < s.getMethodCount(); i++) {
+		SchemaMethod sm = s.getMethod(i);
+
+		if (sm.getName() != ar->method) {
+			continue;
+		}
+		for (int g = 0; g < sm.getArgumentCount(); g++) {
+			SchemaProperty sp = sm.getArgument(g);
+			if (sp.getDirection() != DIR_OUT) {
+				in_args[sp.getName()] = ar->args[sp.getName()];
+			}
+		}
+		break;
+	}
+	if (ar->args.size() != in_args.size()) {
+		qb_log(LOG_TRACE,
+		       "%s() args changed from %d to %d",
+		       ar->method.c_str(), ar->args.size(), in_args.size());
+	}
+
+	cid = _agent.callMethodAsync(ar->method, in_args, data->getAddr());
+	_outstanding_calls[cid] = ar;
 }
 
 void
