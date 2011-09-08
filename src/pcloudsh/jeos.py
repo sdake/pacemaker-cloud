@@ -44,6 +44,8 @@ class Jeos(object):
     def create(self, name, arch):
 
         iso = None
+        if name == 'F16':
+            iso = '/var/lib/libvirt/images/Fedora-16-x86_64-DVD.iso'
         if name == 'F15':
             iso = '/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso'
         if name == 'F14':
