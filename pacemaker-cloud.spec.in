@@ -83,6 +83,7 @@ fi
 %{_mandir}/man1/vmlauncher.1*
 %{_mandir}/man1/pcloudsh.1*
 %{_mandir}/man8/pacemaker_cloud_overview.8*
+%{_mandir}/man8/pacemaker_cloud_example.8*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1

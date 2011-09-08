@@ -1,7 +1,7 @@
 .TH PACEMAKER_CLOUD_OVERVIEW 8 "Jul 2011" "pacemaker_cloud_overview"
 
 .SH NAME
-pacemaker_cloud_overview - Pacemaker Cloud High Availability Overview
+pacemaker_cloud_overview \- Pacemaker Cloud High Availability Overview
 
 .SH DESCRIPTION
 The pacemaker cloud project  provides high levels of service availability
@@ -68,25 +68,25 @@ escalation works by escalating a lower level repetitive component failure into
 a higher level recovery action.  For example, if httpd fails 5 times in 1 hour,
 the software terminates the containing assembly and restarts it.  If that
 assembly then has repeated failures, the software would terminate the assembly
-and escalate the recovery by restarting the containing deployable.  If the 
+and escalate the recovery by restarting the containing deployable.  If the
 deployable fails repeatedly, the deployable is relocated to a different cloud
 provider.
 
 .B "Integraton with cloud management software"
 The developers intend to integrate with cloud management software such as
-Aeolus http://www.aeolus.org
+Aeolus http://www.aeolus.org/
 
 .SH LIMITATONS
-Pacemaker Cloud is demo-grade software using best known practices for 
+Pacemaker Cloud is demo-grade software using best known practices for
 providing high levels of service availablity in a cloud environment.  Because
 of lacking integraton with cloud management software, we are not yet able to
 run assemblies on multple nodes or external cloud providers.
 
 .SH WEBSITE
-http://www.pacemaker-cloud.org
+http://www.pacemaker\-cloud.org/
 
 .SH SEE ALSO
-cped(1). dped(1), vmlauncher(1), pcloudsh(1)
+cped(1), dped(1), vmlauncher(1), pcloudsh(1), pacemaker_cloud_example(8)
 
 .SH AUTHORS
 Steven Dake <sdake@redhat.com>

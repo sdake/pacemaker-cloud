@@ -1,0 +1,68 @@
+.TH PACEMAKER_CLOUD_EXAMPLE 8 "Aug 2011" "pacemaker_cloud_example"
+
+.SH NAME
+pacemaker_cloud_example - Pacemaker Cloud Usage Example
+
+.SH DESCRIPTION
+The pacemaker cloud project provides high levels of service availability
+for high scale cloud deployments.  This example uses the concepts
+described in the pacemaker_cloud_overview(8), to create a highly
+available cloud deployment.
+
+.SH SETUP
+Ensure the pcloud\-cped service is started, using for example:
+.br
+systemctl start pcloud\-cped.service
+.PP
+Ensure a compatible OS image is available, for example:
+.br
+/var/lib/libvirt/images/Fedora\-14\-x86_64\-DVD.iso
+
+.SH PCLOUDSH
+Start the pcloudsh(1) command as root,
+and enter the following pcloudsh commands:
+.PP
+.nf
+jeos_create F14 x86_64
+assembly_create assy1 F14 x86_64
+assembly_clone assy1 assy2
+assembly_clone assy1 assy3
+assembly_resource_add httpdone httpd assy1
+assembly_resource_add httpdtwo httpd assy2
+assembly_resource_add httpdthree httpd assy3
+deployable_create dep1
+deployable_assembly_add dep1 assy1
+deployable_assembly_add dep1 assy2
+deployable_assembly_add dep1 assy3
+deployable_start dep1
+
+.SH AVAILABILITY TESTING
+Keep pcloudsh running to verify that appropriate events
+are reported for the following operations:
+.PP
+.B Resource restart
+.PP
+Log in to one of the assemblies (the default root password is "password")
+and stop httpd.  Verify that httpd is restarted via pacemaker\-cloud.
+.PP
+.B Assembly restart
+.PP
+Open the virtual machine manager GUI and use the "force off"
+functionality on a virtual machine (assembly).  The virtual machine manager
+should display that the assembly is restarted.  Log in to the restarted
+virtual machine and verify httpd was restarted properly too.
+
+.SH TROUBLESHOOTING
+Ensure TCP port 49000 is not blocked by your firewall.
+Ensure SELinux is setup appropriately or disabled.
+
+.SH WEBSITE
+http://www.pacemaker\-cloud.org/
+
+.SH SEE ALSO
+cped(1), dped(1), vmlauncher(1), pcloudsh(1), pacemaker_cloud_overview(8)
+
+.SH AUTHORS
+Pádraig Brady <P@draigBrady.com>
+Steven Dake <sdake@redhat.com>
+Angus Salkeld <asalkeld@redhat.com>
