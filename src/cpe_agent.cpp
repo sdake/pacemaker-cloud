@@ -22,6 +22,8 @@
  */
 
 #include "config.h"
+
+#include <qb/qbdefs.h>
 #include <qb/qblog.h>
 #include <qmf/ConsoleSession.h>
 #include <qmf/ConsoleEvent.h>
@@ -30,10 +32,15 @@
 #include "mainloop.h"
 
 #include "cpe_agent.h"
-#include "init-dbus.h"
+#include "cpe_impl.h"
 
 using namespace std;
 using namespace qmf;
+
+void CpeAgent::impl_set(CpeImpl *impl)
+{
+	this->impl = impl;
+}
 
 int
 CpeAgent::console_handler(void)
@@ -52,15 +59,17 @@ CpeAgent::console_handler(void)
 		}
 	}
 
-	return TRUE;
+	return QB_TRUE;
 }
 
 int
 main(int argc, char **argv)
 {
 	CpeAgent agent;
+	CpeImpl impl;
 	int32_t rc;
 
+	agent.impl_set(&impl);
 	rc = agent.init(argc, argv, "cpe");
 	if (rc == 0) {
 		agent.run();
@@ -74,23 +83,6 @@ CpeAgent::setup(void)
         _cpe = qmf::Data(package.data_cpe);
 	agent_session.addData(_cpe, "cpe");
 
-        dbus_init();
-
-#if 0
-        console_connection = new qpid::messaging::Connection(url, connectionOptions);
-	try {
-		console_connection->open();
-	} catch (qpid::messaging::TransportFailure& e) {
-		qb_log(LOG_ERR, e.what());
-		return 0;
-	}
-        console_session = new ConsoleSession(*console_connection, sessionOptions);
-	console_session->setAgentFilter("");
-
-	g_timeout_add(5000,
-		host_proxy_timeout,
-		this);
-#endif
 }
 
 bool
@@ -107,7 +99,7 @@ CpeAgent::event_dispatch(AgentEvent *event)
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = dep_start(name, uuid);
+			rc = impl->dep_start(name, uuid);
 
 			event->addReturnArgument("rc", rc);
 
@@ -115,14 +107,14 @@ CpeAgent::event_dispatch(AgentEvent *event)
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = dep_stop(name, uuid);
+			rc = impl->dep_stop(name, uuid);
 
 			event->addReturnArgument("rc", rc);
 		} else if (methodName == "deployable_reload") {
 			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = dep_reload(name, uuid);
+			rc = impl->dep_reload(name, uuid);
 
 			event->addReturnArgument("rc", rc);
 		}
@@ -138,49 +130,3 @@ CpeAgent::event_dispatch(AgentEvent *event)
 	}
 	return true;
 }
-
-uint32_t
-CpeAgent::dep_start(string& dep_name, string& dep_uuid)
-{
-	int32_t rc = init_job_start("pcloud-dped", dep_uuid.c_str());
-
-	if (rc == 0) {
-		qb_log(LOG_INFO, "started dped instance=%s", dep_uuid.c_str());
-		return 0;
-	} else {
-		errno = -rc;
-		qb_perror(LOG_ERR, "Failed to start dped instance=%s", dep_uuid.c_str());
-		return -rc;
-	}
-}
-
-uint32_t
-CpeAgent::dep_reload(string& dep_name, string& dep_uuid)
-{
-	int32_t rc = init_job_reload("pcloud-dped", dep_uuid.c_str());
-
-	if (rc == 0) {
-		qb_log(LOG_INFO, "reloaded dped instance=%s", dep_uuid.c_str());
-		return 0;
-	} else {
-		errno = -rc;
-		qb_perror(LOG_ERR, "Failed to reload dped instance=%s", dep_uuid.c_str());
-		return -rc;
-	}
-}
-
-uint32_t
-CpeAgent::dep_stop(string& dep_name, string& dep_uuid)
-{
-	int32_t rc = init_job_stop("pcloud-dped", dep_uuid.c_str());
-
-	if (rc == 0) {
-		qb_log(LOG_INFO, "stopped dped instance=%s", dep_uuid.c_str());
-		return 0;
-	} else {
-		errno = -rc;
-		qb_perror(LOG_ERR, "Failed to stop dped instance=%s", dep_uuid.c_str());
-		return -rc;
-	}
-}
-

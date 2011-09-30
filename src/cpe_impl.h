@@ -19,32 +19,25 @@
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CPE_H_
-#define _CPE_H_
+#ifndef CPE_IMPL_H_
+#define CPE_IMPL_H_
 
-#include <qmf/ConsoleSession.h>
-#include <qmf/ConsoleEvent.h>
-#include <qmf/Agent.h>
+#include <qb/qblog.h>
+#include <qb/qbloop.h>
+#include "mainloop.h"
+#include <string>
+#include <iostream>
 
-#include <qpid/sys/Mutex.h>
-
-#include "org/pacemakercloud/QmfPackage.h"
-#include "common_agent.h"
-#include "cpe_impl.h"
-
-class CpeAgent : public CommonAgent
-{
-private:
-	qmf::Data _cpe;
-        qpid::messaging::Connection *console_connection;
-	qmf::ConsoleSession *console_session;
-	CpeImpl *impl;
-
+class CpeImpl {
 public:
-	void impl_set(CpeImpl *impl);
-	void setup(void);
-	bool event_dispatch(AgentEvent *event);
-	int console_handler(void);
-};
-#endif /* _CPE_H_ */
+	CpeImpl();
+	virtual ~CpeImpl();
 
+	uint32_t dep_start(std::string& name, std::string& uuid);
+	uint32_t dep_stop(std::string& name, std::string& uuid);
+	uint32_t dep_reload(std::string& name, std::string& uuid);
+
+
+};
+
+#endif /* CPE_IMPL_H_ */

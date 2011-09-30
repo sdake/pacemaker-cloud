@@ -34,7 +34,7 @@ noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h mainloop.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
 	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h \
-	qmf_multiplexer.h qmf_job.h qmf_agent.h
+	qmf_multiplexer.h qmf_job.h qmf_agent.h cpe_impl.h
 
 qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -43,7 +43,7 @@ $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
 cped_SOURCES  = libinit.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
-	        cpe_agent.cpp
+	        cpe_agent.cpp cpe_impl.cpp
 
 cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 		  -I$(qmfauto_path)
