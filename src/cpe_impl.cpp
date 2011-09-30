@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "config.h"
 
 #include <qb/qblog.h>
@@ -41,7 +42,7 @@ CpeImpl::~CpeImpl()
 }
 
 uint32_t
-CpeImpl::dep_start(string& dep_name, string& dep_uuid)
+CpeImpl::dep_start(string& dep_uuid)
 {
 	int32_t rc = init_job_start("pcloud-dped", dep_uuid.c_str());
 
@@ -56,7 +57,7 @@ CpeImpl::dep_start(string& dep_name, string& dep_uuid)
 }
 
 uint32_t
-CpeImpl::dep_reload(string& dep_name, string& dep_uuid)
+CpeImpl::dep_reload(string& dep_uuid)
 {
 	int32_t rc = init_job_reload("pcloud-dped", dep_uuid.c_str());
 
@@ -71,7 +72,7 @@ CpeImpl::dep_reload(string& dep_name, string& dep_uuid)
 }
 
 uint32_t
-CpeImpl::dep_stop(string& dep_name, string& dep_uuid)
+CpeImpl::dep_stop(string& dep_uuid)
 {
 	int32_t rc = init_job_stop("pcloud-dped", dep_uuid.c_str());
 
@@ -85,3 +86,8 @@ CpeImpl::dep_stop(string& dep_name, string& dep_uuid)
 	}
 }
 
+uint32_t
+CpeImpl::dep_list(std::list<std::string> * list)
+{
+	return 0; //TODO list deployables
+}

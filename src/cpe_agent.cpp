@@ -32,6 +32,7 @@
 #include "mainloop.h"
 
 #include "cpe_agent.h"
+#include "cpe_httpd.h"
 #include "cpe_impl.h"
 
 using namespace std;
@@ -66,8 +67,12 @@ int
 main(int argc, char **argv)
 {
 	CpeAgent agent;
+	CpeHttpd http;
 	CpeImpl impl;
 	int32_t rc;
+
+	http.impl_set(&impl);
+	http.run();
 
 	agent.impl_set(&impl);
 	rc = agent.init(argc, argv, "cpe");
@@ -82,7 +87,6 @@ CpeAgent::setup(void)
 {
         _cpe = qmf::Data(package.data_cpe);
 	agent_session.addData(_cpe, "cpe");
-
 }
 
 bool
@@ -90,31 +94,27 @@ CpeAgent::event_dispatch(AgentEvent *event)
 {
 	const string& methodName(event->getMethodName());
 	uint32_t rc = 0;
-	string name;
 	string uuid;
 
 	switch (event->getType()) {
 	case qmf::AGENT_METHOD:
 		if (methodName == "deployable_start") {
-			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = impl->dep_start(name, uuid);
+			rc = impl->dep_start(uuid);
 
 			event->addReturnArgument("rc", rc);
 
 		} else if (methodName == "deployable_stop") {
-			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = impl->dep_stop(name, uuid);
+			rc = impl->dep_stop(uuid);
 
 			event->addReturnArgument("rc", rc);
 		} else if (methodName == "deployable_reload") {
-			name = event->getArguments()["name"].asString();
 			uuid = event->getArguments()["uuid"].asString();
 
-			rc = impl->dep_reload(name, uuid);
+			rc = impl->dep_reload(uuid);
 
 			event->addReturnArgument("rc", rc);
 		}

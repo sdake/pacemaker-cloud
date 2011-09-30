@@ -19,24 +19,24 @@
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CPE_IMPL_H_
-#define CPE_IMPL_H_
+#ifndef _CPE_HTTPD_H_
+#define _CPE_HTTPD_H_
 
-#include <qb/qblog.h>
-#include <qb/qbloop.h>
-#include "mainloop.h"
-#include <string>
-#include <iostream>
+#include <microhttpd.h>
+#include <cpe_impl.h>
 
-class CpeImpl {
+class CpeHttpd {
+private:
+	struct MHD_Daemon *daemon;
+	CpeImpl *impl;
+
 public:
-	CpeImpl();
-	virtual ~CpeImpl();
+	CpeHttpd();
+	~CpeHttpd();
 
-	uint32_t dep_start(std::string& uuid);
-	uint32_t dep_stop(std::string& uuid);
-	uint32_t dep_reload(std::string& uuid);
-	uint32_t dep_list(std::list<std::string> * list);
+	void run(void);
+	void impl_set(CpeImpl *impl);
+	CpeImpl * impl_get(void) {return impl;};
 };
 
-#endif /* CPE_IMPL_H_ */
+#endif // _CPE_HTTPD_H_

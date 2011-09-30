@@ -1,0 +1,43 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'restclient'
+require "rexml/document"
+include REXML
+
+def usage(why = nil)
+  puts "failed: #{why}" if why
+  puts "usage: cpe-rest [start|stop|list] uuid"
+  exit(1)
+end
+
+POSSIBLE_VERBS = ['start', 'stop', 'list']
+BASE_URL = 'http://localhost:8888/pacemaker-cloud/api'
+
+if POSSIBLE_VERBS.include? ARGV.first
+	@verb = ARGV.shift
+else
+	usage("invalid action '#{ARGV.first}")
+end
+
+@uuid = ARGV.shift
+
+usage("invalid uuid '#{@uuid}") if @uuid == nil && @verb != 'list'
+
+if @verb == 'start'
+	doc = Document.new "<deployments/>"
+
+	_dep = doc.root.add_element "deployment"
+	_dep.attributes['id'] = @uuid
+
+	dep = RestClient::Resource.new BASE_URL
+	print dep.post :deployment => doc, :multipart => true
+	puts ' '
+
+elsif @verb == 'stop'
+
+	RestClient.delete BASE_URL + '/' + @uuid
+
+else
+	print RestClient.get BASE_URL
+end
