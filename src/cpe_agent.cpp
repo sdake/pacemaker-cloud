@@ -35,6 +35,8 @@
 #include "cpe_httpd.h"
 #include "cpe_impl.h"
 
+#define DEFAULT_HTTP_PORT 8888
+
 using namespace std;
 using namespace qmf;
 
@@ -67,15 +69,17 @@ int
 main(int argc, char **argv)
 {
 	CpeAgent agent;
-	CpeHttpd http;
 	CpeImpl impl;
 	int32_t rc;
 
+	agent.impl_set(&impl);
+	agent.http_port(DEFAULT_HTTP_PORT);
+	rc = agent.init(argc, argv, "cpe");
+
+	CpeHttpd http(agent.http_port());
 	http.impl_set(&impl);
 	http.run();
 
-	agent.impl_set(&impl);
-	rc = agent.init(argc, argv, "cpe");
 	if (rc == 0) {
 		agent.run();
 	}

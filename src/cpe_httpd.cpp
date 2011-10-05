@@ -32,7 +32,6 @@
 #include <cpe_httpd.h>
 #include <cpe_impl.h>
 
-#define PORT            8888
 #define POSTBUFFERSIZE  512
 #define MAXNAMESIZE     20
 #define MAXANSWERSIZE   512
@@ -242,7 +241,7 @@ answer_to_connection(void *cls, struct MHD_Connection *connection,
 	return send_page(connection, errorpage, NULL, MHD_HTTP_BAD_REQUEST);
 }
 
-CpeHttpd::CpeHttpd() : daemon(NULL)
+CpeHttpd::CpeHttpd(int port) : daemon(NULL), port(port)
 {
 }
 
@@ -257,7 +256,7 @@ void
 CpeHttpd::run(void)
 {
 	daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY,
-				  PORT, NULL, NULL,
+				  this->port, NULL, NULL,
 				  &answer_to_connection, this,
 				  MHD_OPTION_NOTIFY_COMPLETED,
 				  request_completed, this,

@@ -43,8 +43,11 @@ class CommonAgent
 private:
 	mainloop_qmf_session_t *qmf_source;
 	Selector log_selector;
+	const char* proc_name;
+
 protected:
 	list<string> _non_opt_args;
+	int http_port_;
 
 public:
 	qb_loop_t *mainloop;
@@ -59,6 +62,9 @@ public:
 	virtual void signal_handler(int32_t rsignal);
 	int init(int argc, char **argv, const char *proc_name);
 	void run();
+	void usage();
+	virtual int http_port(void) { return 0; };
+	void http_port(int http_port) { this->http_port_ = http_port; };
 };
 
 #endif /* COMMON_AGENT_H_DEFINED */

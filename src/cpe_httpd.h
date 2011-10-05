@@ -29,9 +29,10 @@ class CpeHttpd {
 private:
 	struct MHD_Daemon *daemon;
 	CpeImpl *impl;
+	const int port;
 
 public:
-	CpeHttpd();
+	CpeHttpd(int port);
 	~CpeHttpd();
 
 	void run(void);

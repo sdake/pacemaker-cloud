@@ -36,7 +36,7 @@ class CpeAgent : public CommonAgent
 {
 private:
 	qmf::Data _cpe;
-        qpid::messaging::Connection *console_connection;
+	qpid::messaging::Connection *console_connection;
 	qmf::ConsoleSession *console_session;
 	CpeImpl *impl;
 
@@ -45,6 +45,8 @@ public:
 	void setup(void);
 	bool event_dispatch(AgentEvent *event);
 	int console_handler(void);
+	using CommonAgent::http_port;
+	int http_port(void) { return this->http_port_; };
 };
 #endif /* _CPE_H_ */
 

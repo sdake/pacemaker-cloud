@@ -54,8 +54,6 @@ using namespace std;
 using namespace qmf;
 namespace _qmf = qmf::org::pacemakercloud;
 
-static char* program_name;
-
 int32_t qpid_level[8] = { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_NOTICE, LOG_WARNING,
 	LOG_ERR, LOG_CRIT };
 
@@ -87,22 +85,9 @@ struct option opt[] = {
 	{"password", required_argument, NULL, 'P'},
 	{"service", required_argument, NULL, 's'},
 	{"port", required_argument, NULL, 'p'},
+	{"http-port", required_argument, NULL, 'H'},
 	{0, 0, 0, 0}
 };
-
-static void
-print_usage(const char *proc_name)
-{
-	printf("Usage:\t%sd <options>\n", proc_name);
-	printf("\t-d | --daemon     run as a daemon.\n");
-	printf("\t-h | --help       print this help message.\n");
-	printf("\t-b | --broker     specify broker host name..\n");
-	printf("\t-g | --gssapi     force GSSAPI authentication.\n");
-	printf("\t-u | --username   username to use for authentication purproses.\n");
-	printf("\t-P | --password   password to use for authentication purproses.\n");
-	printf("\t-s | --service    service name to use for authentication purproses.\n");
-	printf("\t-p | --port       specify broker port.\n");
-}
 
 static int32_t
 sig_handler(int32_t rsignal, void *data)
@@ -178,6 +163,22 @@ static const char *my_tags_stringify(uint32_t tags)
 	}
 }
 
+void
+CommonAgent::usage(void)
+{
+	printf("Usage:\t%sd <options>\n", this->proc_name);
+	printf("\t-d | --daemon     run as a daemon\n");
+	printf("\t-h | --help       print this help message\n");
+	printf("\t-b | --broker     broker host name to connect to\n");
+	printf("\t-p | --port       broker port to connect to\n");
+	printf("\t-g | --gssapi     force GSSAPI authentication with broker\n");
+	printf("\t-u | --username   username to authenticate with broker\n");
+	printf("\t-P | --password   password to authenticate with broker\n");
+	printf("\t-s | --service    service name to authenticate with broker\n");
+	if (this->http_port())
+		printf("\t-H | --http-port  port for HTTP interface to listen on\n");
+}
+
 int
 CommonAgent::init(int argc, char **argv, const char *proc_name)
 {
@@ -198,7 +199,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	qpid::types::Variant::Map options;
 	std::stringstream url;
 
-	program_name = (char*)proc_name;
+	this->proc_name = proc_name;
 	qpid::log::Options opts(proc_name);
 	opts.parse(sizeof(log_argv)/sizeof(char*), const_cast<char**>(log_argv));
 	opts.time = false;
@@ -224,11 +225,11 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	vtable.try_realloc = realloc;
 	g_mem_set_vtable(&vtable);
 
-	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:v", opt, &idx)) != -1) {
+	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:vH:", opt, &idx)) != -1) {
 		switch (arg) {
 		case 'h':
 		case '?':
-			print_usage(proc_name);
+			this->usage();
 			exit(0);
 			break;
 		case 'd':
@@ -241,7 +242,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			if (optarg) {
 				service = optarg;
 			} else {
-				print_usage(proc_name);
+				this->usage();
 				exit(1);
 			}
 			break;
@@ -249,7 +250,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			if (optarg) {
 				username = optarg;
 			} else {
-				print_usage(proc_name);
+				this->usage();
 				exit(1);
 			}
 			break;
@@ -257,7 +258,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			if (optarg) {
 				password = optarg;
 			} else {
-				print_usage(proc_name);
+				this->usage();
 				exit(1);
 			}
 			break;
@@ -268,7 +269,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			if (optarg) {
 				serverport = atoi(optarg);
 			} else {
-				print_usage(proc_name);
+				this->usage();
 				exit(1);
 			}
 			break;
@@ -276,13 +277,24 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			if (optarg) {
 				servername = optarg;
 			} else {
-				print_usage(proc_name);
+				this->usage();
 				exit(1);
 			}
 			break;
+		case 'H':
+			if (this->http_port()) {
+				if (optarg) {
+					this->http_port(atoi(optarg));
+				} else {
+					this->usage();
+					exit(1);
+				}
+				break;
+			}
+			/* Fall through.  */
 		default:
 			fprintf(stderr, "unsupported option '-%c'.  See --help.\n", arg);
-			print_usage(proc_name);
+			this->usage();
 			exit(0);
 			break;
 		}
