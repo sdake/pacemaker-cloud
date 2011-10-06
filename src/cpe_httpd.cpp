@@ -252,7 +252,7 @@ CpeHttpd::~CpeHttpd()
 	}
 }
 
-void
+bool
 CpeHttpd::run(void)
 {
 	daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY,
@@ -261,6 +261,12 @@ CpeHttpd::run(void)
 				  MHD_OPTION_NOTIFY_COMPLETED,
 				  request_completed, this,
 				  MHD_OPTION_END);
+	if (!daemon)
+		fprintf(stderr, "Error starting HTTP daemon on localhost:%d\n", this->port);
+	else
+		fprintf(stderr, "HTTP [info] Listening on localhost:%d\n", this->port);
+
+	return daemon;
 }
 
 void CpeHttpd::impl_set(CpeImpl *impl)

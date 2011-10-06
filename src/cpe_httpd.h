@@ -35,7 +35,7 @@ public:
 	CpeHttpd(int port);
 	~CpeHttpd();
 
-	void run(void);
+	bool run(void);
 	void impl_set(CpeImpl *impl);
 	CpeImpl * impl_get(void) {return impl;};
 };
