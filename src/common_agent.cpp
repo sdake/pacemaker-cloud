@@ -86,6 +86,8 @@ struct option opt[] = {
 	{"service", required_argument, NULL, 's'},
 	{"port", required_argument, NULL, 'p'},
 	{"http-port", required_argument, NULL, 'H'},
+	{"conductor-host", required_argument, NULL, 'c'},
+	{"conductor-port", required_argument, NULL, 'C'},
 	{0, 0, 0, 0}
 };
 
@@ -95,6 +97,20 @@ sig_handler(int32_t rsignal, void *data)
 	CommonAgent *agent = (CommonAgent *)data;
 	agent->signal_handler(rsignal);
 	return QB_FALSE;
+}
+
+static int
+get_port (const char* optarg)
+{
+	int port = 0;
+
+	if (optarg) {
+		port = atoi(optarg);
+		if (port < 1 || port > 65535)
+			port = 0;
+	}
+
+	return port;
 }
 
 void
@@ -169,14 +185,32 @@ CommonAgent::usage(void)
 	printf("Usage:\t%sd <options>\n", this->proc_name);
 	printf("\t-d | --daemon     run as a daemon\n");
 	printf("\t-h | --help       print this help message\n");
-	printf("\t-b | --broker     broker host name to connect to\n");
-	printf("\t-p | --port       broker port to connect to\n");
+	printf("\t-b | --broker     broker host name to connect to (default: %s)\n", this->broker_host.c_str());
+	printf("\t-p | --port       broker port to connect to (default: %d)\n", this->broker_port);
 	printf("\t-g | --gssapi     force GSSAPI authentication with broker\n");
 	printf("\t-u | --username   username to authenticate with broker\n");
 	printf("\t-P | --password   password to authenticate with broker\n");
 	printf("\t-s | --service    service name to authenticate with broker\n");
-	if (this->http_port())
-		printf("\t-H | --http-port  port for HTTP interface to listen on\n");
+	if (this->http_port()) {
+		printf("\t-H | --http-port  port for HTTP interface to listen on (default: %d)\n",
+		       this->http_port());
+	}
+	if (this->conductor_host()) {
+		printf("\t-c | --conductor  aeolus-conductor host name to connect to (default: %s)\n",
+		       this->conductor_host());
+	}
+	if (this->conductor_port()) {
+		printf("\t-C | --conductor-port  aeolus-conductor port to connect to (default: %d)\n",
+		       this->conductor_port());
+	}
+}
+
+void
+CommonAgent::unsupported (int arg)
+{
+	fprintf(stderr, "unsupported option '-%c'\n", arg);
+	this->usage();
+	exit(0);
 }
 
 int
@@ -185,12 +219,6 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	int arg;
 	int idx = 0;
 	bool daemonize = false;
-	bool gssapi = false;
-	string servername("localhost");
-	string username;
-	string password;
-	string service;
-	int serverport = 49000;
 	int loglevel = LOG_INFO;
 	const char* log_argv[]={
 		0,
@@ -225,7 +253,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	vtable.try_realloc = realloc;
 	g_mem_set_vtable(&vtable);
 
-	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:vH:", opt, &idx)) != -1) {
+	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:vH:c:C:", opt, &idx)) != -1) {
 		switch (arg) {
 		case 'h':
 		case '?':
@@ -240,7 +268,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 's':
 			if (optarg) {
-				service = optarg;
+				this->broker_service = optarg;
 			} else {
 				this->usage();
 				exit(1);
@@ -248,7 +276,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'u':
 			if (optarg) {
-				username = optarg;
+				this->broker_username = optarg;
 			} else {
 				this->usage();
 				exit(1);
@@ -256,26 +284,25 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'P':
 			if (optarg) {
-				password = optarg;
+				this->broker_password = optarg;
 			} else {
 				this->usage();
 				exit(1);
 			}
 			break;
 		case 'g':
-			gssapi = true;
+			this->broker_gssapi = true;
 			break;
 		case 'p':
-			if (optarg) {
-				serverport = atoi(optarg);
-			} else {
+			this->broker_port = get_port(optarg);
+			if (!this->broker_port) {
 				this->usage();
 				exit(1);
 			}
 			break;
 		case 'b':
 			if (optarg) {
-				servername = optarg;
+				this->broker_host = optarg;
 			} else {
 				this->usage();
 				exit(1);
@@ -283,19 +310,44 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 			break;
 		case 'H':
 			if (this->http_port()) {
-				if (optarg) {
-					this->http_port(atoi(optarg));
+				int port = get_port(optarg);
+				if (port) {
+					this->http_port(port);
 				} else {
 					this->usage();
 					exit(1);
 				}
-				break;
+			} else {
+				this->unsupported(arg);
 			}
-			/* Fall through.  */
+			break;
+		case 'c':
+			if (this->conductor_host()) {
+				if (optarg) {
+					this->conductor_host(optarg);
+				} else {
+					this->usage();
+					exit(1);
+				}
+			} else {
+				this->unsupported(arg);
+			}
+			break;
+		case 'C':
+			if (this->conductor_port()) {
+				int port = get_port(optarg);
+				if (port) {
+					this->conductor_port(atoi(optarg));
+				} else {
+					this->usage();
+					exit(1);
+				}
+			} else {
+				this->unsupported(arg);
+			}
+			break;
 		default:
-			fprintf(stderr, "unsupported option '-%c'.  See --help.\n", arg);
-			this->usage();
-			exit(0);
+			this->unsupported(arg);
 			break;
 		}
 	}
@@ -328,23 +380,23 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	}
 
 	qb_log(LOG_INFO, "Connecting to Qpid broker at %s on port %d",
-	       servername.c_str(), serverport);
+	       this->broker_host.c_str(), this->broker_port);
 
 	options["reconnect"] = true;
-	if (username.length() > 0) {
-		options["username"] = username;
+	if (this->broker_username.length() > 0) {
+		options["username"] = this->broker_username;
 	}
-	if (password.length() > 0) {
-		options["password"] = password;
+	if (this->broker_password.length() > 0) {
+		options["password"] = this->broker_password;
 	}
-	if (service.length() > 0) {
-		options["sasl-service"] = service;
+	if (this->broker_service.length() > 0) {
+		options["sasl-service"] = this->broker_service;
 	}
-	if (gssapi) {
+	if (this->broker_gssapi) {
 		options["sasl-mechanism"] = "GSSAPI";
 	}
 
-	url << servername << ":" << serverport;
+	url << this->broker_host << ":" << this->broker_port;
 
 	agent_connection = qpid::messaging::Connection(url.str(), options);
 	agent_connection.open();

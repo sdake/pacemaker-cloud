@@ -35,10 +35,16 @@
 #include "cpe_httpd.h"
 #include "cpe_impl.h"
 
-#define DEFAULT_HTTP_PORT 8888
-
 using namespace std;
 using namespace qmf;
+
+
+CpeAgent::CpeAgent()
+{
+    this->http_port(8888);
+    this->conductor_host("localhost");
+    this->conductor_port(3000);
+}
 
 void CpeAgent::impl_set(CpeImpl *impl)
 {
@@ -73,7 +79,6 @@ main(int argc, char **argv)
 	int32_t rc;
 
 	agent.impl_set(&impl);
-	agent.http_port(DEFAULT_HTTP_PORT);
 	rc = agent.init(argc, argv, "cpe");
 
 	CpeHttpd http(agent.http_port());

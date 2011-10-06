@@ -32,6 +32,19 @@
 
 #include "mainloop.h"
 
+
+/* The _Noreturn keyword of draft C1X.  */
+#ifndef _Noreturn
+# if (3 <= __GNUC__ || (__GNUC__ == 2 && 8 <= __GNUC_MINOR__) \
+      || 0x5110 <= __SUNPRO_C)
+#  define _Noreturn __attribute__ ((__noreturn__))
+# elif 1200 <= _MSC_VER
+#  define _Noreturn __declspec (noreturn)
+# else
+#  define _Noreturn
+# endif
+#endif
+
 using namespace std;
 using namespace qmf;
 using namespace qpid::log;
@@ -44,14 +57,22 @@ private:
 	mainloop_qmf_session_t *qmf_source;
 	Selector log_selector;
 	const char* proc_name;
+	int broker_port;
+	string broker_host;
+	string broker_username;
+	string broker_password;
+	string broker_service;
+	bool broker_gssapi;
 
 protected:
 	list<string> _non_opt_args;
 	int http_port_;
+	int conductor_port_;
+	string conductor_host_;
 
 public:
 	qb_loop_t *mainloop;
-	CommonAgent() {};
+	CommonAgent() : broker_host("localhost"), broker_port(49000), broker_gssapi(false) {};
 	~CommonAgent() {};
 	AgentSession agent_session;
 	qpid::messaging::Connection agent_connection;
@@ -63,8 +84,13 @@ public:
 	int init(int argc, char **argv, const char *proc_name);
 	void run();
 	void usage();
+	void unsupported( int arg ) _Noreturn;
 	virtual int http_port(void) { return 0; };
-	void http_port(int http_port) { this->http_port_ = http_port; };
+	void http_port(int port) { this->http_port_ = port; };
+	virtual int conductor_port(void) { return 0; };
+	void conductor_port(int port) { this->conductor_port_ = port; };
+	virtual const char* conductor_host(void) { return NULL; };
+	void conductor_host(const char* host) { this->conductor_host_ = host; };
 };
 
 #endif /* COMMON_AGENT_H_DEFINED */

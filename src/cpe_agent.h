@@ -41,12 +41,17 @@ private:
 	CpeImpl *impl;
 
 public:
+	CpeAgent();
+	~CpeAgent() {};
 	void impl_set(CpeImpl *impl);
 	void setup(void);
 	bool event_dispatch(AgentEvent *event);
 	int console_handler(void);
 	using CommonAgent::http_port;
 	int http_port(void) { return this->http_port_; };
+	using CommonAgent::conductor_port;
+	int conductor_port(void) { return this->conductor_port_; };
+	using CommonAgent::conductor_host;
+	const char* conductor_host(void) { return this->conductor_host_.c_str(); };
 };
 #endif /* _CPE_H_ */
-
