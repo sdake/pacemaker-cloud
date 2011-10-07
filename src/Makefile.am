@@ -43,12 +43,12 @@ $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
 cped_SOURCES  = libinit.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
-	        cpe_agent.cpp cpe_impl.cpp cpe_httpd.cpp
+	        cpe_agent.cpp cpe_impl.cpp cpe_httpd.cpp cpe_agent_register.cpp
 
 cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 		  -I$(qmfauto_path) $(libxml2_CFLAGS)
 
-cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) -lmicrohttpd $(libxml2_LIBS)
+cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) -lmicrohttpd -lcurl $(libxml2_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \

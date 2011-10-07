@@ -39,6 +39,7 @@ private:
 	qpid::messaging::Connection *console_connection;
 	qmf::ConsoleSession *console_session;
 	CpeImpl *impl;
+	string conductor_hook;
 
 public:
 	CpeAgent();
@@ -53,5 +54,8 @@ public:
 	int conductor_port(void) { return this->conductor_port_; };
 	using CommonAgent::conductor_host;
 	const char* conductor_host(void) { return this->conductor_host_.c_str(); };
+
+        /* Register our http server with conductor.  */
+	bool register_hook(void);
 };
 #endif /* _CPE_H_ */

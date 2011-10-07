@@ -83,7 +83,11 @@ main(int argc, char **argv)
 
 	CpeHttpd http(agent.http_port());
 	http.impl_set(&impl);
-	http.run();
+	bool http_status = http.run();
+
+	if (http_status) {
+		agent.register_hook();
+	}
 
 	if (rc == 0) {
 		agent.run();
