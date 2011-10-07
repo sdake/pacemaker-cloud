@@ -192,15 +192,15 @@ CommonAgent::usage(void)
 	printf("\t-P | --password   password to authenticate with broker\n");
 	printf("\t-s | --service    service name to authenticate with broker\n");
 	if (this->http_port()) {
-		printf("\t-H | --http-port  port for HTTP interface to listen on (default: %d)\n",
+		printf("\t-H | --http-port  port where HTTP API listens (default: %d)\n",
 		       this->http_port());
 	}
 	if (this->conductor_host()) {
-		printf("\t-c | --conductor  aeolus-conductor host name to connect to (default: %s)\n",
+		printf("\t-c | --conductor  conductor host name to connect to (default: %s)\n",
 		       this->conductor_host());
 	}
 	if (this->conductor_port()) {
-		printf("\t-C | --conductor-port  aeolus-conductor port to connect to (default: %d)\n",
+		printf("\t-C | --conductor-port  conductor port to connect to (default: %d)\n",
 		       this->conductor_port());
 	}
 }
