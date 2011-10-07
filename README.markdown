@@ -26,12 +26,18 @@
 
 * [oz 0.5.0 or later](http://www.aeolusproject.org/oz.html)
 
+* [libmicrohttpd](http://www.gnu.org/software/libmicrohttpd/)
+
+* [libcurl](http://curl.haxx.se/)
+
 
 ## 2) Building on Specific Distributions
 
 ### Installing on Fedora 15:
 
-    fedora15# yum install autoconf automake gcc-c++ glib2-devel libqb-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel qpid-cpp-client-devel qpid-qmf-devel
+    fedora15# yum install autoconf automake gcc-c++ glib2-devel libqb-devel \
+              dbus-glib-devel libxml2-devel pacemaker-libs-devel libtool-ltdl-devel \
+              qpid-cpp-client-devel qpid-qmf-devel libmicrohttpd-devel libcurl-devel
     fedora15# make rpm
     fedora15# rpm -ivh $(arch)/*.rpm
 
@@ -42,7 +48,10 @@ copies of the source tree from section 1 for those packages and build from
 source.  Note on 64 bit systems, qpid does not autodetect the libdir is
 64 bit, so --libdir=/usr/lib64 must be specified.
 
-    fedora14# yum install autoconf automake gcc-c++ glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel
+    fedora14# yum install autoconf automake gcc-c++ glib2-devel \
+              dbus-glib-devel libxml2-devel pacemaker-libs-devel libtool-ltdl-devel \
+              libmicrohttpd-devel libcurl-devel
+
     fedora14# cd libqb
     fedora14# make rpm
     fedora14# rpm -ivh $(arch)/*.rpm
