@@ -268,7 +268,7 @@ if __name__ == '__main__':
     unittest.TextTestRunner(verbosity=2).run(suite)
     simple_f14.stop()
     simple_f14.delete()
-    
+
     logging.basicConfig(level=logging.INFO, format="F15: %(levelname)s %(funcName)s %(message)s")
     simple_f15 = SimpleSetup('F15')
     simple_f15.start()

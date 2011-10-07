@@ -46,7 +46,7 @@ jeosdir = $(localstatedir)/lib/pacemaker-cloud/jeos/
 jeos_DATA = F14-x86_64-jeos.tdl F14-x86_64-jeos-assembly.tdl \
 	    F15-x86_64-jeos.tdl F16-x86_64-jeos.tdl \
             F15-x86_64-jeos-assembly.tdl F16-x86_64-jeos-assembly.tdl \
-	    rhel61-x86_64-jeos.tdl rhel61-x86_64-jeos-assembly.tdl 
+	    rhel61-x86_64-jeos.tdl rhel61-x86_64-jeos-assembly.tdl
 
 assydir = $(localstatedir)/lib/pacemaker-cloud/assemblies
 assy_DATA = assy1.tdl assy1-F14.tdl assy1-F15.tdl assy1-F16.tdl

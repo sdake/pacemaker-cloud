@@ -60,7 +60,7 @@ dpe_agent_check_args(void* data)
 void
 DpeAgent::setup(void)
 {
-        _dpe = qmf::Data(package.data_dpe);
+	_dpe = qmf::Data(package.data_dpe);
 
 	num_ass = 1;
 	num_deps = 1;
@@ -159,7 +159,7 @@ DpeAgent::update_stats(uint32_t deployables, uint32_t assemblies)
 uint32_t
 DpeAgent::dep_load(string& dep_uuid)
 {
-        Deployable *child;
+	Deployable *child;
 
 	::qpid::sys::Mutex::ScopedLock _lock(map_lock);
 	qb_log(LOG_INFO, "loading deployment: %s", dep_uuid.c_str());

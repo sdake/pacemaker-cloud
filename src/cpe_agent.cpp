@@ -98,7 +98,7 @@ main(int argc, char **argv)
 void
 CpeAgent::setup(void)
 {
-        _cpe = qmf::Data(package.data_cpe);
+	_cpe = qmf::Data(package.data_cpe);
 	agent_session.addData(_cpe, "cpe");
 }
 

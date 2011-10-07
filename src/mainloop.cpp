@@ -70,7 +70,7 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	qmf_source->dispatch = dispatch;
 	qmf_source->user_data = userdata;
 	qmf_source->asession = asession;
-	
+
 	qb_loop_timer_add(default_loop,
 			  QB_LOOP_MED,
 			  500 * QB_TIME_NS_IN_MSEC,

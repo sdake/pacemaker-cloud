@@ -47,11 +47,11 @@ struct connection_info_struct {
 };
 
 const char *askpage = "<deployments><body>\
-                       What's your name, Sir?<br>\
-                       <form action=\"/namepost\" method=\"post\">\
-                       <input name=\"name\" type=\"text\"\
-                       <input type=\"submit\" value=\" Send \"></form>\
-                       </body></html>";
+		       What's your name, Sir?<br>\
+		       <form action=\"/namepost\" method=\"post\">\
+		       <input name=\"name\" type=\"text\"\
+		       <input type=\"submit\" value=\" Send \"></form>\
+		       </body></html>";
 
 const char *started_page =
     "<deployment id=\"%s\" href=\"pacemaker-cloud/api/%s\"></deployment>";

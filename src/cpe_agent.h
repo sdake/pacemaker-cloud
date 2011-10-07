@@ -55,7 +55,7 @@ public:
 	using CommonAgent::conductor_host;
 	const char* conductor_host(void) { return this->conductor_host_.c_str(); };
 
-        /* Register our http server with conductor.  */
+	/* Register our http server with conductor.  */
 	bool register_hook(void);
 };
 #endif /* _CPE_H_ */
