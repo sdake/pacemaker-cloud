@@ -52,6 +52,7 @@ fi
 %doc COPYING
 %{_sbindir}/cped
 %{_sbindir}/dped
+%{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_sysconfdir}/init/pcloud-dped.conf
 %{_unitdir}/pcloud-dped@.service
 %{_unitdir}/pcloud-cped.service

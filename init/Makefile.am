@@ -19,6 +19,9 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+sysconfsysconfdir = $(sysconfdir)/sysconfig
+sysconfsysconf_DATA = pacemaker-cloud
+
 upstartconfdir = $(sysconfdir)/init
 upstartconf_DATA = pcloud-dped.conf
 
@@ -26,5 +29,5 @@ systemdconfdir = /lib/systemd/system
 systemdconf_DATA = pcloud-dped@.service pcloud-cped.service \
 		   pcloud-vmlauncher.service pcloud-qpidd.service
 
-EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA)
+EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA) $(sysconfsysconf_DATA)
 
