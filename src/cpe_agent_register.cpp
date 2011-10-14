@@ -108,16 +108,18 @@ bool CpeAgent::register_hook(void)
 	} else {
 		if (!conductor_location) {
 			fprintf(stderr, "Error registering hook with conductor: no Location: header\n");
+			fprintf(stderr, "%s\n", response.data);
 		} else {
 			status = true;
 			this->conductor_hook = conductor_location;
-			free (conductor_location);
-			/* We currently just discard the body.  */
-			free(response.data);
+			/* We currently ignore the confirmation xml in the body (response.data)
+                         * and just rely on the location.  */
 			fprintf(stderr, "HOOK [info] %s\n", this->conductor_hook.c_str());
 		}
 	}
 
+	free(conductor_location);
+	free(response.data);
 	curl_easy_cleanup(curl);
 	free(conductor_url);
 	curl_slist_free_all(headerlist);
