@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# One can specify where this conductor API emulator will listen.
+# To tell cped to connect here, use its -C option, which can be
+# specified for the installed service by adding the following to
+# /etc/sysconfig/pacemaker-cloud
+#   cped_opts="-C 13000"
+
+if [ "$1" = "--help" ]; then
+  echo "$0 [-p PORT]" >&2
+  exit
+fi
+
+if [ "$1" = "-p" ] && [ $(($2)) -gt 0 ]; then
+  CONDUCTOR_PORT=$2
+  shift; shift
+else
+  CONDUCTOR_PORT=13000
+fi
+
+rm -f hook.* # remove any preexisting hooks
+rackup -p $CONDUCTOR_PORT config.ru

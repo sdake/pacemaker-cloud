@@ -1,0 +1,2 @@
+run: Start a server simulating the conductor REST API
+cpe-rest: Initiate communication with the CPE REST API
