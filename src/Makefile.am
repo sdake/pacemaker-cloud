@@ -48,7 +48,8 @@ cped_SOURCES  = libinit.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 		  -I$(qmfauto_path) $(libxml2_CFLAGS)
 
-cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) -lmicrohttpd -lcurl $(libxml2_LIBS)
+cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) \
+		$(libmicrohttpd_LIBS) $(libcurl_LIBS) $(libxml2_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \
