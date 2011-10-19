@@ -4,6 +4,8 @@ Wants=pcloud-qpidd.service
 
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud
+StandardOutput=null
+StandardError=null
 ExecStart=/usr/bin/vmlauncher
 Type=simple
 

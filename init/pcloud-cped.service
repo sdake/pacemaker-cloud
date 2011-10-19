@@ -5,6 +5,8 @@ Wants=pcloud-qpidd.service
 [Service]
 WorkingDirectory=/var/lib/pacemaker-cloud
 EnvironmentFile=/etc/sysconfig/pacemaker-cloud
+StandardOutput=null
+StandardError=null
 ExecStart=/usr/sbin/cped -v $cped_opts
 Type=simple
 
