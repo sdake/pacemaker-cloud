@@ -26,6 +26,9 @@ import cqpid
 from qmf2 import *
 import libvirt
 import libxml2
+import logging
+import logging.handlers
+
 
 class VMLauncher(AgentHandler):
     """
@@ -35,6 +38,15 @@ class VMLauncher(AgentHandler):
     """
 
     def __init__(self, url):
+
+        self.l = logging.getLogger('Vmlauncher')
+        hdlr = logging.handlers.SysLogHandler(address='/dev/log', facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+        formatter = logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
+        hdlr.setFormatter(formatter)
+        self.l.addHandler(hdlr)
+        self.l.setLevel(logging.DEBUG)
+
+        self.l.info('starting vmlauncher')
         ##
         ## Create and open a messaging connection to a broker.
         ##
@@ -63,6 +75,7 @@ class VMLauncher(AgentHandler):
         """
         Clean up the session and connection.
         """
+        self.l.info('stopping vmlauncher')
         if self.session:
             self.session.close()
         self.connection.close()
@@ -70,14 +83,18 @@ class VMLauncher(AgentHandler):
     def start(self, name, uuid):
         libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
         libvirt_doc = libvirt_xml.serialize(None, 1);
-        libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+        try:
+            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+            self.l.info('started %s %s' % (name, uuid))
+        except:
+            self.l.exception('*** couldn\'t start %s' % name)
 
     def stop(self, name, uuid):
         try:
             ass = self.libvirt_conn.lookupByName(name)
             ass.destroy()
         except:
-            print '*** couldn\'t stop %s (already stopped?)' % name
+            self.l.exception('*** couldn\'t stop %s (already stopped?)' % name)
 
     def method(self, handle, methodName, args, subtypes, addr, userId):
         """
@@ -91,7 +108,7 @@ class VMLauncher(AgentHandler):
             self.control.methodCount += 1
             name = args['name']
             uuid = args['uuid']
-            print 'MSG %s %s %s' % (methodName, name, uuid)
+            self.l.info('MSG %s %s %s' % (methodName, name, uuid))
             try:
                 if methodName == "start":
                     self.start(name, uuid)
@@ -121,6 +138,7 @@ class VMLauncher(AgentHandler):
                     self.session.methodSuccess(handle)
 
             except BaseException, e:
+                self.l.error('*** exception %r ' % e)
                 self.session.raiseException(handle, "%r" % e)
 
 
