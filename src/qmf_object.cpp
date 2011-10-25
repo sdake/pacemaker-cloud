@@ -176,6 +176,9 @@ QmfObject::connect(Agent &a)
 			string prop_val = ce.getData(q).getProperty(_prop_name);
 			if (prop_val == _prop_value) {
 				_connected = true;
+			} else {
+				qb_log(LOG_TRACE, "[prop: %s] %s != %s",
+				       _prop_name.c_str(), _prop_value.c_str(), prop_val.c_str());
 			}
 		} else {
 			_connected = true;

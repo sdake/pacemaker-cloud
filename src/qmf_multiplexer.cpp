@@ -50,6 +50,8 @@ QmfMultiplexer::process_events(void)
 			     it != _objects.end(); ++it) {
 				if ((*it)->connect(a)) {
 					qa = _agents[a.getName()];
+					qb_log(LOG_TRACE, "connecting to %s",
+					       a.getName().c_str());
 					if (qa == NULL) {
 						qa = new QmfAgent(a);
 						_agents[a.getName()] = qa;
@@ -57,6 +59,9 @@ QmfMultiplexer::process_events(void)
 					if (qa) {
 						qa->add(*it);
 					}
+				} else {
+					qb_log(LOG_TRACE, "not connecting to %s",
+					       a.getName().c_str());
 				}
 			}
 		} else 	if (event.getType() == CONSOLE_AGENT_DEL) {
