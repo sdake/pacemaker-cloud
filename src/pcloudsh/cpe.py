@@ -47,7 +47,7 @@ class Cpe(object):
             if self.cpe_obj is None:
                 attempts = attempts + 1
                 if attempts > 50:
-                    print '*** Could find cped agent...'
+                    print '*** Could not find cped agent...'
                     sys.exit(3)
                 else:
                     time.sleep(0.1)
