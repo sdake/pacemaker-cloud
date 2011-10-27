@@ -63,6 +63,7 @@ they fail.
 
 .SH FEATURES PLANNED FOR THE FUTURE
 .B "Recovery escalation"
+.nf
 The developers plan to add support for recovery escalation.  Recovery
 escalation works by escalating a lower level repetitive component failure into
 a higher level recovery action.  For example, if httpd fails 5 times in 1 hour,
@@ -70,11 +71,16 @@ the software terminates the containing assembly and restarts it.  If that
 assembly then has repeated failures, the software would terminate the assembly
 and escalate the recovery by restarting the containing deployable.  If the
 deployable fails repeatedly, the deployable is relocated to a different cloud
-provider.
+provider if supportd by the IAAS platform.
 
-.B "Integraton with cloud management software"
-The developers intend to integrate with cloud management software such as
-Aeolus http://www.aeolus.org/
+.B "Integraton with IAAS platforms"
+.nf
+The developers intend to integrate with the following IAAS platforms:
+.PP
+.nf
+.B Aeolus http://www.aeolus.org/
+.B OpenStack http://www.openstack.org/
+.B oVirt http://www.ovirt.org/
 
 .SH LIMITATONS
 Pacemaker Cloud is demo-grade software using best known practices for
