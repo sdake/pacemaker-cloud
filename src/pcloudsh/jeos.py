@@ -76,6 +76,9 @@ class Jeos(object):
         driver.newProp ("type", "qcow2")
         source_xml = libvirt_xml.xpathEval('/domain/devices/disk/source')
         source_xml[0].setProp('file', qcow2_filename)
+        source_xml = libvirt_xml.xpathEval('/domain/devices/serial')
+        root_node = source_xml[0]
+        root_node.unlinkNode()
         libvirt_xml.saveFormatFile(xml_filename, format=1)
 
         doc_jeos = self.doc_images.newChild(None, "jeos", None)

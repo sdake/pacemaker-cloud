@@ -180,7 +180,28 @@ class Assembly(object):
         del self.gfs
         self.gfs = None
 
+    def conf_xml(self, source):
+        libvirt_xml = libxml2.parseFile(source)
+        devices = libvirt_xml.xpathEval('/domain/devices')
+        serial = devices[0].newChild(None, "serial", None)
+        serial.setProp("type", "tcp")
+        serialSource = serial.newChild(None, "source", None)
+        serialSource.setProp("mode", "bind")
+        serialSource.setProp("host", "127.0.0.1")
+        serialSource.setProp("service", str(random.randrange(1024, 65535)))
+        serialProtocol = serial.newChild(None, "protocol", None)
+        serialProtocol.setProp("type", "raw")
+        serialTarget = serial.newChild(None, "target", None)
+        serialTarget.setProp("port", "1")
+        libvirt_xml.saveFormatFile(source, format=1)
 
+    def clean_xml(self, source):
+        libvirt_xml = libxml2.parseFile(source)
+        source_xml = libvirt_xml.xpathEval('/domain/devices/serial')
+        root_node = source_xml[0]
+        root_node.unlinkNode()
+        libvirt_xml.saveFormatFile(source, format=1)
+       
     def clone_from(self, source):
         if os.access(self.image, os.R_OK):
             print '*** Assembly %s already exists, delete first.' % (self.image)
@@ -214,6 +235,7 @@ class Assembly(object):
         self.guest_unmount()
 
         self.jeos_doc.saveFormatFile("%s/assemblies/%s.xml" % (self.conf.dbdir, self.name), format=1)
+        self.conf_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, self.name))
         print "jeos assembly %s-assembly.tdl" % source.jeos_name
         os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
                 (self.conf.dbdir, source.jeos_name, self.conf.dbdir, self.name))
@@ -295,6 +317,7 @@ class AssemblyFactory(object):
             print '*** The source assembly does not exist in the system \"%s\"' % source
             return
         dest_assy.clone_from(source_assy)
+        dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
         self.save()
 
     def create(self, name, source):
@@ -312,6 +335,7 @@ class AssemblyFactory(object):
         if dest_assy.clone_from(jeos_source) == 0:
             os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" %
                     (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
+            dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
         self.save()
 
     def exists(self, name):
