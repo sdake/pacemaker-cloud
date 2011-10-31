@@ -244,6 +244,11 @@ class Assembly(object):
         self.save()
         return 0
 
+    def register_image(self):
+        if self.conf.use_openstack:
+            os.system ("nova-manage image image_register %s %s %s" % (self.image,
+                self.conf.openstack_user, self.name))
+
     def resource_add(self, rsc_name, rsc_type):
         '''
         resource_add <resource name> <resource template>
@@ -318,6 +323,7 @@ class AssemblyFactory(object):
             return
         dest_assy.clone_from(source_assy)
         dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
+        dest_assy.register_image()
         self.save()
 
     def create(self, name, source):
@@ -336,6 +342,7 @@ class AssemblyFactory(object):
             os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" %
                     (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
             dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
+            dest_assy.register_image()
         self.save()
 
     def exists(self, name):
