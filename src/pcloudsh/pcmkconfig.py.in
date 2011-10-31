@@ -1,5 +1,25 @@
-
+#
+# Copyright (C) 2011 Red Hat, Inc.
+#
+# Author: Angus Salkeld <asalkeld@redhat.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <http://www.gnu.org/licenses/>.
+#
+import os
+import os.path
 import string
+import json
 
 class Config(object):
     def __init__(self):
@@ -9,4 +29,45 @@ class Config(object):
         self.datarootdir = string.replace('@datarootdir@', '${prefix}', self.prefix)
         self.dbdir = '%s/lib/pacemaker-cloud' % (self.localstatedir)
         self.resource_templatesdir = '%s/pacemaker-cloud/resource_templates' % (self.datarootdir)
+
+        # defaults
+        self.use_openstack = False
+        self.valid = True
+
+        if os.access('/etc/pcloudsh.json', os.R_OK):
+            self.valid = False
+            fp = open('/etc/pcloudsh.json')
+
+            c = json.load(fp)
+            if 'openstack' in c['infrastructure']:
+                self.use_openstack = True
+                self.openstack_user = c['openstack']['user']
+                self.openstack_user_id = c['openstack']['user_id']
+                self.openstack_secret = c['openstack']['secret']
+                self.openstack_keyfile = c['openstack']['keyfile']
+                self.openstack_project = c['openstack']['project']
+                if os.path.exists(self.openstack_keyfile):
+                    self.valid = True
+                    self.openstack_keydir = os.path.dirname(self.openstack_keyfile)
+            fp.close()
+
+    def apply_environ(self):
+        if not self.use_openstack:
+            return
+
+        os.environ['EC2_ACCESS_KEY'] = '%s:%s' % (self.openstack_user, self.openstack_project)
+        os.environ['EC2_SECRET_KEY'] = self.openstack_secret
+        os.environ['EC2_URL'] = "http://10.0.0.23:8773/services/Cloud"
+        os.environ['S3_URL'] = "http://10.0.0.23:3333"
+        # nova does not use user id, but bundling requires it
+        os.environ['EC2_USER_ID'] = self.openstack_user_id
+        os.environ['EC2_PRIVATE_KEY'] = '%s/pk.pem' % self.openstack_keydir
+        os.environ['EC2_CERT'] = '%s/cert.pem' % self.openstack_keydir
+        os.environ['NOVA_CERT'] = '%s/cacert.pem' % self.openstack_keydir
+        os.environ['EUCALYPTUS_CERT'] = '%s/cacert.pem' % self.openstack_keydir
+        os.environ['NOVA_API_KEY'] = self.openstack_user
+        os.environ['NOVA_USERNAME'] = self.openstack_user
+        os.environ['NOVA_PROJECT_ID'] = self.openstack_project
+        os.environ['NOVA_URL'] = "http://10.0.0.23:8774/v1.1/"
+        os.environ['NOVA_VERSION'] = "1.1"
 
