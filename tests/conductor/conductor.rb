@@ -71,9 +71,24 @@ module Rack
 
         begin
             doc = Document.new post_body
-            cpe_uri = doc.elements["*/uri"].get_text.to_s
+            cpe_uri = doc.elements["*/uri"]
+            if cpe_uri.nil?
+                raise 'missing uri element'
+            else
+                cpe_uri = cpe_uri.get_text.to_s
+            end
+            cpe_ver = doc.elements["*/version"]
+            if cpe_ver.nil?
+                raise 'missing version element'
+            else
+                cpe_ver = cpe_ver.get_text.to_s
+            end
         rescue Exception => error
             return [400,{"Content-Type" => "text/plain"}, error.to_s]
+        end
+
+        if Integer(cpe_ver) != 1
+            return [501,{"Content-Type" => "text/html"},"version not supported"]
         end
 
         hook_id = 1234.to_s # We currently only support a single cpe agent
@@ -81,6 +96,7 @@ module Rack
         xml_response  = ""
         xml_response += "<hook id=\"" + hook_id + "\" href=\"/api/hooks/" + hook_id + "\">\n"
         xml_response += "  <uri>" + cpe_uri + "</uri>\n"
+        xml_response += "  <version>" + cpe_ver + "</version>\n"
         xml_response += "</hook>\n"
 
         # Record the hook for lookup later

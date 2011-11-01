@@ -68,6 +68,7 @@ bool CpeAgent::register_hook(void)
 	asprintf(&hook_location,
 		 "<hook>"
 		 "  <uri>https://%s:%d/pacemaker-cloud/api</uri>"
+		 "  <version>1</version>"
 		 "</hook>",
 		 "localhost", this->http_port());
 	if (!hook_location) {
