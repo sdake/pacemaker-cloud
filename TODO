@@ -1,44 +1,71 @@
-===========================
- Priority Sorted TODO list
-===========================
+======================
+ Release Zoysia (1.0)
+======================
++ Assembly/deployable/resource model for organizing virtual machines.
++ Assembly/deployble/resource restart on failure detection.
++ Recovery escalation on failure.
++ Full Aeolus integration including configuration, visualization and event
+  recording.
++ Basic OpenStack integration including image building and restart. 
++ Merged into Debian, EPEL6, Fedora 15, Fedora 16, Fedora 17, Ubuntu.
++ Local resource monitoring and VM healthchecking via Matahari.
+
+=======================
+ Interim Release Goals
+=======================
+0.5 - Full Fedora 15/Fedora 16 integration of assembly/deployable/resource
+      restart single node.
+0.6 - API communication between cped and aeolus.
+      Aeolus restart on failure detection.
+      OpenStack image generation and restart integration.
+0.7 - Visualization of VM event state changes in Aeolus conductor.
+0.8 - Recovery Escalation.
+0.9 - Application resource monitoring integration with Aeolus conductor.
+1.0 - Configuration and event recording with Aeolus conductor.
+
+=========================
+ Priority Sorted Backlog
+=========================
 ------------------
   Person (WHO)
 ------------------
 a = Angus
+p = Padraig
 s = Steven
 u = Unassigned
 
 ------------------
  Components (CMP)
 ------------------
-VML = VM Launher
+VML = VM Launcher
 CPE = Cloud Policy Engine main binary
-DPE = Deployable Policy Engine bnary
+DPE = Deployable Policy Engine binary
 PSH = Pacemaker Cloud Shell
+API = API communication between IAAS platform and Pacemaker Cloud
 DEP = A dependency needing work
 PKG = Packaging 
 MAN = Manual Pages
-
-In priority order
+DEM = demonstrations
 
 --- ---   ------------------------------------------------------------------
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
------
-later
------
-a - CPE - extend upstart/systemd client code to include getting events on
-          failure.
-s - PKG - init script (qpidd, cped, vmlauncher starting)
-u - CPE - at startup use config_list() to get initial deployables
-          failed)
-u - DPE - add support for failure escalations
+a - PKG - lsb init scripts
+a - PKG - EPEL packages
+p - API - Aeolus conductor API implementation
+p - API - Aeolus conductor API integration
+s - DEM - 3 tier web application demonstration
+s - API - Aeolus VM state visualization
+a - PSH - OpenStack image generation and launching
+u - API - OpenStack API integration for start & isolate vm image
+a - DPE - add support for recovery escalation policy
 u - SHL - show assembly online/offline
 u - SHL - show resource status
-u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_get(deployment_uuid)
-u - ??? - add API to access deployable config from exteranl API (cloud specific managemnt DB) config_list()
-u - DEP - Get rid of all the deps that pengine has that it doesn't require
+a - CPE - extend upstart/systemd client code to include getting events on
+          failure.
+u - PKG - debian packaging
 
-Open Questions List
-===================
-
+=====================
+ Open Questions List
+=====================
+None at this time.
