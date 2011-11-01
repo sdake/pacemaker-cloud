@@ -40,7 +40,7 @@ $(TARFILE):
 
 coverity:
 	cov-build --dir=cov make
-	cov-analyze --dir cov
+	cov-analyze --dir cov --concurrency --wait-for-license
 	cov-format-errors --dir cov
 
 $(SPEC): $(SPEC).in
