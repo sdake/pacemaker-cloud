@@ -1,5 +1,5 @@
 <template>
-  <name>f14-x86_64-jeos</name>
+  <name>F14-x86_64-jeos</name>
   <os>
     <name>Fedora</name>
     <version>14</version>
