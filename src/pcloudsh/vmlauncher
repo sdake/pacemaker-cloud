@@ -18,6 +18,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import os.path
 import sys
 import argparse
 import signal
@@ -28,6 +29,123 @@ import libvirt
 import libxml2
 import logging
 import logging.handlers
+import subprocess
+from pcloudsh import pcmkconfig
+
+class VirtLauncher(object):
+
+    def __init__(self, logger, conf):
+        self.l = logger
+        self.conf = conf
+        self.libvirt_conn = libvirt.open("qemu:///system")
+
+    def start(self, name, uuid):
+        libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
+        libvirt_doc = libvirt_xml.serialize(None, 1);
+        try:
+            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+            self.l.info('started %s %s' % (name, uuid))
+        except:
+            self.l.exception('*** couldn\'t start %s' % name)
+
+    def stop(self, name, uuid):
+        try:
+            ass = self.libvirt_conn.lookupByName(name)
+            ass.destroy()
+        except:
+            self.l.exception('*** couldn\'t stop %s (already stopped?)' % name)
+
+    def status(self, name, uuid):
+        st = 'Unknown'
+        try:
+            ass = self.libvirt_conn.lookupByName(name)
+            if ass.isActive():
+                st = 'Running'
+            else:
+                st = 'Stopped'
+        except:
+            st = 'Undefined'
+        return st
+
+class OpenstackLauncher(object):
+
+    def __init__(self, logger, conf):
+        self.l = logger
+        self.conf = conf
+        os.system("modprobe nbd")
+        self.conf.apply_environ()
+        (self.keydir, self.keyfile) = os.path.split(self.conf.openstack_keyfile)
+
+    def start(self, name, uuid):
+        try:
+            p1 = subprocess.Popen(['su', '-c',
+                'euca-run-instances %s -k %s' % (name, self.keyfile),
+                self.conf.openstack_user],
+                cwd=self.keydir,
+                stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            out = p1.communicate()
+            self.l.info(out)
+        except:
+            self.l.exception('*** couldn\'t start %s' % name)
+
+    def image_to_instance(self, image_name):
+
+        p1 = subprocess.Popen(['su', '-c',
+            'euca-describe-images',
+            self.conf.openstack_user],
+            cwd=self.keydir,
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(['grep', ' (%s)' % (image_name)], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        output = p2.communicate()
+        self.l.info('linea: %s' % str(output))
+        ami = None
+        for line in output:
+            if line != None:
+                ami_s = line.split()
+                if len(ami_s) > 1:
+                    self.l.debug('line1: %s' % line)
+                    ami = ami_s[1]
+
+        if ami is None:
+            print 'ami not found'
+            return None
+
+        p1 = subprocess.Popen(['su', '-c',
+            'euca-describe-instances',
+            self.conf.openstack_user],
+            cwd=self.keydir,
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["grep", ami], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        output = p2.communicate()
+
+        inst = None
+        for line in output:
+            if line != None:
+                inst_s = line.split()
+                if len(inst_s) > 0:
+                    inst = inst_s[1]
+                    self.l.debug('%s => [ami:%s, instance: %s]' % (image_name, ami, inst))
+                    return inst
+        return None
+
+    def stop(self, name, uuid):
+
+        inst = self.image_to_instance(name)
+        if inst != None:
+            try:
+                p1 = subprocess.Popen(['su', '-c',
+                    'euca-terminate-instances %s' % (inst),
+                    self.conf.openstack_user],
+                    cwd=self.keydir,
+                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                out = p1.communicate()
+            except:
+                self.l.exception('*** couldn\'t stop %s' % name)
+
+    def status(self, name, uuid):
+        return 'Unknown'
 
 
 class VMLauncher(AgentHandler):
@@ -63,7 +181,11 @@ class VMLauncher(AgentHandler):
         self.session.setAttribute('attr1', 1000)
         self.session.open()
 
-        self.libvirt_conn = None
+        self.conf = pcmkconfig.Config()
+        if self.conf.use_openstack:
+            self.impl = OpenstackLauncher(self.l, self.conf)
+        else:
+            self.impl = VirtLauncher(self.l, self.conf)
 
         ##
         ## Initialize the parent class.
@@ -80,60 +202,32 @@ class VMLauncher(AgentHandler):
             self.session.close()
         self.connection.close()
 
-    def start(self, name, uuid):
-        libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % name)
-        libvirt_doc = libvirt_xml.serialize(None, 1);
-        try:
-            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
-            self.l.info('started %s %s' % (name, uuid))
-        except:
-            self.l.exception('*** couldn\'t start %s' % name)
-
-    def stop(self, name, uuid):
-        try:
-            ass = self.libvirt_conn.lookupByName(name)
-            ass.destroy()
-        except:
-            self.l.exception('*** couldn\'t stop %s (already stopped?)' % name)
-
     def method(self, handle, methodName, args, subtypes, addr, userId):
         """
         Handle incoming method calls.
         """
         if addr == self.controlAddr:
 
-            if self.libvirt_conn is None:
-                self.libvirt_conn = libvirt.open("qemu:///system")
-
             self.control.methodCount += 1
             name = args['name']
             uuid = args['uuid']
-            self.l.info('MSG %s %s %s' % (methodName, name, uuid))
+            self.l.debug('MSG %s %s %s' % (methodName, name, uuid))
             try:
                 if methodName == "start":
-                    self.start(name, uuid)
+                    self.impl.start(name, uuid)
                     self.session.methodSuccess(handle)
 
                 elif methodName == "stop":
-                    self.stop(name, uuid)
+                    self.impl.stop(name, uuid)
                     self.session.methodSuccess(handle)
 
                 elif methodName == "restart":
-                    self.stop(name, uuid)
-                    self.start(name, uuid)
+                    self.impl.stop(name, uuid)
+                    self.impl.start(name, uuid)
                     self.session.methodSuccess(handle)
 
                 elif methodName == "status":
-                    status = 'Unknown'
-                    try:
-                        ass = self.libvirt_conn.lookupByName(name)
-                        if ass.isActive():
-                            status = 'Running'
-                        else:
-                            status = 'Stopped'
-                    except:
-                        status = 'Undefined'
-
+                    status = self.impl.status(name, uuid)
                     handle.addReturnArgument("status", status)
                     self.session.methodSuccess(handle)
 
