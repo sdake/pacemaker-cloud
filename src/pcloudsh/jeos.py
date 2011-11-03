@@ -89,6 +89,30 @@ class Jeos(object):
 
         self.doc.saveFormatFile(self.xml_file, format=1)
 
+    def delete(self, name, arch):
+        jeos_list = self.doc.xpathEval("/images/jeos")
+        for jeos_data in jeos_list:
+            if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
+                jeos_data.unlinkNode()
+                self.doc.saveFormatFile(self.xml_file, format=1)
+                print ' deleted jeos from database'
+
+        xml_filename = '%s/jeos/%s-%s-jeos.xml' % (self.conf.dbdir, name, arch)
+        if os.access(xml_filename, os.R_OK):
+            os.unlink(xml_filename)
+            print ' deleted jeos virt xml'
+
+        dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
+        if os.access(dsk_filename, os.R_OK):
+            os.unlink(dsk_filename)
+            print ' deleted jeos disk image'
+
+        qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
+        if os.access(qcow2_filename, os.R_OK):
+            os.unlink(qcow2_filename)
+            print ' deleted jeos qcow2 image'
+
+
     def list(self, listiter):
         jeos_list = self.doc.xpathEval("/images/jeos")
         for jeos_data in jeos_list:
