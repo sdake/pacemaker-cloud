@@ -81,7 +81,7 @@ bool CpeAgent::register_hook(void)
 
 	struct curl_slist *headerlist = NULL;
 	char *conductor_url;
-	asprintf(&conductor_url, "http://%s:%d/api/hooks",
+	asprintf(&conductor_url, "http://%s:%d/conductor/api/hooks",
 		 this->conductor_host(), this->conductor_port());
 	if (!conductor_url) {
 		fprintf(stderr, "Couldn't allocate conductor_url\n");

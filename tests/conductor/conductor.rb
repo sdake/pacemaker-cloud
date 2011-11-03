@@ -14,7 +14,7 @@ module Rack
         # wrapping of various http headers.
         req = Request.new(env)
 
-        if req.path !~ /\/api\/hooks\/?(\d+)?$/
+        if req.path !~ /conductor\/api\/hooks\/?(\d+)?$/
             return [404,{"Content-Type" => "text/html"},"not found"]
         end
         if req.post? && req.content_type != 'application/xml'
