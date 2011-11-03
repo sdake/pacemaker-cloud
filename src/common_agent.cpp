@@ -88,6 +88,7 @@ struct option opt[] = {
 	{"http-port", required_argument, NULL, 'H'},
 	{"conductor-host", required_argument, NULL, 'c'},
 	{"conductor-port", required_argument, NULL, 'C'},
+	{"conductor-auth", required_argument, NULL, 'a'},
 	{0, 0, 0, 0}
 };
 
@@ -203,6 +204,10 @@ CommonAgent::usage(void)
 		printf("\t-C | --conductor-port  conductor port to connect to (default: %d)\n",
 		       this->conductor_port());
 	}
+	if (this->conductor_auth()) {
+		printf("\t-a | --conductor-auth  conductor user:pass to use (default: %s)\n",
+		       this->conductor_auth());
+	}
 }
 
 void
@@ -253,7 +258,7 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	vtable.try_realloc = realloc;
 	g_mem_set_vtable(&vtable);
 
-	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:vH:c:C:", opt, &idx)) != -1) {
+	while ((arg = getopt_long(argc, argv, "hdb:gu:P:s:p:vH:c:C:a:", opt, &idx)) != -1) {
 		switch (arg) {
 		case 'h':
 		case '?':
@@ -338,6 +343,18 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 				int port = get_port(optarg);
 				if (port) {
 					this->conductor_port(atoi(optarg));
+				} else {
+					this->usage();
+					exit(1);
+				}
+			} else {
+				this->unsupported(arg);
+			}
+			break;
+		case 'a':
+			if (this->conductor_auth()) {
+				if (optarg) {
+					this->conductor_auth(optarg);
 				} else {
 					this->usage();
 					exit(1);

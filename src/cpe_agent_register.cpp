@@ -102,6 +102,9 @@ bool CpeAgent::register_hook(void)
 	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_process_header);
 	curl_easy_setopt(curl, CURLOPT_WRITEHEADER, &conductor_location);
 
+	curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+	curl_easy_setopt(curl, CURLOPT_USERPWD, this->conductor_auth());
+
 	CURLcode res = curl_easy_perform(curl);
 
 	if (res) {

@@ -44,6 +44,7 @@ CpeAgent::CpeAgent()
     this->http_port(8888);
     this->conductor_host("localhost");
     this->conductor_port(3000);
+    this->conductor_auth("admin:password");
 }
 
 void CpeAgent::impl_set(CpeImpl *impl)

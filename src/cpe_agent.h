@@ -54,6 +54,8 @@ public:
 	int conductor_port(void) { return this->conductor_port_; };
 	using CommonAgent::conductor_host;
 	const char* conductor_host(void) { return this->conductor_host_.c_str(); };
+	using CommonAgent::conductor_auth;
+	const char* conductor_auth(void) { return this->conductor_auth_.c_str(); };
 
 	/* Register our http server with conductor.  */
 	bool register_hook(void);

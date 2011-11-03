@@ -69,6 +69,7 @@ protected:
 	int http_port_;
 	int conductor_port_;
 	string conductor_host_;
+	string conductor_auth_;
 
 public:
 	qb_loop_t *mainloop;
@@ -91,6 +92,8 @@ public:
 	void conductor_port(int port) { this->conductor_port_ = port; };
 	virtual const char* conductor_host(void) { return NULL; };
 	void conductor_host(const char* host) { this->conductor_host_ = host; };
+	virtual const char* conductor_auth(void) { return NULL; };
+	void conductor_auth(const char* auth) { this->conductor_auth_ = auth; };
 };
 
 #endif /* COMMON_AGENT_H_DEFINED */
