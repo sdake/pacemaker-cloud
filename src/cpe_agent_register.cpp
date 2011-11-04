@@ -36,7 +36,7 @@ curl_process_header(void *contents, size_t size, size_t nmemb, void *userp)
 	char *ptr = (char *)contents;
 	char **location = (char **)userp;
 
-	if (strncmp((char *)(ptr), "Location:", 9) == 0) {
+	if (strncmp((char *)ptr, "Location:", 9) == 0) {
 		*location = strndup(ptr+10, size-10);
 		if (!*location) {
 			fprintf(stderr, "couldn't allocate Location: buffer\n");
@@ -110,14 +110,22 @@ bool CpeAgent::register_hook(void)
 	if (res) {
 		fprintf(stderr, "Error registering hook with conductor: %s\n", curl_easy_strerror(res));
 	} else {
-		if (!conductor_location) {
-			fprintf(stderr, "Error registering hook with conductor: no Location: header\n");
-			fprintf(stderr, "%s\n", response.data);
+		long http_code = 0;
+		curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+		if (http_code >= 400 || !conductor_location) {
+			const char* message="";
+			if (http_code < 400)
+				message = " no Location: header";
+			else if (http_code == 401)
+				message = " (Unauthorized)";
+			fprintf(stderr, "Error registering hook with conductor: %ld%s\n", http_code, message);
+			if (response.data && *(response.data))
+				fprintf(stderr, "%s\n", response.data);
 		} else {
 			status = true;
 			this->conductor_hook = conductor_location;
 			/* We currently ignore the confirmation xml in the body (response.data)
-                         * and just rely on the location.  */
+			 * and just rely on the location.  */
 			fprintf(stderr, "HOOK [info] %s\n", this->conductor_hook.c_str());
 		}
 	}
