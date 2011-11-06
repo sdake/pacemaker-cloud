@@ -34,6 +34,7 @@ class pcloudsh(cmd.Cmd, object):
 
     prompt = 'pcloudsh# '
     intro = "Welcome to pcloudsh, the Pacemaker Cloud Interface terminal\n\ntype \"help\" for help and quit to exit.\n"
+    distros = ('F14','F15','F16','rhel61')
 
     def __init__(self):
         self.j = jeos.Jeos()
@@ -184,7 +185,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_assembly_create(self, s):
         """
-  assembly_create <assembly_name> <F14|F15|F16|rhel61> <x86_64>'
+  assembly_create <assembly_name> <%s> <x86_64>
 
   SYNOPSIS: Create an assembly
 
@@ -196,13 +197,14 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         if not len(options) == 3:
             self.do_help("assembly_create");
-        elif not options[1] == 'F14' and not options[1] == 'F15' and not options[1] == 'F16' and not options[1] == 'rhel61':
+        elif not options[1] in self.distros:
             self.do_help("assembly_create");
-            print 'supported platforms: F14, F15, F16, rhel61'
+            print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[2] == 'x86_64':
             self.do_help("assembly_create");
         else:
             self.a.create(options[0], '%s-%s' % (options[1], options[2]))
+    do_assembly_create.__doc__ %= '|'.join(distros)
 
     def do_assembly_delete(self, s):
         """
