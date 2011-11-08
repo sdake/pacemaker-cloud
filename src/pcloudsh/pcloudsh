@@ -34,7 +34,7 @@ class pcloudsh(cmd.Cmd, object):
 
     prompt = 'pcloudsh# '
     intro = "Welcome to pcloudsh, the Pacemaker Cloud Interface terminal\n\ntype \"help\" for help and quit to exit.\n"
-    distros = ('F14','F15','F16','rhel61')
+    distros = ('F14','F15','F16','rhel61','U10')
 
     def __init__(self):
         self.j = jeos.Jeos()
@@ -242,21 +242,21 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_jeos_create(self, s):
         """
-  jeos_create <F14|F15|F16|rhel61> <x86_64>'
+  jeos_create <F14|F15|F16|rhel61|U10> <x86_64>'
 
   SYNOPSIS: Creates a JEOS image
 
   The jeos_create action creates a "(J)ust (E)nough (O)perating (S)ystem" image
   file.  This step should only be done once at initialization and can take up
-  to 30 minutes to complete.  The current JEOS image types supported are either
-  Fedora 15 or RHEL6.1.  The only supported architecture is x86_64.
+  to 30 minutes to complete.
         """
 
         options = s.split()
         if not len(options) == 2:
             self.do_help("jeos_create");
-        elif not options[0] == 'F14' and not options[0] == 'F15' and not options[0] == 'F16' and not options[0] == 'rhel61':
+        elif not options[0] in self.distros:
             self.do_help("jeos_create");
+            print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[1] == 'x86_64':
             self.do_help("jeos_create");
         else:

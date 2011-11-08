@@ -1,0 +1,13 @@
+<template>
+  <name>U10-x86_64-jeos</name>
+  <os>
+    <name>Ubuntu</name>
+    <version>10.04</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>file:/var/lib/libvirt/images/ubuntu-10.04.3-desktop-amd64.iso</iso>
+    </install>
+    <rootpw>password</rootpw>
+  </os>
+  <description>Ubuntu 10.04</description>
+</template>
