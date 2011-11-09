@@ -242,7 +242,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_jeos_create(self, s):
         """
-  jeos_create <F14|F15|F16|rhel61|U10> <x86_64>'
+  jeos_create <%s> <x86_64>'
 
   SYNOPSIS: Creates a JEOS image
 
@@ -265,10 +265,11 @@ class pcloudsh(cmd.Cmd, object):
                 self.j.create(options[0], options[1])
             except:
                 print 'JEOS image already present %s-%s' % (options[0], options[1])
+    do_jeos_create.__doc__ %= '|'.join(distros)
 
     def do_jeos_delete(self, s):
         """
-  jeos_create <F14|F15|F16|rhel61> <x86_64>'
+  jeos_delete <%s> <x86_64>'
 
   SYNOPSIS: Delete a JEOS image
 
@@ -277,7 +278,7 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         if not len(options) == 2:
             self.do_help("jeos_delete");
-        elif not options[0] == 'F14' and not options[0] == 'F15' and not options[0] == 'F16' and not options[0] == 'rhel61':
+        elif not options[0] in distros:
             self.do_help("jeos_delete");
         elif not options[1] == 'x86_64':
             self.do_help("jeos_delete");
@@ -287,6 +288,7 @@ class pcloudsh(cmd.Cmd, object):
                 self.j.delete(options[0], options[1])
             except:
                 print 'JEOS image does not exist %s-%s' % (options[0], options[1])
+    do_jeos_delete.__doc__ %= '|'.join(distros)
 
     def do_jeos_list(self, s):
         """
