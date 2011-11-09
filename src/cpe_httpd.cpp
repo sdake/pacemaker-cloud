@@ -32,33 +32,44 @@
 #include <cpe_httpd.h>
 #include <cpe_impl.h>
 
-#define POSTBUFFERSIZE  512
-#define MAXNAMESIZE     20
-#define MAXANSWERSIZE   512
-
-#define GET             0
-#define POST            1
+typedef enum {
+    GET,
+    POST
+} connection_type_t;
 
 struct connection_info_struct {
 	CpeHttpd* cpe_httpd;
-	int connectiontype;
+	connection_type_t type;
 	char *answerstring;
-	struct MHD_PostProcessor *postprocessor;
+	xmlParserCtxtPtr ctxt;
 };
 
-const char *askpage = "<deployments><body>\
-		       What's your name, Sir?<br>\
-		       <form action=\"/namepost\" method=\"post\">\
-		       <input name=\"name\" type=\"text\"\
-		       <input type=\"submit\" value=\" Send \"></form>\
-		       </body></html>";
+const char *askpage =
+    "<deployments>todo</deployments>";
 
 const char *started_page =
     "<deployment id=\"%s\" href=\"pacemaker-cloud/api/%s\"></deployment>";
 
-const char *errorpage =
-    "<html><body>This doesn't seem to be right.</body></html>";
+const char *client_errorpage =
+    "<html><body>Invalid input [%s]</body></html>";
 
+const char *server_errorpage =
+    "<html><body>Server error [%s]</body></html>";
+
+static bool
+set_response_message(struct connection_info_struct *con_info,
+		     const char* fmt, ...)
+{
+	free(con_info->answerstring);
+
+	va_list ap;
+
+	va_start (ap, fmt);
+	vasprintf (&(con_info->answerstring), fmt, ap);
+	va_end (ap);
+
+	return !!con_info->answerstring;
+}
 
 static int
 send_page(struct MHD_Connection *connection,
@@ -88,70 +99,83 @@ send_page(struct MHD_Connection *connection,
 	return ret;
 }
 
-static int
-iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
-	     const char *filename, const char *content_type,
-	     const char *transfer_encoding, const char *data, uint64_t off,
-	     size_t size)
+
+static bool
+handle_event(xmlDocPtr doc, struct connection_info_struct *con_info)
 {
-	struct connection_info_struct *con_info = (struct connection_info_struct *)coninfo_cls;
-	CpeHttpd* cpe_httpd = con_info->cpe_httpd;
+	bool ok = false;
+	xmlNode *event = NULL;
+	xmlNode *item = NULL;
+	xmlNode *node = NULL;
+	event = xmlDocGetRootElement(doc);
 
-	if (0 == strcmp(key, "deployment")) {
-		xmlNode *dep = NULL;
-		xmlNode *node = NULL;
-		std::string dep_uuid;
-		xmlDocPtr doc = xmlParseMemory(data, size);
-		dep = xmlDocGetRootElement(doc);
+	const char* event_item = NULL;
+	xmlChar* event_item_id = NULL;
+	const char* event_state = NULL;
 
-		for (node = dep->children; node;
-		     node = node->next) {
-			if (node->type == XML_ELEMENT_NODE) {
-				if (strcmp((char*)node->name, "deployment") == 0) {
-					dep_uuid = (char*)xmlGetProp(node, BAD_CAST "id");
-				}
+	for (node = event->children; node; node = node->next) {
+		if (node->type == XML_ELEMENT_NODE) {
+			if (strcmp((char*)node->name, "datetime") == 0) {
+				continue;
 			}
+			event_item = (char*)node->name;
+			event_item_id = xmlGetProp(node, BAD_CAST "id");
+			item = node;
 		}
-		xmlFreeDoc(doc);
-
-		if (dep_uuid.length() > 0) {
-			char *answerstring;
-			answerstring = (char*)malloc(MAXANSWERSIZE);
-			if (!answerstring)
-				return MHD_NO;
-			qb_log(LOG_NOTICE, "Starting %s %s", key,
-			       dep_uuid.c_str());
-
-			if (cpe_httpd->impl_get()->dep_start(dep_uuid) == 0) {
-				snprintf(answerstring, MAXANSWERSIZE, started_page,
-					 dep_uuid.c_str(), dep_uuid.c_str());
-				con_info->answerstring = answerstring;
-			} else {
-				con_info->answerstring = NULL;
-			}
-		} else {
-			con_info->answerstring = NULL;
-		}
-
-		return MHD_NO;
 	}
 
-	return MHD_YES;
+	for (node = item->children; node; node = node->next) {
+		if (node->type == XML_ELEMENT_NODE) {
+			if (strcmp((char*)node->name, "state") == 0) {
+				if (node->children->type == XML_TEXT_NODE)
+					event_state = (const char*)node->children->content;
+				break;
+			}
+		}
+	}
+
+	if (event_item && event_item_id && event_state) {
+		qb_log(LOG_DEBUG, "Got a %s event for %s %s",
+		       event_state, event_item, event_item_id);
+		fprintf(stderr, "Got a %s event for %s %s\n",
+		       event_state, event_item, event_item_id);
+
+		/* EVENT_STATE should be one of:
+		   STARTING, RESTARTING, STARTED, FAILED,
+		   STOPPING, STOPPED, ISOLATING, ISOLATED */
+
+		if (strcmp(event_item, "deployment") == 0) {
+			/* TODO: before we can enable the following, we
+			 * need to convert from or support directly the API XML format,
+			 * which differs slightly having "deployment" rather than "deployable"
+			 * XML elements for example.
+			CpeHttpd* cpe_httpd = con_info->cpe_httpd;
+			if (dcpe_httpd->impl_get()->dep_start(dep_uuid) == 0) */
+				ok = true;
+		} else if (strcmp(event_item, "instance") == 0) {
+			ok = true;
+		} else {
+			qb_log(LOG_DEBUG, "Got an event for an invalid item [%s]", event_item);
+		}
+	}
+
+	xmlFree (event_item_id);
+	return ok;
 }
+
 
 static void
 request_completed(void *cls, struct MHD_Connection *connection,
 		  void **con_cls, enum MHD_RequestTerminationCode toe)
 {
 	struct connection_info_struct *con_info = *(struct connection_info_struct **)con_cls;
-	CpeHttpd* cpe_httpd = (CpeHttpd*)cls;
 
 	if (NULL == con_info) {
 		return;
 	}
 
-	if (con_info->connectiontype == POST) {
-		MHD_destroy_post_processor(con_info->postprocessor);
+	if (con_info->type == POST) {
+		xmlFreeParserCtxt(con_info->ctxt);
 		if (con_info->answerstring) {
 			free(con_info->answerstring);
 		}
@@ -164,8 +188,8 @@ request_completed(void *cls, struct MHD_Connection *connection,
 static int
 answer_to_connection(void *cls, struct MHD_Connection *connection,
 		     const char *url, const char *method,
-		     const char *version, const char *upload_data,
-		     size_t * upload_data_size, void **con_cls)
+		     const char *version, const char *data,
+		     size_t *size, void **con_cls)
 {
 	CpeHttpd* cpe_httpd = (CpeHttpd*)cls;
 
@@ -173,7 +197,7 @@ answer_to_connection(void *cls, struct MHD_Connection *connection,
 
 	if (strncmp(url, "/pacemaker-cloud/api",
 		    strlen("/pacemaker-cloud/api")) != 0) {
-		return send_page(connection, errorpage, NULL, MHD_HTTP_NOT_FOUND);
+		return send_page(connection, "Not Found", NULL, MHD_HTTP_NOT_FOUND);
 	}
 
 	if (NULL == *con_cls) {
@@ -187,20 +211,14 @@ answer_to_connection(void *cls, struct MHD_Connection *connection,
 		con_info->cpe_httpd = cpe_httpd;
 
 		if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
-			con_info->postprocessor =
-			    MHD_create_post_processor(connection,
-						      POSTBUFFERSIZE,
-						      iterate_post,
-						      (void *)con_info);
-
-			if (NULL == con_info->postprocessor) {
+			con_info->ctxt = xmlCreatePushParserCtxt(NULL, NULL, NULL, 0, NULL);
+			if (NULL == con_info->ctxt) {
 				free(con_info);
 				return MHD_NO;
 			}
-
-			con_info->connectiontype = POST;
+			con_info->type = POST;
 		} else {
-			con_info->connectiontype = GET;
+			con_info->type = GET;
 		}
 		*con_cls = (void *)con_info;
 
@@ -224,21 +242,53 @@ answer_to_connection(void *cls, struct MHD_Connection *connection,
 	if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
 		struct connection_info_struct *con_info = *(struct connection_info_struct **)con_cls;
 
-		if (*upload_data_size != 0) {
-			MHD_post_process(con_info->postprocessor, upload_data,
-					 *upload_data_size);
-			*upload_data_size = 0;
+		if (*size != 0) {
+			int xml_status = xmlParseChunk(con_info->ctxt, data, *size, 0);
 
-			return MHD_YES;
-		} else if (NULL != con_info->answerstring) {
-			return send_page(connection, con_info->answerstring,
-					 "application/xml", MHD_HTTP_CREATED);
+			/* NB: Indicate we're finished with data.
+			 * This must be done even before responding with error codes.  */
+			*size = 0;
+
+			if (xml_status) {
+				const char* xml_errmsg = xmlCtxtGetLastError(con_info->ctxt)->message;
+				set_response_message(con_info, client_errorpage, xml_errmsg);
+				qb_log(LOG_DEBUG, "failed to parse [%s]", xml_errmsg);
+			} else {
+				return MHD_YES;
+			}
 		} else {
-			qb_log(LOG_DEBUG, "answerstring NULL -> errorpage", method);
+			bool responded = false;
+			int response_status = 0;
+			xmlParseChunk(con_info->ctxt, data, 0, 1 /* terminate */);
+			xmlDocPtr doc = con_info->ctxt->myDoc;
+
+			if (!con_info->ctxt->wellFormed) {
+				const char* xml_errmsg = xmlCtxtGetLastError(con_info->ctxt)->message;
+				set_response_message(con_info, client_errorpage, xml_errmsg);
+				qb_log(LOG_DEBUG, "failed to parse [%s]", xml_errmsg);
+			} else if (handle_event(doc, con_info)) {
+				responded = true;
+				response_status = send_page(connection, "",
+							    "application/xml", MHD_HTTP_OK);
+				xmlFreeDoc(doc);
+			} else if (!con_info->answerstring) {
+				responded = true;
+				set_response_message(con_info, server_errorpage, "unknown");
+				response_status = send_page(connection, con_info->answerstring,
+							    NULL, MHD_HTTP_INTERNAL_SERVER_ERROR);
+			}
+
+
+			if (responded) {
+				return response_status;
+			}
 		}
+		qb_log(LOG_DEBUG, "\"%s\" error [%s]", method, con_info->answerstring);
+		send_page(connection, con_info->answerstring, NULL, MHD_HTTP_BAD_REQUEST);
+                return MHD_YES;
 	}
 	qb_log(LOG_DEBUG, "\"%s\" -> errorpage", method);
-	return send_page(connection, errorpage, NULL, MHD_HTTP_BAD_REQUEST);
+	return send_page(connection, "bad request", NULL, MHD_HTTP_BAD_REQUEST);
 }
 
 CpeHttpd::CpeHttpd(int port) : daemon(NULL), port(port)
