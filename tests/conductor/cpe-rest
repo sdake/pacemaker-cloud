@@ -1,17 +1,26 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
+require 'time'
 require 'restclient'
 require "rexml/document"
 include REXML
 
 def usage(why = nil)
   puts "failed: #{why}" if why
-  puts "usage: cpe-rest [start|stop|list] uuid"
+  puts "usage: cpe-rest [test_started|list] uuid"
   exit(1)
 end
 
-POSSIBLE_VERBS = ['start', 'stop', 'list']
+# TODO: add tests for other states:
+#   Starting, Restarting, Started, Failed, Stopping, Stopped, Isolating, Isolated
+# Also and actions:
+#   Start, Restart, Stop, Isolate
+# 'list' maps to a GET request to give full internal state (in xml format)
+# All other actions/states are xml format POSTS.
+POSSIBLE_VERBS = ['test_started', 'list']
+
+# TODO: make this host:port configurable
 BASE_URL = 'http://localhost:8888/pacemaker-cloud/api'
 
 if POSSIBLE_VERBS.include? ARGV.first
@@ -24,20 +33,60 @@ end
 
 usage("invalid uuid '#{@uuid}") if @uuid == nil && @verb != 'list'
 
-if @verb == 'start'
-	doc = Document.new "<deployments/>"
+# Return a deployment xml element
+def deployment(id, instances, state)
+	_dep = Element.new "deployment"
+	_dep.attributes["id"] = id
 
-	_dep = doc.root.add_element "deployment"
-	_dep.attributes['id'] = @uuid
+	_state = _dep.add_element "state"
+	_state.text = state
 
-	dep = RestClient::Resource.new BASE_URL
-	print dep.post :deployment => doc, :multipart => true
-	puts ' '
+	_instances = _dep.add_element "instances"
+	(1..instances).each { |i| _instances.add_element "instance", {"id"=>i} }
 
-elsif @verb == 'stop'
+	return _dep
+end
 
-	RestClient.delete BASE_URL + '/' + @uuid
+# Return an XML doc base for an event
+def event()
+	doc = Document.new "<event/>"
 
-else
+	_dt = doc.root.add_element "datetime"
+	_dt.text = Time.now.utc.iso8601
+
+	return doc
+end
+
+def post(xml)
+	begin
+		# NB the to_s is required below or else the POST will be form_encoded?
+		response = RestClient.post(BASE_URL, xml.to_s, :content_type => 'application/xml'){|response, request, result, &block|
+			case response.code
+			when 400..599
+			print "Request failed ", response.code, ': ', response.to_str
+			end
+		}
+	rescue Errno::EPIPE, RestClient::ServerBrokeConnection
+		print "The server terminated the request\n"
+	rescue Errno::ECONNREFUSED
+		print "The server could not be found\n"
+	end
+
+end
+
+if @verb == 'test_started'
+	doc = event()
+
+	# Create a deployment with between 1 and 3000 instances
+	doc.root.add_element deployment(@uuid, rand(3000), 'STARTED')
+
+	#doc.write( $stdout, 2 )
+
+	post(doc)
+
+	# TODO: Verify the output from RestClient.get BASE_URL
+	# correlates with the xml we sent above
+
+elsif @verb == 'list'
 	print RestClient.get BASE_URL
 end

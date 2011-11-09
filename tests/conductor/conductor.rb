@@ -107,6 +107,9 @@ module Rack
         return [201,{"Content-Type" => "application/xml",
                      "Location" => location},
                 xml_response]
+
+        # TODO: Populate the cped with a test deployment using:
+        # Call ./cpe-rest test_started 1234
     end
   end
 end
