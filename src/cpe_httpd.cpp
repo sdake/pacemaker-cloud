@@ -44,11 +44,8 @@ struct connection_info_struct {
 	xmlParserCtxtPtr ctxt;
 };
 
-const char *askpage =
+const char *list_page =
     "<deployments>todo</deployments>";
-
-const char *started_page =
-    "<deployment id=\"%s\" href=\"pacemaker-cloud/api/%s\"></deployment>";
 
 const char *client_errorpage =
     "<html><body>Invalid input [%s]</body></html>";
@@ -231,12 +228,8 @@ answer_to_connection(void *cls, struct MHD_Connection *connection,
 		std::list<std::string> l;
 		cpe_httpd->impl_get()->dep_list(&l);
 
-		return send_page(connection, askpage,
+		return send_page(connection, list_page,
 				 "application/xml", MHD_HTTP_OK);
-	}
-	if (strcmp(method, MHD_HTTP_METHOD_DELETE) == 0) {
-		// TODO ...
-		return send_page(connection, NULL, NULL, MHD_HTTP_NO_CONTENT);
 	}
 
 	if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
