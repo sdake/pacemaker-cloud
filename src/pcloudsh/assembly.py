@@ -341,7 +341,7 @@ class OpenstackAssembly(Assembly):
 
     def start(self):
         self.l.info('starting %s:%s' % (self.deployment, self.name))
-        cmd = 'su -c \"source ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
+        cmd = 'su -c \". ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
         self.l.info('cmd: %s' % (str(cmd)))
         try:
             out = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
@@ -351,7 +351,7 @@ class OpenstackAssembly(Assembly):
 
     def image_to_instance(self, image_name):
 
-        p1 = subprocess.Popen('su -c \"source ./novarc && euca-describe-images\" %s' % self.username,
+        p1 = subprocess.Popen('su -c \". ./novarc && euca-describe-images\" %s' % self.username,
             shell=True,
             cwd=self.keydir,
             stderr=subprocess.PIPE,
@@ -370,7 +370,7 @@ class OpenstackAssembly(Assembly):
             print 'ami not found'
             return None
 
-        p1 = subprocess.Popen('su -c \"source ./novarc && euca-describe-instances\" %s' % self.username,
+        p1 = subprocess.Popen('su -c \". ./novarc && euca-describe-instances\" %s' % self.username,
             shell=True, cwd=self.keydir,
             stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         p2 = subprocess.Popen(["grep", ami], stdin=p1.stdout, stdout=subprocess.PIPE)
@@ -393,7 +393,7 @@ class OpenstackAssembly(Assembly):
         inst = self.image_to_instance(self.name)
         if inst != None:
             try:
-                p1 = subprocess.Popen('su -c \"source ./novarc && euca-terminate-instances %s\" %s' % (inst, self.username),
+                p1 = subprocess.Popen('su -c \". ./novarc && euca-terminate-instances %s\" %s' % (inst, self.username),
                     shell=True, cwd=self.keydir,
                     stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                 out = p1.communicate()
