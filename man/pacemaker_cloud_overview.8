@@ -61,6 +61,11 @@ they fail.
 The software actvel montors for a deployable failure and restarts them if
 they fail.
 
+.B Integration with OpenStack http://www.openstack.org/
+To use with OpenStack the only change you need to make is when creating the
+deployable:
+ deployable_create <name> openstack <openstack_username>
+
 .SH FEATURES PLANNED FOR THE FUTURE
 .B "Recovery escalation"
 .nf
@@ -79,7 +84,6 @@ The developers intend to integrate with the following IAAS platforms:
 .PP
 .nf
 .B Aeolus http://www.aeolus.org/
-.B OpenStack http://www.openstack.org/
 .B oVirt http://www.ovirt.org/
 
 .SH LIMITATONS

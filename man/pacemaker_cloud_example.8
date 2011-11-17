@@ -18,6 +18,13 @@ Ensure a compatible OS image is available, for example:
 .br
 /var/lib/libvirt/images/Fedora\-14\-x86_64\-DVD.iso
 
+.br
+To create an openstack deployment you need to do the following:
+.br
+nova-manage user admin $USERNAME
+.br
+nova-manage network create default 10.0.0.0/24 1 256 --bridge=br0
+
 .SH PCLOUDSH
 Start the pcloudsh(1) command as root,
 and enter the following pcloudsh commands:
@@ -30,7 +37,11 @@ assembly_clone assy1 assy3
 assembly_resource_add httpdone httpd assy1
 assembly_resource_add httpdtwo httpd assy2
 assembly_resource_add httpdthree httpd assy3
+
 deployable_create dep1
+# or for an openstack deployment
+deployable_create dep1 openstack $USERNAME
+
 deployable_assembly_add dep1 assy1
 deployable_assembly_add dep1 assy2
 deployable_assembly_add dep1 assy3
