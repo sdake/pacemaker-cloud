@@ -40,7 +40,7 @@ bin_SCRIPTS = pcloudsh vmlauncher
 pcloudshdir = $(pythondir)/pcloudsh
 pcloudsh_PYTHON = assembly.py deployable.py ifconfig.py cpe.py \
                   eventreceiver.py eventrunner.py jeos.py resource.py \
-				  pcmkconfig.py __init__.py
+				  pcmkconfig.py __init__.py db_helper.py
 
 jeosdir = $(localstatedir)/lib/pacemaker-cloud/jeos/
 jeos_DATA = F14-x86_64-jeos.tdl F14-x86_64-jeos-assembly.tdl \

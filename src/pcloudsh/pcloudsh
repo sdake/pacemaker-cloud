@@ -34,12 +34,13 @@ class pcloudsh(cmd.Cmd, object):
 
     prompt = 'pcloudsh# '
     intro = "Welcome to pcloudsh, the Pacemaker Cloud Interface terminal\n\ntype \"help\" for help and quit to exit.\n"
-    distros = ('F14','F15','F16','rhel61','U10')
+    distros = ('F15','F16','rhel61','U10')
+    infrastructures = ('aeolus','openstack','ovirt')
 
     def __init__(self):
-        self.j = jeos.Jeos()
+        self.j = jeos.JeosFactory()
         self.a = assembly.AssemblyFactory()
-        self.d = deployable.Deployable()
+        self.d = deployable.DeployableFactory()
         cmd.Cmd.__init__(self)
 
     def emptyline(self):
@@ -63,16 +64,40 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_deployable_create(self, s):
         """
-  deployable_create <deployable_name> - create a new deployable
+  deployable_create <deployable_name> <aeolus|openstack|ovirt> <username>- create a new deployable
 
   The deployable_create action creates a new deployable and stores it in the
   pcloudsh database.
         """
         options = s.split()
-        if not len(options) == 1:
+        inf = ''
+        user = ''
+        if len(options) == 1:
+            inf = 'aeolus'
+            user = 'root'
+        elif len(options) == 3:
+            inf = options[1]
+            user = options[2]
+            if not inf in self.infrastructures:
+                print '*** wrong infrastructure must be one of: aeolus, openstack or ovirt'
+                return False
+        elif not len(options) == 3:
             self.do_help("deployable_create")
+            return False
+
+        self.d.create(options[0], inf, user)
+
+    def do_deployable_delete(self, s):
+        """
+  deployable_delete <deployable_name> - delete a deployable
+
+  The deployable_delete action deletes adeployable from the system
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_delete")
         else:
-            self.d.create(options[0])
+            self.d.delete(options[0])
 
     def do_deployable_list(self, s):
         """
@@ -81,12 +106,10 @@ class pcloudsh(cmd.Cmd, object):
   The deployable_list action lists all deployables registered in the pcloudsh
   database.
         """
-        deployable_names = []
-        self.d.list(deployable_names)
-        print ' Name'
-        print '--------------'
-        for deployable_name in deployable_names:
-            print ' %-12s' % (deployable_name)
+        print ' %-20s %-12s' % ('Name', 'Infrastructure')
+        print '------------------------------------'
+        for d in self.d.all_get():
+            print ' %-20s %-12s' % (d.name, d.infrastructure)
 
     def do_deployable_start(self, s):
         """
@@ -98,7 +121,10 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 1:
             self.do_help("deployable_start")
         else:
-            self.d.start(options[0])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).start()
+            else:
+                print '*** deployable %s does not exist' % options[0]
 
     def do_deployable_stop(self, s):
         """
@@ -110,7 +136,10 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 1:
             self.do_help("deployable_stop")
         else:
-            self.d.stop(options[0])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).stop()
+            else:
+                print '*** deployable %s does not exist' % options[0]
 
     def do_deployable_reload(self, s):
         """
@@ -122,7 +151,10 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 1:
             self.do_help("deployable_reload")
         else:
-            self.d.reload(options[0])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).reload()
+            else:
+                print '*** deployable %s does not exist' % options[0]
 
     def do_deployable_status(self, s):
         """
@@ -134,7 +166,10 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 1:
             self.do_help("deployable_status")
         else:
-            self.d.status(options[0])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).status()
+            else:
+                print '*** deployable %s does not exist' % options[0]
 
     def do_deployable_assembly_add(self, s):
         """
@@ -149,7 +184,11 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 2:
             self.do_help("deployable_assembly_add")
         else:
-            self.d.assembly_add(options[0], options[1])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).assembly_add(options[1])
+            else:
+                print '*** deployable %s does not exist' % options[0]
+
 
     def do_deployable_assembly_remove(self, s):
         """
@@ -164,7 +203,31 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 2:
             self.do_help("deployable_assembly_remove")
         else:
-            self.d.assembly_remove(options[0], options[1])
+            if self.d.exists(options[0]):
+                self.d.get(options[0]).assembly_remove(options[1])
+            else:
+                print '*** deployable %s does not exist' % options[0]
+
+
+    def do_deployable_assembly_list(self, s):
+        """
+  deployable_assembly_list <deployable_name>
+    - list assemblies in a deployable
+
+  The deployable_assembly_list action lists assemblies in an existing
+  deployable <deployable_name>.
+        """
+        options = s.split()
+        if not len(options) == 1:
+            self.do_help("deployable_assembly_list")
+        else:
+            print ' Name'
+            print '--------------'
+            if self.d.exists(options[0]):
+                for a in self.d.get(options[0]).assembly_list_get():
+                    print ' %-12s' % (a)
+            else:
+                print '*** deployable %s does not exist' % options[0]
 
     def do_assembly_clone(self, s):
         """
@@ -260,16 +323,13 @@ class pcloudsh(cmd.Cmd, object):
         elif not options[1] == 'x86_64':
             self.do_help("jeos_create");
         else:
-            try:
-                print 'Creating a JEOS image - this can take up to 30 minutes'
-                self.j.create(options[0], options[1])
-            except:
-                print 'JEOS image already present %s-%s' % (options[0], options[1])
+            print 'Creating a JEOS image - this can take up to 30 minutes'
+            self.j.create(options[0], options[1])
     do_jeos_create.__doc__ %= '|'.join(distros)
 
     def do_jeos_delete(self, s):
         """
-  jeos_delete <%s> <x86_64>'
+  jeos_create <%s> <x86_64>'
 
   SYNOPSIS: Delete a JEOS image
 
@@ -278,16 +338,13 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         if not len(options) == 2:
             self.do_help("jeos_delete");
-        elif not options[0] in distros:
+        elif not options[0] in self.distros:
             self.do_help("jeos_delete");
+            print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[1] == 'x86_64':
             self.do_help("jeos_delete");
         else:
-            try:
-                print 'Deleting the JEOS image'
-                self.j.delete(options[0], options[1])
-            except:
-                print 'JEOS image does not exist %s-%s' % (options[0], options[1])
+            self.j.delete(options[0], options[1])
     do_jeos_delete.__doc__ %= '|'.join(distros)
 
     def do_jeos_list(self, s):
@@ -298,12 +355,10 @@ class pcloudsh(cmd.Cmd, object):
 
   The jeos_list action lists existing JEOS images registered with the system.
         """
-        jeos_names = []
-        self.j.list(jeos_names)
-        print 'JEOS images:'
-        for jeos_name in jeos_names:
-            print 'name %s' % (jeos_name)
-
+        print ' %-12s %-32s' % ('Name', 'arch')
+        print '------------------------------------------------'
+        for j in self.j.all_get():
+            print ' %-12s %-32s' % (j.name, j.arch)
 
     def do_assembly_resource_add(self, s):
         """

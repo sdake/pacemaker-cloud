@@ -29,26 +29,53 @@ import shutil
 import uuid
 import guestfs
 import fileinput
+import subprocess
+
+import libvirt
+
+from glance import client as glance_client
+from glance.common import exception
+from glance.common import utils
+
 from pcloudsh import ifconfig
 from pcloudsh import resource
 from pcloudsh import pcmkconfig
+from pcloudsh import db_helper
 
 class Assembly(object):
 
     def __init__(self, factory, name):
         self.conf = pcmkconfig.Config()
         self.factory = factory
+        self.l = logging.getLogger(name)
+
+        hdlr = logging.handlers.SysLogHandler(address='/dev/log',
+                facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+        formatter = logging.Formatter('%(name)s %(lineno)d: [%(levelname)s] %(message)s')
+        hdlr.setFormatter(formatter)
+        self.l.addHandler(hdlr)
+        self.l.setLevel(logging.DEBUG)
+
 
         query = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
 
+        self.rf = None
+        self.gfs = None
+        self.infrastructure = None
+        self.username = None
+        self.deployment = None
         if (len(query)):
             self.xml_node = query[0]
             self.name = self.xml_node.prop ("name")
             self.jeos_name = self.xml_node.prop ("jeos_name")
             self.image = self.xml_node.prop ("image")
             self.uuid = self.xml_node.prop ("uuid")
-            self.rf = None
-            self.gfs = None
+            if self.xml_node.hasProp('infrastructure'):
+                self.infrastructure = self.xml_node.prop("infrastructure")
+            if self.xml_node.hasProp('username'):
+                self.username = self.xml_node.prop("username")
+            if self.xml_node.hasProp('deployment'):
+                self.deployment = self.xml_node.prop("deployment")
         else:
             self.factory = factory
             self.name = name
@@ -56,8 +83,35 @@ class Assembly(object):
             self.uuid = ''
             self.jeos_name = ''
             self.xml_node = None
-            self.rf = None
-            self.gfs = None
+
+    def save(self):
+        if self.xml_node is None:
+            ass = self.factory.root_get().newChild(None, "assembly", None)
+            ass.newProp("name", self.name)
+            ass.newProp("uuid", self.uuid)
+            ass.newProp("jeos_name", self.jeos_name)
+            ass.newProp("image", self.image)
+            ass.newChild(None, "resources", None)
+            if self.infrastructure != None:
+                ass.newProp("infrastructure", self.infrastructure)
+            if self.username != None:
+                ass.newProp("username", self.username)
+            if self.deployment != None:
+                ass.newProp("deployment", self.deployment)
+            self.xml_node = ass
+        else:
+            self.xml_node.setProp('name', self.name)
+            self.xml_node.setProp('uuid', self.uuid)
+            self.xml_node.setProp('jeos_name', self.jeos_name)
+            self.xml_node.setProp('image', self.image)
+            if self.infrastructure != None:
+                self.xml_node.setProp("infrastructure", self.infrastructure)
+            if self.username != None:
+                self.xml_node.setProp("username", self.username)
+            if self.deployment != None:
+                self.xml_node.setProp("deployment", self.deployment)
+
+        self.factory.save()
 
     def resources_get(self):
         self.resource_factory_setup()
@@ -68,23 +122,6 @@ class Assembly(object):
             if self.xml_node is None:
                 self.save()
             self.rf = resource.ResourceFactory(self.xml_node)
-
-    def save(self):
-        if self.xml_node is None:
-            ass = self.factory.root_get().newChild(None, "assembly", None)
-            ass.newProp("name", self.name)
-            ass.newProp("uuid", self.uuid)
-            ass.newProp("jeos_name", self.jeos_name)
-            ass.newProp("image", self.image)
-            ass.newChild(None, "resources", None)
-            self.xml_node = ass
-        else:
-            self.xml_node.setProp('name', self.name)
-            self.xml_node.setProp('uuid', self.uuid)
-            self.xml_node.setProp('jeos_name', self.jeos_name)
-            self.xml_node.setProp('image', self.image)
-
-        self.factory.save()
 
     def uuid_set(self, uuid):
         self.uuid = uuid
@@ -201,7 +238,7 @@ class Assembly(object):
         root_node = source_xml[0]
         root_node.unlinkNode()
         libvirt_xml.saveFormatFile(source, format=1)
-       
+
     def clone_from(self, source):
         if os.access(self.image, os.R_OK):
             print '*** Assembly %s already exists, delete first.' % (self.image)
@@ -240,14 +277,27 @@ class Assembly(object):
         os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
                 (self.conf.dbdir, source.jeos_name, self.conf.dbdir, self.name))
         self.jeos_name = source.jeos_name
-        self.factory.add(self)
         self.save()
         return 0
 
-    def register_image(self):
-        if self.conf.use_openstack:
-            os.system ("nova-manage image image_register %s %s %s" % (self.image,
-                self.conf.openstack_user, self.name))
+
+    def delete(self):
+
+        if os.access(self.image, os.R_OK):
+            os.unlink(self.image)
+            print ' deleted image %s' % self.image
+
+        xml = '%s/assemblies/%s.xml' % (self.conf.dbdir, self.name)
+        if os.access(xml, os.R_OK):
+            os.unlink(xml)
+            print ' deleted virt xml file %s' % xml
+        tdl = '%s/assemblies/%s.tdl' % (self.conf.dbdir, self.name)
+        if os.access(tdl, os.R_OK):
+            os.unlink(tdl)
+            print ' deleted tdl %s' % tdl
+
+        if self.infrastructure == 'openstack':
+            self.deregister_with_openstack()
 
     def resource_add(self, rsc_name, rsc_type):
         '''
@@ -281,39 +331,223 @@ class Assembly(object):
         self.rf.delete(rsc_name)
         self.save()
 
-class AssemblyFactory(object):
+class OpenstackAssembly(Assembly):
+    def __init__(self, factory, name):
+        Assembly.__init__(self, factory, name)
+        os.system("modprobe nbd")
 
-    def __init__(self):
-        self.conf = pcmkconfig.Config()
-        self.xml_file = '%s/db_assemblies.xml' % (self.conf.dbdir)
-        it_exists = os.access(self.xml_file, os.R_OK)
+        self.keydir = os.path.join(self.conf.dbdir, self.deployment, 'novacreds')
+        self.keyfile = 'nova_key'
+
+    def start(self):
+        self.l.info('starting %s:%s' % (self.deployment, self.name))
+        cmd = 'su -c \"source ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
+        self.l.info('cmd: %s' % (str(cmd)))
+        try:
+            out = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
+            self.l.info('cmd out: %s' % (str(out)))
+        except:
+            self.l.exception('*** couldn\'t start %s' % self.name)
+
+    def image_to_instance(self, image_name):
+
+        p1 = subprocess.Popen('su -c \"source ./novarc && euca-describe-images\" %s' % self.username,
+            shell=True,
+            cwd=self.keydir,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(['grep', ' (%s)' % (image_name)], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        output = p2.communicate()
+        ami = None
+        for line in output:
+            if line != None:
+                ami_s = line.split()
+                if len(ami_s) > 1:
+                    ami = ami_s[1]
+
+        if ami is None:
+            print 'ami not found'
+            return None
+
+        p1 = subprocess.Popen('su -c \"source ./novarc && euca-describe-instances\" %s' % self.username,
+            shell=True, cwd=self.keydir,
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["grep", ami], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        output = p2.communicate()
+
+        inst = None
+        for line in output:
+            if line != None:
+                inst_s = line.split()
+                if len(inst_s) > 0:
+                    inst = inst_s[1]
+                    self.l.info('%s => [ami:%s, instance: %s]' % (image_name, ami, inst))
+                    return inst
+        return None
+
+    def stop(self):
+        self.l.info('stopping %s:%s' % (self.deployment, self.name))
+
+        inst = self.image_to_instance(self.name)
+        if inst != None:
+            try:
+                p1 = subprocess.Popen('su -c \"source ./novarc && euca-terminate-instances %s\" %s' % (inst, self.username),
+                    shell=True, cwd=self.keydir,
+                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                out = p1.communicate()
+            except:
+                self.l.exception('*** couldn\'t stop %s' % self.name)
+
+    def status(self):
+        return 'Unknown (not impl. yet)'
+
+    def register_with_openstack(self, username):
+        print ' Registering assembly image with nova ...'
+
+        creds = dict(username=os.getenv('OS_AUTH_USER'),
+                password=os.getenv('OS_AUTH_KEY'),
+                tenant=os.getenv('OS_AUTH_TENANT'),
+                auth_url=os.getenv('OS_AUTH_URL'),
+                strategy=os.getenv('OS_AUTH_STRATEGY', 'noauth'))
+
+        c = glance_client.Client(host="0.0.0.0", port=9292,
+                use_ssl=False, auth_tok=None,
+                creds=creds)
+
+        parameters = {
+            "filters": {},
+            "limit": 10,
+        }
+
+        image_meta = {'name': self.name,
+                      'is_public': True,
+                      'disk_format': 'raw',
+                      'min_disk': 0,
+                      'min_ram': 0,
+                      'location': 'file://%s' % (self.image),
+                      'owner': self.username,
+                      'container_format': 'ovf'}
+
+        images = c.get_images(**parameters)
+        for image in images:
+            if image['name'] == self.name:
+                print ' *** image already in glance: %s > %s' % (image['name'], image['id'])
+                return
 
         try:
-            if it_exists:
-                self.doc = libxml2.parseFile(self.xml_file)
+            image_meta = c.add_image(image_meta, None)
+            image_id = image_meta['id']
+            print " Added new image with ID: %s" % image_id
+            print " Returned the following metadata for the new image:"
+            for k, v in sorted(image_meta.items()):
+                print " %(k)30s => %(v)s" % locals()
+        except exception.ClientConnectionError, e:
+            print (" Failed to connect to the Glance API server."
+                   " Is the server running?" % locals())
+            pieces = unicode(e).split('\n')
+            for piece in pieces:
+                print piece
+            return
+        except Exception, e:
+            print " Failed to add image. Got error:"
+            pieces = unicode(e).split('\n')
+            for piece in pieces:
+                print piece
+            print (" Note: Your image metadata may still be in the registry, "
+                   "but the image's status will likely be 'killed'.")
+
+    def deregister_with_openstack(self):
+        print ' deregistering assembly image from glance ...'
+
+        parameters = {
+            "filters": {},
+            "limit": 10,
+        }
+
+        creds = dict(username=os.getenv('OS_AUTH_USER'),
+                password=os.getenv('OS_AUTH_KEY'),
+                tenant=os.getenv('OS_AUTH_TENANT'),
+                auth_url=os.getenv('OS_AUTH_URL'),
+                strategy=os.getenv('OS_AUTH_STRATEGY', 'noauth'))
+
+        c = glance_client.Client(host="0.0.0.0", port=9292,
+                                use_ssl=False, auth_tok=None,
+                                creds=creds)
+
+        images = c.get_images(**parameters)
+        image_id = None
+        for image in images:
+            if image['name'] == self.name:
+                image_id = image['id']
+                break
+        if image_id == None:
+            print " *** No image with name %s was found in glance" % self.name
+        else:
+            try:
+                c.delete_image(image_id)
+                print " Deleted image %s (%s)" % (self.name, image_id)
+            except exception.NotFound:
+                print " *** No image with ID %s was found" % image_id
+                return
+            except exception.NotAuthorized:
+                print " *** Glance can't delete the image (%s, %s)" % (image_id, self.name)
+                return
+
+
+class AeolusAssembly(Assembly):
+
+    def __init__(self, factory, name):
+        Assembly.__init__(self, factory, name)
+        self.libvirt_conn = libvirt.open("qemu:///system")
+
+    def start(self):
+        libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % self.name)
+        libvirt_doc = libvirt_xml.serialize(None, 1);
+        try:
+            libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
+            self.l.info('started %s' % (self.name))
         except:
-            it_exists = False
+            self.l.exception('*** couldn\'t start %s' % self.name)
 
-        if not it_exists:
-            self.doc = libxml2.newDoc("1.0")
-            ass_node = self.doc.newChild(None, "assemblies", None)
-            ass_node.setProp('pcmkc-version', self.conf.version)
+    def stop(self):
+        try:
+            ass = self.libvirt_conn.lookupByName(self.name)
+            ass.destroy()
+        except:
+            self.l.exception('*** couldn\'t stop %s (already stopped?)' % self.name)
 
-        self.root_node = self.doc.getRootElement()
-        _ver = self.root_node.prop('pcmkc-version')
-        if not _ver == self.conf.version:
-            _msg = '*** warning xml and program version mismatch'
-            print '%s \"%s\" != \"%s\"' % (_msg, _ver, self.conf.version)
+    def status(self):
+        st = 'Unknown'
+        try:
+            ass = self.libvirt_conn.lookupByName(self.name)
+            if ass.isActive():
+                st = 'Running'
+            else:
+                st = 'Stopped'
+        except:
+            st = 'Undefined'
+        return st
 
-        self.all = {}
-        assembly_list = self.doc.xpathEval("/assemblies/assembly")
-        for assembly_data in assembly_list:
-            n = assembly_data.prop('name')
+
+class AssemblyFactory(db_helper.DbFactory):
+
+    def __init__(self):
+        db_helper.DbFactory.__init__(self, 'db_assemblies.xml', 'assemblies', 'assembly')
+
+    def create_instance(self, name):
+        return AeolusAssembly(self, name)
+
+    def load(self):
+        list = self.doc.xpathEval("/%s/%s" % (self.plural, self.singular))
+        for node in list:
+            n = node.prop('name')
             if n not in self.all:
-                self.all[n] = Assembly(self, n)
-
-    def root_get(self):
-        return self.root_node
+                if node.prop('infrastructure') == 'openstack':
+                    self.all[n] = OpenstackAssembly(self, n)
+                else:
+                    self.all[n] = AeolusAssembly(self, n)
 
     def clone(self, source, dest):
         source_assy = self.get(source)
@@ -323,8 +557,7 @@ class AssemblyFactory(object):
             return
         dest_assy.clone_from(source_assy)
         dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
-        dest_assy.register_image()
-        self.save()
+        dest_assy.save()
 
     def create(self, name, source):
         dest_assy = self.get(name)
@@ -342,42 +575,25 @@ class AssemblyFactory(object):
             os.system ("oz-customize -d3 %s/assemblies/%s.tdl %s/assemblies/%s.xml" %
                     (self.conf.dbdir, dest_assy.name, self.conf.dbdir, dest_assy.name))
             dest_assy.clean_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, dest_assy.name))
-            dest_assy.register_image()
-        self.save()
-
-    def exists(self, name):
-        if name in self.all:
-            return True
+            dest_assy.save()
         else:
-            return False
+            self.delete_instance(name)
 
-    def get(self, name):
-        if name in self.all:
-            return self.all[name]
 
-        a = Assembly(self, name)
-        return a
+    def register_with_openstack(self, name, username):
+
+        # write Openstack into the xml
+        a = self.get(name)
+        a.username = username
+        a.infrastructure = 'openstack'
+        a.save()
+
+        # reload as openstack class
+        del self.all[name]
+        self.all[name] = OpenstackAssembly(self, name)
+        self.all[name].register_with_openstack(username)
 
     def delete(self, name):
-        assembly_path = self.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
-        if len(assembly_path) == 0:
-            print '*** assembly %s does not exist.' % name
-            return
-        root_node = assembly_path[0]
-        root_node.unlinkNode()
-        self.save()
-
-    def add(self, assy):
-        if assy.name not in self.all:
-            self.all[assy.name] = assy
-
-    def save(self):
-        self.doc.saveFormatFile(self.xml_file, format=1)
-
-    def all_get(self):
-        return self.all.values()
-
-    def list(self, listiter):
-        for a in self.all:
-            listiter.append(str(a))
+        self.get(name).delete()
+        self.delete_instance(name)
 

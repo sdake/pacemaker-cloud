@@ -26,94 +26,150 @@ import libxml2
 import exceptions
 import libvirt
 from pcloudsh import pcmkconfig
+from pcloudsh import db_helper
 
 class Jeos(object):
 
-    def __init__(self):
+    def __init__(self, factory, name, arch):
         self.conf = pcmkconfig.Config()
-        self.xml_file = '%s/db_jeos.xml' % (self.conf.dbdir)
-	if os.access(self.xml_file, os.R_OK):
-            self.doc = libxml2.parseFile(self.xml_file)
-            self.doc_images = self.doc.getRootElement()
-        else:
-            self.doc = libxml2.newDoc("1.0")
-            self.doc.newChild(None, "images", None)
-            self.doc_images = self.doc.getRootElement()
-            self.doc_images.setProp('pcmkc-version', self.conf.version)
+        self.factory = factory
 
-    def create(self, name, arch):
+        query = factory.doc.xpathEval("/%s/%s[@name='%s']" % (self.factory.plural,
+            self.factory.singular, name))
+
+        self.xml_node = None
+        if (len(query)):
+            self.xml_node = query[0]
+            self.name = self.xml_node.prop("name")
+            self.arch = self.xml_node.prop("arch")
+            self.tdl_path = self.xml_node.prop("tdl_path")
+            self.xml_path = self.xml_node.prop("xml_path")
+        else:
+            self.factory = factory
+            self.name = name
+            self.arch = arch
+            self.xml_path = '%s/jeos/%s-%s-jeos.xml' % (self.conf.dbdir, self.name, self.arch)
+            self.tdl_path = '%s/jeos/%s-%s-jeos.tdl' % (self.conf.dbdir, self.name, self.arch)
+
+        self.dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (self.name, self.arch)
+        self.qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (self.name, self.arch)
+
+    def save(self):
+        if self.xml_node is None:
+            node = self.factory.root_get().newChild(None, self.factory.singular, None)
+            node.newProp("name", self.name)
+            node.newProp("arch", self.arch)
+            node.newProp("tdl_path", self.tdl_path)
+            node.newProp("xml_path", self.xml_path)
+            self.xml_node = node
+        else:
+            self.xml_node.setProp('name', self.name)
+            self.xml_node.setProp('arch', self.arch)
+            self.xml_node.setProp('tdl_path', self.tdl_path)
+            self.xml_node.setProp('xml_path', self.xml_path)
+
+        self.factory.save()
+
+    def create(self):
 
         iso = None
-        if name == 'F16':
+        if self.name == 'F16':
             iso = '/var/lib/libvirt/images/Fedora-16-x86_64-DVD.iso'
-        if name == 'F15':
+        if self.name == 'F15':
             iso = '/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso'
-        if name == 'F14':
+        if self.name == 'F14':
             iso = '/var/lib/libvirt/images/Fedora-14-x86_64-DVD.iso'
         if iso:
             if not os.access(iso, os.R_OK):
                 print '*** %s does not exist.' % (iso)
-                return
+                return False
 
-        jeos_list = self.doc.xpathEval("/images/jeos")
-        for jeos_data in jeos_list:
-            if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
-                raise
-        xml_filename = '%s/jeos/%s-%s-jeos.xml' % (self.conf.dbdir, name, arch)
-        tdl_filename = '%s/jeos/%s-%s-jeos.tdl' % (self.conf.dbdir, name, arch)
-        dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
-        qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
-
-        res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (xml_filename, tdl_filename))
+        res = os.system("oz-install -t 50000 -u -d3 -x %s %s" % (self.xml_path, self.tdl_path))
         if res == 256:
-            raise
+            return False
 
-        os.system("qemu-img convert -O qcow2 %s %s" % (dsk_filename, qcow2_filename))
+        os.system("qemu-img convert -O qcow2 %s %s" % (self.dsk_filename, self.qcow2_filename))
 
-        libvirt_xml = libxml2.parseFile(xml_filename)
+        libvirt_xml = libxml2.parseFile(self.xml_path)
         source_xml = libvirt_xml.xpathEval('/domain/devices/disk')
         driver = source_xml[0].newChild (None, "driver", None)
         driver.newProp ("type", "qcow2")
         source_xml = libvirt_xml.xpathEval('/domain/devices/disk/source')
-        source_xml[0].setProp('file', qcow2_filename)
+        source_xml[0].setProp('file', self.qcow2_filename)
         source_xml = libvirt_xml.xpathEval('/domain/devices/serial')
         root_node = source_xml[0]
         root_node.unlinkNode()
-        libvirt_xml.saveFormatFile(xml_filename, format=1)
+        libvirt_xml.saveFormatFile(self.xml_path, format=1)
+        return True
 
-        doc_jeos = self.doc_images.newChild(None, "jeos", None)
-        doc_xml_path = doc_jeos.newProp("arch", arch)
-        doc_xml_path = doc_jeos.newProp("name", name)
-        doc_tdl_path = doc_jeos.newProp("tdl_path", xml_filename)
-        doc_xml_path = doc_jeos.newProp("xml_path", xml_filename)
+    def delete(self):
 
-        self.doc.saveFormatFile(self.xml_file, format=1)
-
-    def delete(self, name, arch):
-        jeos_list = self.doc.xpathEval("/images/jeos")
-        for jeos_data in jeos_list:
-            if jeos_data.prop('name') == name and jeos_data.prop('arch') == arch:
-                jeos_data.unlinkNode()
-                self.doc.saveFormatFile(self.xml_file, format=1)
-                print ' deleted jeos from database'
-
-        xml_filename = '%s/jeos/%s-%s-jeos.xml' % (self.conf.dbdir, name, arch)
-        if os.access(xml_filename, os.R_OK):
-            os.unlink(xml_filename)
+        if os.access(self.xml_path, os.R_OK):
+            os.unlink(self.xml_path)
             print ' deleted jeos virt xml'
 
-        dsk_filename = '/var/lib/libvirt/images/%s-%s-jeos.dsk' % (name, arch)
-        if os.access(dsk_filename, os.R_OK):
-            os.unlink(dsk_filename)
+        if os.access(self.dsk_filename, os.R_OK):
+            os.unlink(self.dsk_filename)
             print ' deleted jeos disk image'
 
-        qcow2_filename = '/var/lib/libvirt/images/%s-%s-jeos.qcow2' % (name, arch)
-        if os.access(qcow2_filename, os.R_OK):
-            os.unlink(qcow2_filename)
+        if os.access(self.qcow2_filename, os.R_OK):
+            os.unlink(self.qcow2_filename)
             print ' deleted jeos qcow2 image'
 
+class JeosFactory(db_helper.DbFactory):
 
-    def list(self, listiter):
-        jeos_list = self.doc.xpathEval("/images/jeos")
-        for jeos_data in jeos_list:
-            listiter.append("%s %s" % (jeos_data.prop('name'), jeos_data.prop('arch')))
+    def __init__(self):
+        db_helper.DbFactory.__init__(self, 'db_jeos.xml', 'images', 'jeos')
+
+    def __str__(self):
+        return '%s_%s' % (self.name, self.arch)
+
+    def make_id(self, name, arch):
+        return '%s_%s' % (name, arch)
+
+    def load(self):
+        list = self.doc.xpathEval("/%s/%s" % (self.plural, self.singular))
+        for node in list:
+            n = self.make_id(node.prop('name'), node.prop('arch'))
+            if n not in self.all:
+                self.all[n] = Jeos(self, node.prop('name'), node.prop('arch'))
+
+    def delete(self, name, arch):
+
+        self.get(name, arch).delete()
+        node_list = self.doc.xpathEval("/%s/%s[@name='%s']" % (self.plural, self.singular, name))
+        for node in node_list:
+            if node.prop('name') == name and node.prop('arch') == arch:
+                print ' deleted from xml db'
+                node.unlinkNode()
+                self.save()
+        del self.all[self.make_id(name, arch)]
+
+    def create(self, name, arch):
+        n = self.make_id(name, arch)
+        if n in self.all:
+            print ' *** Jeos already exists.'
+            return
+        else:
+            j = Jeos(self, name, arch)
+            if j.create():
+                self.all[n] = j
+                j.save()
+            else:
+                self.delete(name, arch)
+
+    def exists(self, name, arch):
+        n = self.make_id(name, arch)
+        if n in self.all:
+            return True
+        else:
+            return False
+
+    def get(self, name, arch='x86_64'):
+        n = self.make_id(name, arch)
+        if n in self.all:
+            return self.all[n]
+
+        self.all[n] = Jeos(self, name, arch)
+        return self.all[n]
+

@@ -1,11 +1,11 @@
 <template>
-  <name>F15_x86_64_1</name>
+  <name>F16_x86_64_1</name>
   <os>
     <name>Fedora</name>
-    <version>15</version>
+    <version>16</version>
     <arch>x86_64</arch>
     <install type='iso'>
-      <iso>file:/var/lib/libvirt/images/Fedora-15-x86_64-DVD.iso</iso>
+      <iso>file:/var/lib/libvirt/images/Fedora-16-x86_64-DVD.iso</iso>
     </install>
     <rootpw>password</rootpw>
   </os>

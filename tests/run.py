@@ -23,10 +23,13 @@ import random
 import unittest
 import logging
 import subprocess
+from pwd import getpwnam
 
 class SimpleSetup(object):
-    def __init__(self, distro):
+    def __init__(self, distro, infrastructure):
         self.distro = distro
+        self.username = 'pcloud_tester'
+        self.infrastructure = infrastructure
         self.arch = 'x86_64'
         self.templ = 't_%s_%s_1' % (self.distro, self.arch)
         self.name = 'd_%s_%s' % (self.distro, self.arch)
@@ -38,6 +41,28 @@ class SimpleSetup(object):
         if not os.access('%s.tdl' % self.templ, os.R_OK):
             raise Exception('missing template %s.tdl' % self.templ)
         subprocess.call(['cp', '-f', '%s.tdl' % self.templ, '/var/lib/pacemaker-cloud/assemblies/'])
+
+        if self.infrastructure == 'openstack':
+            nova_users = subprocess.check_output('nova-manage user list',
+                    stderr=subprocess.STDOUT,
+                    shell=True)
+
+            found_user = False
+            for user in nova_users.split():
+                if user == self.username:
+                    found_user = True
+                    break
+
+            if not found_user:
+
+                try:
+                    info = getpwnam(self.username)
+                    print info
+                except KeyError as ex:
+                    print ex
+                    subprocess.check_call(['useradd', self.username])
+
+                subprocess.check_call(['nova-manage', 'user', 'admin', self.username])
 
         for a in range(1, 3):
             n = 't_%s_%s_%d' % (self.distro, self.arch, a)
@@ -55,7 +80,7 @@ class SimpleSetup(object):
         if self.name in dl:
             self.l.debug('deployable %s already created' % (self.name))
         else:
-            subprocess.call(['pcloudsh', 'deployable_create', self.name])
+            subprocess.call(['pcloudsh', 'deployable_create', self.name, self.infrastructure, self.username])
 
         al = subprocess.check_output(["pcloudsh", 'assembly_list'])
         for a in self.assemblies:
@@ -76,12 +101,8 @@ class SimpleSetup(object):
             subprocess.call(['pcloudsh', 'assembly_resource_remove', 'rcs_%s' % a, a])
             subprocess.call(['pcloudsh', 'deployable_assembly_remove', self.name, a])
             subprocess.call(['pcloudsh', 'assembly_delete', a])
-            subprocess.call(['rm', '-rf', '/var/lib/libvirt/images/%s.qcow2' % a])
-            #TODO this probably needs to be in assembly_delete
-            subprocess.call(['rm', '-f', '/var/lib/pacemaker-cloud/assemblies/%s.xml' % a])
 
-        # TODO need this command
-        #subprocess.call(['pcloudsh', 'deployable_delete', self.name])
+        subprocess.call(['pcloudsh', 'deployable_delete', self.name])
 
     def victim_get(self):
         return self.assemblies[0]
@@ -245,38 +266,39 @@ class TestSimple(unittest.TestCase):
         rc = self.setup.wait_for_all_resources_to_be_up(360)
         self.assertEqual(rc, 0)
 
-class TestSimpleF15(TestSimple):
+class TestSimpleF16Openstack(TestSimple):
 
     def setUp(self):
-        self.setup = simple_f15
+        self.setup = simple_f16_openstack
 
-class TestSimpleF14(TestSimple):
+class TestSimpleF16Aeolus(TestSimple):
 
     def setUp(self):
-        self.setup = simple_f14
+        self.setup = simple_f16_aeolus
+
 
 if __name__ == '__main__':
 
     subprocess.call(['systemctl', '--system', 'daemon-reload'])
     subprocess.call(['systemctl', 'start', 'pcloud-cped.service'])
 
-    logging.basicConfig(level=logging.INFO, format="F14: %(levelname)s %(funcName)s %(message)s")
-    simple_f14 = SimpleSetup('F14')
-    simple_f14.start()
+    logging.basicConfig(level=logging.INFO, format="F16: %(levelname)s %(funcName)s %(message)s")
+    simple_f16_openstack = SimpleSetup('F16', 'openstack')
+    simple_f16_openstack.start()
     time.sleep(2)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF14)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF16Openstack)
     unittest.TextTestRunner(verbosity=2).run(suite)
-    simple_f14.stop()
-    simple_f14.delete()
+    simple_f16_openstack.stop()
+    simple_f16_openstack.delete()
 
-    logging.basicConfig(level=logging.INFO, format="F15: %(levelname)s %(funcName)s %(message)s")
-    simple_f15 = SimpleSetup('F15')
-    simple_f15.start()
+    logging.basicConfig(level=logging.INFO, format="F16: %(levelname)s %(funcName)s %(message)s")
+    simple_f16_aeolus = SimpleSetup('F16', 'aeolus')
+    simple_f16_aeolus.start()
     time.sleep(2)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF15)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF16Aeolus)
     unittest.TextTestRunner(verbosity=2).run(suite)
-    simple_f15.stop()
-    simple_f15.delete()
+    simple_f16_aeolus.stop()
+    simple_f16_aeolus.delete()
 
     time.sleep(1)
     subprocess.call(['systemctl', 'stop', 'pcloud-cped.service'])
