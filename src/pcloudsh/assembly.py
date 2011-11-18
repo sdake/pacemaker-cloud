@@ -559,7 +559,7 @@ class AssemblyFactory(db_helper.DbFactory):
 
         jeos_source = self.get("%s-jeos" % source);
         jeos_source.jeos_name = source
-        if not os.access('%s/jeos/%s-jeos.tdl' % (self.conf.dbdir, jeos_source.jeos_name), os.R_OK):
+        if not os.access('%s/jeos/%s-jeos.xml' % (self.conf.dbdir, jeos_source.jeos_name), os.R_OK):
             print '*** Please create the \"%s\" jeos first' % source
             return
 
