@@ -356,12 +356,12 @@ class OpenstackAssembly(Assembly):
             cwd=self.keydir,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE)
-        p2 = subprocess.Popen(['grep', ' (%s)' % (image_name)], stdin=p1.stdout, stdout=subprocess.PIPE)
-        p1.stdout.close()
-        output = p2.communicate()
+        output = p1.communicate()
+
+        image_name_search = ' (%s)' % image_name
         ami = None
         for line in output:
-            if line != None:
+            if line != None and image_name_search in line:
                 ami_s = line.split()
                 if len(ami_s) > 1:
                     ami = ami_s[1]
@@ -373,13 +373,11 @@ class OpenstackAssembly(Assembly):
         p1 = subprocess.Popen('su -c \". ./novarc && euca-describe-instances\" %s' % self.username,
             shell=True, cwd=self.keydir,
             stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        p2 = subprocess.Popen(["grep", ami], stdin=p1.stdout, stdout=subprocess.PIPE)
-        p1.stdout.close()
-        output = p2.communicate()
+        output = p1.communicate()
 
         inst = None
         for line in output:
-            if line != None:
+            if line != None and ami in line:
                 inst_s = line.split()
                 if len(inst_s) > 0:
                     inst = inst_s[1]
