@@ -282,7 +282,6 @@ class Assembly(object):
 
 
     def delete(self):
-
         if os.access(self.image, os.R_OK):
             os.unlink(self.image)
             print ' deleted image %s' % self.image
@@ -291,11 +290,6 @@ class Assembly(object):
         if os.access(xml, os.R_OK):
             os.unlink(xml)
             print ' deleted virt xml file %s' % xml
-        tdl = '%s/assemblies/%s.tdl' % (self.conf.dbdir, self.name)
-        if os.access(tdl, os.R_OK):
-            os.unlink(tdl)
-            print ' deleted tdl %s' % tdl
-
         if self.infrastructure == 'openstack':
             self.deregister_with_openstack()
 
