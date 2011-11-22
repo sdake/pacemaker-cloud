@@ -63,7 +63,6 @@ class VMLauncher(AgentHandler):
         self.session.setAttribute('attr1', 1000)
         self.session.open()
 
-        self.fac = assembly.AssemblyFactory()
         ##
         ## Initialize the parent class.
         ##
@@ -85,26 +84,27 @@ class VMLauncher(AgentHandler):
         """
         if addr == self.controlAddr:
 
+            fac = assembly.AssemblyFactory()
             self.control.methodCount += 1
             name = args['name']
             uuid = args['uuid']
             self.l.debug('MSG %s %s %s' % (methodName, name, uuid))
             try:
                 if methodName == "start":
-                    self.fac.get(name).start()
+                    fac.get(name).start()
                     self.session.methodSuccess(handle)
 
                 elif methodName == "stop":
-                    self.fac.get(name).stop()
+                    fac.get(name).stop()
                     self.session.methodSuccess(handle)
 
                 elif methodName == "restart":
-                    self.fac.get(name).stop()
-                    self.fac.get(name).start()
+                    fac.get(name).stop()
+                    fac.get(name).start()
                     self.session.methodSuccess(handle)
 
                 elif methodName == "status":
-                    self.fac.get(name).status()
+                    fac.get(name).status()
                     handle.addReturnArgument("status", status)
                     self.session.methodSuccess(handle)
 

@@ -82,6 +82,8 @@ class DeployableDb(object):
 
         ass = fac.get(aname)
         ass.deployment = self.name
+        ass.infrastructure = self.infrastructure
+        ass.username = self.username
         ass.save()
 
         self.save()
@@ -101,6 +103,9 @@ class DeployableDb(object):
         if not fac.exists(aname):
             print '*** Assembly %s does not exist' % (aname)
             return
+        ass = fac.get(aname)
+        ass.deployment = None
+        ass.save()
 
         self.save()
         if self.xml_node.children != None:
