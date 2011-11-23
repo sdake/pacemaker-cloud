@@ -614,16 +614,14 @@ class AssemblyFactory(db_helper.DbFactory):
 
     def register_with_openstack(self, name, username):
 
-        # write Openstack into the xml
-        a = self.get(name)
+        # reload as openstack class
+        del self.all[name]
+        a = OpenstackAssembly(self, name)
         a.username = username
         a.infrastructure = 'openstack'
         a.save()
-
-        # reload as openstack class
-        del self.all[name]
-        self.all[name] = OpenstackAssembly(self, name)
-        self.all[name].register_with_openstack(username)
+        a.register_with_openstack(username)
+        self.all[name] = a
 
     def delete(self, name):
         self.get(name).delete()
