@@ -90,6 +90,10 @@ class VMLauncher(AgentHandler):
             uuid = args['uuid']
             self.l.debug('MSG %s %s %s' % (methodName, name, uuid))
             try:
+                if not fac.exists(name):
+                    self.session.raiseException(handle, "Assembly %s does not exist" % name)
+                    return
+
                 if methodName == "start":
                     fac.get(name).start()
                     self.session.methodSuccess(handle)
