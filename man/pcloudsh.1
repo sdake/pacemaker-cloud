@@ -29,15 +29,15 @@ run as root, as it creates QEMU images.
 
 .SH OPTIONS
 .TP
-.B "jeos_create <F14|F15|rhel61> <x86_64>"
+.B "jeos_create <F14|F15||F16|rhel61|U10> <x86_64>"
 
 Create a JEOS image
 
 The jeos_create action creates a "(J)ust (E)nough (O)perating (S)ystem" image
 file.  This step should only be done once at initialization and can take up
 to 30 minutes to complete.  The current JEOS image types supported are either
-Fedora 14, 15, Fedora 16, or RHEL6.1.  The only supported architecture is
-x86_64.
+Fedora 14, 15, Fedora 16, RHEL6.1, or Ubuntu 10.03.  The only supported
+architecture is x86_64.
 
 .TP
 .B "jeos_list"
@@ -45,7 +45,7 @@ x86_64.
 Lists the currently configured JEOS images
 
 .TP
-.B "assembly_create <assembly_name> <F14|F15|rhel61 <x86_64>"
+.B "assembly_create <assembly_name> <F14|F15|F16|rhel61|U10> <x86_64>"
 
 Create an assembly
 

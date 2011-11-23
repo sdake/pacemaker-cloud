@@ -17,6 +17,7 @@ systemctl start pcloud\-cped.service
 Ensure a compatible OS image is available, for example:
 .br
 /var/lib/libvirt/images/Fedora\-14\-x86_64\-DVD.iso
+/var/lib/libvirt/images/Uubuntu\-10.04.3\-server\-amd64.iso
 
 .br
 To create an openstack deployment you need to do the following:
@@ -30,8 +31,8 @@ Start the pcloudsh(1) command as root,
 and enter the following pcloudsh commands:
 .PP
 .nf
-jeos_create F14 x86_64
-assembly_create assy1 F14 x86_64
+jeos_create F16 x86_64
+assembly_create assy1 F16 x86_64
 assembly_clone assy1 assy2
 assembly_clone assy1 assy3
 assembly_resource_add httpdone httpd assy1
@@ -46,6 +47,9 @@ deployable_assembly_add dep1 assy1
 deployable_assembly_add dep1 assy2
 deployable_assembly_add dep1 assy3
 deployable_start dep1
+
+note Ubuntu's httpd server is "apache2".  Replace assembly_resource_add
+data that uses http with apache2.
 
 .SH AVAILABILITY TESTING
 Keep pcloudsh running to verify that appropriate events
