@@ -392,12 +392,8 @@ class OpenstackAssembly(Assembly):
 
     def image_to_instance(self, image_name):
 
-        p1 = subprocess.Popen('su -c \". ./novarc && euca-describe-images\" %s' % self.username,
-            shell=True,
-            cwd=self.keydir,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE)
-        output = p1.communicate()
+        cmd = 'su -c \". ./novarc && euca-describe-images\" %s' % self.username
+        output = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
 
         image_name_search = ' (%s)' % image_name
         ami = None
@@ -411,11 +407,8 @@ class OpenstackAssembly(Assembly):
             print 'ami not found'
             return None
 
-        p1 = subprocess.Popen('su -c \". ./novarc && euca-describe-instances\" %s' % self.username,
-            shell=True, cwd=self.keydir,
-            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        output = p1.communicate()
-
+        cmd = 'su -c \". ./novarc && euca-describe-instances\" %s' % self.username
+        output = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
         inst = None
         for line in output:
             if line != None and ami in line:
