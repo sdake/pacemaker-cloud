@@ -15,4 +15,20 @@
 dmidecode -t1 | grep UUID | cut -c8-15,17-20,22-25,27-30,32-43 > /var/lib/dbus/machine-id
     </command>
   </commands>
+  <repositories>
+	<repository name="matahari">
+		<url>ppa:matahari</url>
+	</repository>
+  </repositories>
+  <packages>
+    <package name="matahari-core">
+      <file>matahari-core</file>
+    </package>
+    <package name="matahari-host">
+      <file>matahari-host</file>
+    </package>
+    <package name="matahari-service">
+      <file>matahari-service</file>
+    </package>
+  </packages>
 </template>
