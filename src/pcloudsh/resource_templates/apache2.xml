@@ -1,0 +1,1 @@
+<resource type="apache2" class="lsb" provider="pacemaker" monitor_interval="65s"/>

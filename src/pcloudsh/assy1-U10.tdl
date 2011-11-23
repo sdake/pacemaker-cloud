@@ -12,8 +12,8 @@
   <description>Ubuntu 10.04</description>
 
   <packages>
-    <package name="httpd">
-      <file>httpd</file>
+    <package name="apache2">
+      <file>apache2</file>
     </package>
   </packages>
 </template>
