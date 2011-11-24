@@ -12,7 +12,7 @@
   <description>Fedora 16</description>
   <commands>
     <command name='commands'>
-yum -y update;yum -y install dmidecode matahari-host matahari-service resource-agents;echo "#!/bin/bash" >> /etc/rc.d/rc.local; echo "setenforce 0" >> /etc/rc.d/rc.local >> /etc/rc.d/rc.local;echo "while true; do" >> /etc/rc.d/rc.local; echo "gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager/Devices/0 | grep \"State = 100\" > /dev/null" >> /etc/rc.d/rc.local;echo "if [ \$? -eq 0 ]" >> /etc/rc.d/rc.local;echo "then" >> /etc/rc.d/rc.local;echo "  break" >> /etc/rc.d/rc.local;echo "fi" >> /etc/rc.d/rc.local;echo "sleep 1" >> /etc/rc.d/rc.local;echo "done" >> /etc/rc.d/rc.local; echo "systemctl start matahari-host.service" >> /etc/rc.d/rc.local; echo "systemctl start matahari-service.service" >> /etc/rc.d/rc.local;chmod +x /etc/rc.d/rc.local
+yum -y update;yum -y install dmidecode matahari-core matahari-host matahari-service resource-agents;echo "#!/bin/bash" >> /etc/rc.d/rc.local; echo "setenforce 0" >> /etc/rc.d/rc.local >> /etc/rc.d/rc.local;echo "while true; do" >> /etc/rc.d/rc.local; echo "gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager/Devices/0 | grep \"State = 100\" > /dev/null" >> /etc/rc.d/rc.local;echo "if [ \$? -eq 0 ]" >> /etc/rc.d/rc.local;echo "then" >> /etc/rc.d/rc.local;echo "  break" >> /etc/rc.d/rc.local;echo "fi" >> /etc/rc.d/rc.local;echo "sleep 1" >> /etc/rc.d/rc.local;echo "done" >> /etc/rc.d/rc.local; echo "systemctl start matahari-host.service" >> /etc/rc.d/rc.local; echo "systemctl start matahari-service.service" >> /etc/rc.d/rc.local;chmod +x /etc/rc.d/rc.local
     </command>
   </commands>
 </template>
