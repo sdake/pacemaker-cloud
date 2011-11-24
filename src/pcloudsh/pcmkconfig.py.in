@@ -43,6 +43,5 @@ class Config(object):
 
         for line in output.split():
             (n, v) = line.split('=')
-            print line
             os.environ[n] = str(v)
 
