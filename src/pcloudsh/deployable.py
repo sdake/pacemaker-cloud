@@ -303,10 +303,6 @@ class AeolusDeployable(Deployable):
         self.libvirt_conn = None
 
     def status(self):
-        if not self.exists(self.name):
-            print '*** Deployable %s does not exist' % (self.name)
-            return
-
         if self.libvirt_conn is None:
             self.libvirt_conn = libvirt.open("qemu:///system")
 
