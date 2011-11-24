@@ -142,7 +142,41 @@ class Assembly(object):
     def __str__(self):
         return '%s (%s)' % (self.name, self.uuid)
 
-    def clone_network_setup(self, macaddr, qpid_broker_ip):
+    def remove_udev_net(self):
+        # remove udev persistent net rule so it is regenerated on reboot
+        self.guest_mount()
+        try:
+            self.gfs.rm('/etc/udev/rules.d/70-persistent-net.rules')
+        except:
+            pass
+        self.guest_unmount()
+
+    def clone_network_setup_debian(self, macaddr, qpid_broker_ip):
+        self.guest_mount()
+        # change hostname
+        # ---------------
+        tmp_filename = '/tmp/network-%s' % macaddr
+	file = open(tmp_filename, 'w')
+        file.write('%s' % self.name)
+	file.close()
+        self.gfs.upload(tmp_filename, '/etc/hostname')
+        os.unlink(tmp_filename)
+
+        # change matahari broker
+        # ----------------------
+        tmp_filename = '/tmp/matahari-%s' % macaddr
+        self.gfs.download('/etc/default/matahari', tmp_filename)
+        for line in fileinput.FileInput(tmp_filename, inplace=1):
+            if 'MATAHARI_BROKER' in line:
+               print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
+            else:
+               print line
+        self.gfs.upload(tmp_filename, '/etc/default/matahari')
+        os.unlink(tmp_filename)
+        self.guest_unmount()
+
+    def clone_network_setup_fedora(self, macaddr, qpid_broker_ip):
+        self.guest_mount()
         # change macaddr
         # --------------
         tmp_filename = '/tmp/ifcfg-eth0-%s' % macaddr
@@ -178,12 +212,19 @@ class Assembly(object):
                print line
         self.gfs.upload(tmp_filename, '/etc/sysconfig/matahari')
         os.unlink(tmp_filename)
+        self.guest_unmount()
 
-        # how to write this newline back to the file
-        try:
-            self.gfs.rm('/etc/udev/rules.d/70-persistent-net.rules')
-        except:
-            pass
+    def clone_network_setup(self, jeos_name, macaddr, qpid_broker_ip):
+        if jeos_name == "F14-x86_64":
+            self.clone_network_setup_fedora(macaddr, qpid_broker_ip)
+        if jeos_name == "F15-x86_64":
+            self.clone_network_setup_fedora(macaddr, qpid_broker_ip)
+        if jeos_name == "F16-x86_64":
+            self.clone_network_setup_fedora(macaddr, qpid_broker_ip)
+        if jeos_name == "rhel61-x86_64":
+            self.clone_network_setup_fedora(macaddr, qpid_broker_ip)
+        if jeos_name == "U10-x86_64":
+            self.clone_network_setup_debian(macaddr, qpid_broker_ip)
 
     def guest_mount(self):
         if not self.gfs is None:
@@ -267,19 +308,25 @@ class Assembly(object):
         host_iface = source_xml[0].prop('bridge')
         iface_info = ifconfig.Ifconfig(host_iface)
 
-        self.guest_mount()
-        self.clone_network_setup(macaddr, iface_info.addr_get())
-        self.guest_unmount()
-
         self.jeos_doc.saveFormatFile("%s/assemblies/%s.xml" % (self.conf.dbdir, self.name), format=1)
         self.conf_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, self.name))
         print "jeos assembly %s-assembly.tdl" % source.jeos_name
+
+	# remove the udev net rule before starting the VM
+        self.remove_udev_net()
+
         os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
                 (self.conf.dbdir, source.jeos_name, self.conf.dbdir, self.name))
+
+        # configure the cloned network configuration
+        self.clone_network_setup(source.jeos_name, macaddr, iface_info.addr_get())
+
+	# remove the udev net rule after the VM configuration is completed
+        self.remove_udev_net()
+
         self.jeos_name = source.jeos_name
         self.save()
         return 0
-
 
     def delete(self):
         if os.access(self.image, os.R_OK):
