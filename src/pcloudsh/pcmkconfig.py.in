@@ -44,4 +44,3 @@ class Config(object):
         for line in output.split():
             (n, v) = line.split('=')
             os.environ[n] = str(v)
-

@@ -97,4 +97,3 @@ class DbFactory(object):
         first_node.unlinkNode()
         del self.all[name]
         self.save()
-

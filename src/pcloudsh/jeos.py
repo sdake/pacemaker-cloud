@@ -172,4 +172,3 @@ class JeosFactory(db_helper.DbFactory):
 
         self.all[n] = Jeos(self, name, arch)
         return self.all[n]
-

@@ -103,8 +103,8 @@ class ResourceFactory(object):
         return self.root_node
 
     def template_exists(self, template):
-            tn = '%s/%s.xml' % (self.conf.resource_templatesdir, template)
-            return os.access(tn, os.R_OK)
+        tn = '%s/%s.xml' % (self.conf.resource_templatesdir, template)
+        return os.access(tn, os.R_OK)
 
     def exists(self, name):
         if name in self.all:
@@ -131,4 +131,3 @@ class ResourceFactory(object):
 
     def all_get(self):
         return self.all.values()
-

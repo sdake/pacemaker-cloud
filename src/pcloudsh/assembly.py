@@ -148,9 +148,9 @@ class Assembly(object):
         # change hostname
         # ---------------
         tmp_filename = '/tmp/network-%s' % macaddr
-	file = open(tmp_filename, 'w')
+        file = open(tmp_filename, 'w')
         file.write('%s' % self.name)
-	file.close()
+        file.close()
         self.gfs.upload(tmp_filename, '/etc/hostname')
         os.unlink(tmp_filename)
 
@@ -160,9 +160,9 @@ class Assembly(object):
         self.gfs.download('/etc/default/matahari', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'MATAHARI_BROKER' in line:
-               print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
+                print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
             else:
-               print line
+                print line
         self.gfs.upload(tmp_filename, '/etc/default/matahari')
         os.unlink(tmp_filename)
         self.guest_unmount()
@@ -175,9 +175,9 @@ class Assembly(object):
         self.gfs.download('/etc/sysconfig/network-scripts/ifcfg-eth0', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'HWADDR' in line:
-               print 'HWADDR="%s"' % macaddr
+                print 'HWADDR="%s"' % macaddr
             else:
-               print line
+                print line
         self.gfs.upload(tmp_filename, '/etc/sysconfig/network-scripts/ifcfg-eth0')
         os.unlink(tmp_filename)
 
@@ -187,9 +187,9 @@ class Assembly(object):
         self.gfs.download('/etc/sysconfig/network', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'HOSTNAME' in line:
-               print 'HOSTNAME="%s"' % self.name
+                print 'HOSTNAME="%s"' % self.name
             else:
-               print line
+                print line
         self.gfs.upload(tmp_filename, '/etc/sysconfig/network')
         os.unlink(tmp_filename)
 
@@ -199,9 +199,9 @@ class Assembly(object):
         self.gfs.download('/etc/sysconfig/matahari', tmp_filename)
         for line in fileinput.FileInput(tmp_filename, inplace=1):
             if 'MATAHARI_BROKER' in line:
-               print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
+                print 'MATAHARI_BROKER="%s"' % qpid_broker_ip
             else:
-               print line
+                print line
         self.gfs.upload(tmp_filename, '/etc/sysconfig/matahari')
         os.unlink(tmp_filename)
         self.guest_unmount()
@@ -304,7 +304,7 @@ class Assembly(object):
         self.conf_xml('%s/assemblies/%s.xml' % (self.conf.dbdir, self.name))
         print "jeos assembly %s-assembly.tdl" % source.jeos_name
 
-	# remove the udev net rule before starting the VM
+        # remove the udev net rule before starting the VM
         self.remove_udev_net()
 
         os.system("oz-customize -d3 %s/jeos/%s-jeos-assembly.tdl %s/assemblies/%s.xml" %
@@ -313,7 +313,7 @@ class Assembly(object):
         # configure the cloned network configuration
         self.clone_network_setup(source.jeos_name, macaddr, iface_info.addr_get())
 
-	# remove the udev net rule after the VM configuration is completed
+        # remove the udev net rule after the VM configuration is completed
         self.remove_udev_net()
 
         self.jeos_name = source.jeos_name
@@ -624,4 +624,3 @@ class AssemblyFactory(db_helper.DbFactory):
     def delete(self, name):
         self.get(name).delete()
         self.delete_instance(name)
-

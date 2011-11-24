@@ -40,9 +40,9 @@ class Cpe(object):
             for a in agents:
                 self.l.debug('agent: %s' % str(a))
                 if 'pacemakercloud.org' in a.getVendor():
-                        result = a.query("{class:cpe, package:'org.pacemakercloud'}")
-                        if len(result) >= 1:
-                            self.cpe_obj = result[0]
+                    result = a.query("{class:cpe, package:'org.pacemakercloud'}")
+                    if len(result) >= 1:
+                        self.cpe_obj = result[0]
 
             if self.cpe_obj is None:
                 attempts = attempts + 1
@@ -53,8 +53,8 @@ class Cpe(object):
                     time.sleep(0.1)
 
     def __del__(self):
-      self.session.close()
-      self.conn.close()
+        self.session.close()
+        self.conn.close()
 
     def deployable_start(self, name, uuid):
         result = None
@@ -94,5 +94,3 @@ class Cpe(object):
                 return v
         else:
             return 1
-
-

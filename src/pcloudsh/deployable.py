@@ -278,7 +278,7 @@ class OpenstackDeployable(Deployable):
 
         self.conf.load_novarc(self.name)
         return True
-        
+
     def delete(self):
         if os.access(os.path.join(self.conf.dbdir, self.name), os.R_OK):
             shutil.rmtree(os.path.join(self.conf.dbdir, self.name))

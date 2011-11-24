@@ -66,4 +66,3 @@ if __name__ == '__main__':
     print info
 
     print 'IP addr is %s' % info.addr_get()
-
