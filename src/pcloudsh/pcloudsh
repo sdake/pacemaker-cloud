@@ -40,6 +40,10 @@ class pcloudsh(cmd.Cmd, object):
     def __init__(self):
 
         self.l = logging.getLogger('pcloud')
+        hdlr = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(' %(message)s')
+        hdlr.setFormatter(formatter)
+        self.l.addHandler(hdlr)
         self.l.setLevel(logging.DEBUG)
 
         self.j = jeos.JeosFactory()

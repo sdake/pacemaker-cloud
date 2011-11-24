@@ -562,7 +562,8 @@ class AeolusAssembly(Assembly):
 
 class AssemblyFactory(db_helper.DbFactory):
 
-    def __init__(self):
+    def __init__(self, logger):
+        self.l = logger
         db_helper.DbFactory.__init__(self, 'db_assemblies.xml', 'assemblies', 'assembly')
 
     def create_instance(self, name):
