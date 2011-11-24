@@ -524,7 +524,11 @@ class AeolusAssembly(Assembly):
 
     def __init__(self, factory, name):
         Assembly.__init__(self, factory, name)
-        self.libvirt_conn = libvirt.open("qemu:///system")
+        try:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
+
 
     def start(self):
         self.l.info('starting virt:%s:%s' % (self.deployment, self.name))
