@@ -486,19 +486,19 @@ Assembly::Assembly(Deployable *dep, std::string& name,
 	qb_log(LOG_DEBUG, "Assembly(%s:%s)", name.c_str(), uuid.c_str());
 
 	_mh_host.query_set("{class:Host, package:org.matahariproject}");
-	_mh_host.prop_set("hostname", _name);
+	_mh_host.prop_set("uuid", _uuid);
 	_mh_host.event_handler_set(host_event_handler, this);
 	_mh_host.connection_event_handler_set(connection_event_handler, this);
 	_dep->qmf_object_add(&_mh_host);
 
 	_mh_serv.query_set("{class:Services, package:org.matahariproject}");
-	_mh_serv.prop_set("hostname", _name);
+	_mh_serv.prop_set("uuid", _uuid);
 	_mh_serv.method_response_handler_set(resource_method_response);
 	_mh_serv.connection_event_handler_set(connection_event_handler, this);
 	_dep->qmf_object_add(&_mh_serv);
 
 	_mh_rsc.query_set("{class:Resources, package:org.matahariproject}");
-	_mh_rsc.prop_set("hostname", _name);
+	_mh_rsc.prop_set("uuid", _uuid);
 	_mh_rsc.method_response_handler_set(resource_method_response);
 	_mh_rsc.connection_event_handler_set(connection_event_handler, this);
 	_dep->qmf_object_add(&_mh_rsc);

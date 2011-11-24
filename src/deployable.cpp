@@ -26,6 +26,7 @@
 #include <libxslt/transform.h>
 
 #include <string>
+#include <algorithm>
 #include <map>
 
 #include "pcmk_pe.h"
@@ -137,6 +138,12 @@ Deployable::create_assemblies(xmlNode * assemblies)
 		}
 		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
 		ass_uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
+
+		/* make sure the uuid is uppercase to match what dmidecode
+		 * produces.
+		 */
+		std::transform(ass_uuid.begin(), ass_uuid.end(), ass_uuid.begin(), ::toupper);
+
 		qb_log(LOG_DEBUG, "loading assembly: %s", ass_name.c_str());
 
 		qpid::types::Variant::Map in_args;
@@ -272,6 +279,7 @@ Deployable::resource_get(struct pe_operation *op)
 Assembly*
 Deployable::assembly_get(std::string& node_uuid)
 {
+	std::transform(node_uuid.begin(), node_uuid.end(), node_uuid.begin(), ::toupper);
 	return _assemblies[node_uuid];
 }
 
