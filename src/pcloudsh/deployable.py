@@ -75,7 +75,7 @@ class DeployableDb(object):
         self.factory.save()
 
     def assembly_add(self, aname):
-        fac = assembly.AssemblyFactory()
+        fac = assembly.AssemblyFactory(self.factory.l)
         if not fac.exists(aname):
             print '*** Assembly %s does not exist' % (aname)
             return
@@ -99,7 +99,7 @@ class DeployableDb(object):
 
     def assembly_remove(self, aname):
 
-        fac = assembly.AssemblyFactory()
+        fac = assembly.AssemblyFactory(self.factory.l)
         if not fac.exists(aname):
             print '*** Assembly %s does not exist' % (aname)
             return
@@ -129,7 +129,7 @@ class DeployableDb(object):
 
     def generate_config(self):
 
-        fac = assembly.AssemblyFactory()
+        fac = assembly.AssemblyFactory(self.factory.l)
 
         doc = libxml2.newDoc("1.0")
         dep = doc.newChild(None, "deployable", None)
@@ -292,7 +292,7 @@ class OpenstackDeployable(Deployable):
     def assembly_add(self, aname):
         Deployable.assembly_add(self, aname)
 
-        fac = assembly.AssemblyFactory()
+        fac = assembly.AssemblyFactory(self.factory.l)
         fac.register_with_openstack(aname, self.username)
 
 class AeolusDeployable(Deployable):
@@ -327,7 +327,8 @@ class AeolusDeployable(Deployable):
 
 class DeployableFactory(db_helper.DbFactory):
 
-    def __init__(self):
+    def __init__(self, logger):
+        self.l = logger
         db_helper.DbFactory.__init__(self, 'db_deployable.xml', 'deployables', 'deployable')
 
     def get(self, name, infrastructure='aeolus', username='root'):

@@ -38,9 +38,13 @@ class pcloudsh(cmd.Cmd, object):
     infrastructures = ('aeolus','openstack','ovirt')
 
     def __init__(self):
+
+        self.l = logging.getLogger('pcloud')
+        self.l.setLevel(logging.DEBUG)
+
         self.j = jeos.JeosFactory()
-        self.a = assembly.AssemblyFactory()
-        self.d = deployable.DeployableFactory()
+        self.a = assembly.AssemblyFactory(self.l)
+        self.d = deployable.DeployableFactory(self.l)
         cmd.Cmd.__init__(self)
 
     def emptyline(self):

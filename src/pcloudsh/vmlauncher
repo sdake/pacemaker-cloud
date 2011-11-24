@@ -84,7 +84,7 @@ class VMLauncher(AgentHandler):
         """
         if addr == self.controlAddr:
 
-            fac = assembly.AssemblyFactory()
+            fac = assembly.AssemblyFactory(self.l)
             self.control.methodCount += 1
             name = args['name']
             uuid = args['uuid']

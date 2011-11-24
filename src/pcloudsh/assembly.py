@@ -47,15 +47,7 @@ class Assembly(object):
     def __init__(self, factory, name):
         self.conf = pcmkconfig.Config()
         self.factory = factory
-        self.l = logging.getLogger(name)
-
-        hdlr = logging.handlers.SysLogHandler(address='/dev/log',
-                facility=logging.handlers.SysLogHandler.LOG_DAEMON)
-        formatter = logging.Formatter('%(name)s %(lineno)d: [%(levelname)s] %(message)s')
-        hdlr.setFormatter(formatter)
-        self.l.addHandler(hdlr)
-        self.l.setLevel(logging.DEBUG)
-
+        self.l = factory.l
 
         query = factory.doc.xpathEval("/assemblies/assembly[@name='%s']" % name)
 
@@ -381,7 +373,7 @@ class OpenstackAssembly(Assembly):
         self.keyfile = 'nova_key'
 
     def start(self):
-        self.l.info('starting %s:%s' % (self.deployment, self.name))
+        self.l.info('starting openstack:%s:%s' % (self.deployment, self.name))
         cmd = 'su -c \". ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
         self.l.info('cmd: %s' % (str(cmd)))
         try:
@@ -535,6 +527,7 @@ class AeolusAssembly(Assembly):
         self.libvirt_conn = libvirt.open("qemu:///system")
 
     def start(self):
+        self.l.info('starting virt:%s:%s' % (self.deployment, self.name))
         libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % self.name)
         libvirt_doc = libvirt_xml.serialize(None, 1);
         try:
