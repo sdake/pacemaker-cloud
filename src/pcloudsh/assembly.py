@@ -524,31 +524,46 @@ class AeolusAssembly(Assembly):
 
     def __init__(self, factory, name):
         Assembly.__init__(self, factory, name)
-        try:
-            self.libvirt_conn = libvirt.open("qemu:///system")
-        except:
-            self.l.exception('*** couldn\'t connect to libvirt')
-
 
     def start(self):
         self.l.info('starting virt:%s:%s' % (self.deployment, self.name))
         libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % self.name)
         libvirt_doc = libvirt_xml.serialize(None, 1);
         try:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
+        try:
             libvirt_dom = self.libvirt_conn.createXML(libvirt_doc, 0)
             self.l.info('started %s' % (self.name))
         except:
             self.l.exception('*** couldn\'t start %s' % self.name)
+        try:
+            self.libvirt_conn.close()
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
 
     def stop(self):
+        try:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
         try:
             ass = self.libvirt_conn.lookupByName(self.name)
             ass.destroy()
         except:
             self.l.exception('*** couldn\'t stop %s (already stopped?)' % self.name)
+        try:
+            self.libvirt_conn.close()
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
 
     def status(self):
         st = 'Unknown'
+        try:
+            self.libvirt_conn = libvirt.open("qemu:///system")
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
         try:
             ass = self.libvirt_conn.lookupByName(self.name)
             if ass.isActive():
@@ -557,6 +572,10 @@ class AeolusAssembly(Assembly):
                 st = 'Stopped'
         except:
             st = 'Undefined'
+        try:
+            self.libvirt_conn.close()
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
         return st
 
 

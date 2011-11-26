@@ -303,8 +303,10 @@ class AeolusDeployable(Deployable):
         self.libvirt_conn = None
 
     def status(self):
-        if self.libvirt_conn is None:
+        try:
             self.libvirt_conn = libvirt.open("qemu:///system")
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
 
         name_list = self.factory.doc.xpathEval("/deployables/deployable[@name='%s']/assembly" % self.name)
         print ' %-12s %-12s' % ('Assembly', 'Status')
@@ -319,6 +321,11 @@ class AeolusDeployable(Deployable):
                     print " %-12s %-12s" % (an, 'Stopped')
             except:
                 print " %-12s %-12s" % (an, 'Undefined')
+        try:
+            self.libvirt_conn.close()
+        except:
+            self.l.exception('*** couldn\'t connect to libvirt')
+
 
 
 class DeployableFactory(db_helper.DbFactory):
