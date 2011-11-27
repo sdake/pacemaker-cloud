@@ -324,7 +324,7 @@ class AeolusDeployable(Deployable):
         try:
             self.libvirt_conn.close()
         except:
-            self.l.exception('*** couldn\'t connect to libvirt')
+            self.l.exception('*** couldn\'t disconnect from libvirt')
 
 
 
