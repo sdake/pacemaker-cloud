@@ -563,7 +563,7 @@ class AeolusAssembly(Assembly):
         try:
             self.libvirt_conn = libvirt.open("qemu:///system")
         except:
-            self.l.exception('*** couldn\'t disconnect from libvirt')
+            self.l.exception('*** couldn\'t connect to libvirt')
         try:
             ass = self.libvirt_conn.lookupByName(self.name)
             if ass.isActive():
@@ -575,7 +575,7 @@ class AeolusAssembly(Assembly):
         try:
             self.libvirt_conn.close()
         except:
-            self.l.exception('*** couldn\'t connect to libvirt')
+            self.l.exception('*** couldn\'t disconnect from libvirt')
         return st
 
 
