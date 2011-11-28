@@ -7,11 +7,27 @@ Group: System Environment/Base
 URL: http://www.pacemaker-cloud.org
 Source0: http://pacemaker-cloud.org/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
 
-Requires: python-daemon python-qmf qpid-cpp-server
-Requires: oz > 0.5.0-1
+Requires: %{name}-core = %{version}-%{release}
+Requires: %{name}-libvirt = %{version}-%{release}
+Requires: %{name}-openstack = %{version}-%{release}
 
 # Note libtool-ltdl-devel is required because of redhat.com bugzilla BZ #705212
-BuildRequires: autoconf automake glib2-devel dbus-glib-devel libxml2-devel libqb-devel pacemaker-libs-devel libtool-ltdl-devel qmf-devel libxslt-devel systemd-units libmicrohttpd-devel libcurl-devel
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: glib2-devel
+BuildRequires: dbus-glib-devel
+BuildRequires: libxml2-devel
+BuildRequires: libqb-devel
+BuildRequires: pacemaker-libs-devel
+BuildRequires: libtool-ltdl-devel
+BuildRequires: qmf-devel
+BuildRequires: libxslt-devel
+BuildRequires: libmicrohttpd-devel
+BuildRequires: systemd-units
+BuildRequires: libcurl-devel
+BuildRequires: python-nova
+BuildRequires: python-glance
+
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
@@ -34,20 +50,65 @@ rm -f %{buildroot}/usr/share/doc/pacemaker-cloud/COPYING
 rm -rf %{buildroot}
 
 %description
-This package contains the Pacemaker Cloud Policy Engine services, command-line
-tools, and man pages.
+Pacemaker Cloud provides virtual machine high availability for a variety of
+IaaS platforms.
 
-%post
+This package installs Pacemaker Cloud and support for all supported IAAS
+platforms.
+
+%package core
+License: GPLv2+
+Summary: Core functionality of Pacemaker Cloud
+Group: System Environment/Base
+Requires: python-daemon
+Requires: python-qmf
+Requires: qpid-cpp-server
+Requires: oz > 0.5.0-1
+
+%description core
+This package contains Pacemaker cloud core functionality.  To use Pacemaker
+Cloud, a cloud provider RPM appropriate for the environment is also
+required.
+
+%package libvirt
+License: GPLv2+
+Summary: The Pacemaker Cloud libvirt plug-in
+Group: System Environment/Base
+Requires: %{name}-core = %{version}-%{release}
+
+%description libvirt
+This package contains the plug-in code necessary to run Pacemaker Cloud on
+libvirt environments.  This plug-in is single-node only.
+
+%package openstack
+License: GPLv2+
+Summary: The Pacemaker Cloud OpenStack plug-in
+Group: System Environment/Base
+Requires: %{name}-core = %{version}-%{release}
+Requires: openstack-nova
+Requires: python-nova
+Requires: openstack-glance
+Requires: python-glance
+
+%description openstack
+This package contains the plug-in code necessary to run Pacemaker Cloud on
+OpenStack environments.  This plug-in is multi-node.
+
+%post -n pacemaker-cloud-core
 if [ $1 -eq 1 ] ; then
 	systemctl --system daemon-reload || :
 fi
 
-%preun
+%preun -n pacemaker-cloud-core
 if [ $1 -eq 0 ]; then
 	systemctl --system daemon-reload || :
 fi
 
 %files
+%defattr(-,root,root,-)
+%doc COPYING
+
+%files core
 %defattr(-,root,root,-)
 %doc COPYING
 %{_sbindir}/cped
@@ -81,13 +142,37 @@ fi
 %{_localstatedir}/lib/pacemaker-cloud/jeos/rhel61-x86_64-jeos.tdl
 %{_bindir}/pcloudsh
 %{_bindir}/vmlauncher
-%{python_sitelib}/pcloudsh/*
+%{python_sitelib}/pcloudsh/__init__.*
+%{python_sitelib}/pcloudsh/assembly.*
+%{python_sitelib}/pcloudsh/assembly_factory.*
+%{python_sitelib}/pcloudsh/cpe.*
+%{python_sitelib}/pcloudsh/db_helper.*
+%{python_sitelib}/pcloudsh/deployable.*
+%{python_sitelib}/pcloudsh/deployable_factory.*
+%{python_sitelib}/pcloudsh/eventreceiver.*
+%{python_sitelib}/pcloudsh/eventrunner.*
+%{python_sitelib}/pcloudsh/ifconfig.*
+%{python_sitelib}/pcloudsh/jeos.*
+%{python_sitelib}/pcloudsh/pcmkconfig.*
+%{python_sitelib}/pcloudsh/resource.*
 %{_mandir}/man1/cped.1*
 %{_mandir}/man1/dped.1*
 %{_mandir}/man1/vmlauncher.1*
 %{_mandir}/man1/pcloudsh.1*
 %{_mandir}/man8/pacemaker_cloud_overview.8*
 %{_mandir}/man8/pacemaker_cloud_example.8*
+
+%files libvirt
+%defattr(-,root,root,-)
+%doc COPYING
+%{python_sitelib}/pcloudsh/libvirt_assembly.*
+%{python_sitelib}/pcloudsh/libvirt_deployable.*
+
+%files openstack
+%defattr(-,root,root,-)
+%doc COPYING
+%{python_sitelib}/pcloudsh/openstack_assembly.*
+%{python_sitelib}/pcloudsh/openstack_deployable.*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1
