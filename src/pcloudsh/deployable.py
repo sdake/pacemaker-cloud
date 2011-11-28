@@ -72,18 +72,17 @@ class DeployableDb(object):
             print '*** Assembly %s does not exist' % (aname)
             return
 
-        fac.register(aname, self.infrastructure, self.name, self.username)
-
         self.save()
         if self.xml_node.children != None:
             for c in self.xml_node.children:
                 if c.hasProp('name') and c.prop('name') == aname:
                     print '*** Assembly %s is already in Deployable %s' % (aname, self.name)
                     return
-
         assembly_root = self.xml_node.newChild(None, "assembly", None)
         assembly_root.newProp("name", aname)
         self.save()
+
+        fac.register(aname, self.infrastructure, self.name, self.username)
 
     def assembly_remove(self, aname):
 
