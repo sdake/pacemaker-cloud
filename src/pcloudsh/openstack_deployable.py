@@ -53,10 +53,11 @@ class OpenstackDeployable(deployable.Deployable):
         FLAGS.state_path = '/var/lib/nova'
         FLAGS.lock_path = '/var/lib/nova/tmp'
         FLAGS.credentials_template = '/usr/share/nova/novarc.template'
-        self.nova_manager = manager.AuthManager()
+        FLAGS.sql_connection = 'mysql://nova:nova@localhost/nova'
         self.conf.load_novarc(name)
 
     def create(self):
+        nova_manager = manager.AuthManager()
         uid = 0
         gid = 0
         try:
@@ -69,7 +70,7 @@ class OpenstackDeployable(deployable.Deployable):
 
         proj_exists = True
         try:
-            projs = self.nova_manager.get_projects(self.username)
+            projs = nova_manager.get_projects(self.username)
             if not self.name in projs:
                 proj_exists = False
         except:
@@ -77,7 +78,7 @@ class OpenstackDeployable(deployable.Deployable):
 
         try:
             if not proj_exists:
-                self.nova_manager.create_project(self.name, self.username,
+                nova_manager.create_project(self.name, self.username,
                         'Project %s created by pcloudsh' % (self.name))
         except (exception.UserNotFound, exception.ProjectExists) as ex:
             print ex
@@ -86,7 +87,7 @@ class OpenstackDeployable(deployable.Deployable):
         os.mkdir(os.path.join(self.conf.dbdir, self.name))
         zipfilename = os.path.join(self.conf.dbdir, self.name, 'nova.zip')
         try:
-            zip_data = self.nova_manager.get_credentials(self.username, self.name)
+            zip_data = nova_manager.get_credentials(self.username, self.name)
             with open(zipfilename, 'w') as f:
                 f.write(zip_data)
         except (exception.UserNotFound, exception.ProjectNotFound) as ex:
@@ -125,11 +126,12 @@ class OpenstackDeployable(deployable.Deployable):
         return True
 
     def delete(self):
+        nova_manager = manager.AuthManager()
         if os.access(os.path.join(self.conf.dbdir, self.name), os.R_OK):
             shutil.rmtree(os.path.join(self.conf.dbdir, self.name))
             print ' deleted nova project key and environment'
         try:
-            self.nova_manager.delete_project(self.name)
+            nova_manager.delete_project(self.name)
             print ' deleted nova project'
         except exception.ProjectNotFound as ex:
             print ex
