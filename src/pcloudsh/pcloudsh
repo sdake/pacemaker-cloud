@@ -93,7 +93,10 @@ class pcloudsh(cmd.Cmd, object):
             self.do_help("deployable_create")
             return False
 
-        self.d.create(options[0], inf, user)
+        if self.d.exists(options[0]):
+            print '*** deployable %s already exists' % options[0]
+        else:
+            self.d.create(options[0], inf, user)
 
     def do_deployable_delete(self, s):
         """
