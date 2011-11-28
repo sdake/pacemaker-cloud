@@ -271,10 +271,10 @@ class TestSimpleF16Openstack(TestSimple):
     def setUp(self):
         self.setup = simple_f16_openstack
 
-class TestSimpleF16Aeolus(TestSimple):
+class TestSimpleF16LibVirt(TestSimple):
 
     def setUp(self):
-        self.setup = simple_f16_aeolus
+        self.setup = simple_f16_libvirt
 
 
 if __name__ == '__main__':
@@ -283,22 +283,13 @@ if __name__ == '__main__':
     subprocess.call(['systemctl', 'start', 'pcloud-cped.service'])
 
     logging.basicConfig(level=logging.INFO, format="F16: %(levelname)s %(funcName)s %(message)s")
-    simple_f16_openstack = SimpleSetup('F16', 'openstack')
-    simple_f16_openstack.start()
+    simple_f16_libvirt = SimpleSetup('F16', 'libvirt')
+    simple_f16_libvirt.start()
     time.sleep(2)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF16Openstack)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF16LibVirt)
     unittest.TextTestRunner(verbosity=2).run(suite)
-    simple_f16_openstack.stop()
-    simple_f16_openstack.delete()
-
-    logging.basicConfig(level=logging.INFO, format="F16: %(levelname)s %(funcName)s %(message)s")
-    simple_f16_aeolus = SimpleSetup('F16', 'aeolus')
-    simple_f16_aeolus.start()
-    time.sleep(2)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSimpleF16Aeolus)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-    simple_f16_aeolus.stop()
-    simple_f16_aeolus.delete()
+    simple_f16_libvirt.stop()
+    simple_f16_libvirt.delete()
 
     time.sleep(1)
     subprocess.call(['systemctl', 'stop', 'pcloud-cped.service'])

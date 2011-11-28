@@ -26,8 +26,8 @@ import random
 import logging
 import cmd
 from pcloudsh import jeos
-from pcloudsh import assembly
-from pcloudsh import deployable
+from pcloudsh import assembly_factory
+from pcloudsh import deployable_factory
 from pcloudsh import eventrunner
 
 class pcloudsh(cmd.Cmd, object):
@@ -35,7 +35,7 @@ class pcloudsh(cmd.Cmd, object):
     prompt = 'pcloudsh# '
     intro = "Welcome to pcloudsh, the Pacemaker Cloud Interface terminal\n\ntype \"help\" for help and quit to exit.\n"
     distros = ('F15','F16','rhel61','U10')
-    infrastructures = ('aeolus','openstack','ovirt')
+    infrastructures = ('libvirt','aeolus','openstack','ovirt')
 
     def __init__(self):
 
@@ -47,8 +47,8 @@ class pcloudsh(cmd.Cmd, object):
         self.l.setLevel(logging.DEBUG)
 
         self.j = jeos.JeosFactory()
-        self.a = assembly.AssemblyFactory(self.l)
-        self.d = deployable.DeployableFactory(self.l)
+        self.a = assembly_factory.AssemblyFactory(self.l)
+        self.d = deployable_factory.DeployableFactory(self.l)
         cmd.Cmd.__init__(self)
 
     def emptyline(self):
@@ -72,7 +72,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_deployable_create(self, s):
         """
-  deployable_create <deployable_name> <aeolus|openstack|ovirt> <username>- create a new deployable
+  deployable_create <deployable_name> <libvirt|aeolus|openstack|ovirt> <username>- create a new deployable
 
   The deployable_create action creates a new deployable and stores it in the
   pcloudsh database.
@@ -81,13 +81,13 @@ class pcloudsh(cmd.Cmd, object):
         inf = ''
         user = ''
         if len(options) == 1:
-            inf = 'aeolus'
+            inf = 'libvirt'
             user = 'root'
         elif len(options) == 3:
             inf = options[1]
             user = options[2]
             if not inf in self.infrastructures:
-                print '*** wrong infrastructure must be one of: aeolus, openstack or ovirt'
+                print '*** wrong infrastructure must be one of: libvirt, aeolus, openstack or ovirt'
                 return False
         elif not len(options) == 3:
             self.do_help("deployable_create")

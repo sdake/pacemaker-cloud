@@ -27,7 +27,7 @@ import cqpid
 from qmf2 import *
 import logging
 import logging.handlers
-from pcloudsh import assembly
+from pcloudsh import assembly_factory
 
 
 class VMLauncher(AgentHandler):
@@ -84,7 +84,7 @@ class VMLauncher(AgentHandler):
         """
         if addr == self.controlAddr:
 
-            fac = assembly.AssemblyFactory(self.l)
+            fac = assembly_factory.AssemblyFactory(self.l)
             self.control.methodCount += 1
             name = args['name']
             uuid = args['uuid']
