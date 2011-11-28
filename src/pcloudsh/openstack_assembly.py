@@ -29,15 +29,8 @@ from glance import client as glance_client
 from glance.common import exception
 from glance.common import utils
 
-from nova import exception
-from nova import flags
-from nova import utils
-from nova.auth import manager
-
 from pcloudsh import pcmkconfig
 from pcloudsh import assembly
-
-FLAGS = flags.FLAGS
 
 
 class OpenstackAssembly(assembly.Assembly):
