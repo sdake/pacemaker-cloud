@@ -124,7 +124,7 @@ class Assembly(object):
         self.image = '/var/lib/libvirt/images/%s.qcow2' % self.name
 
     def __str__(self):
-        return '%s (%s)' % (self.name, self.uuid)
+        return '%s (%s) [%s]' % (self.name, self.uuid, self.infrastructure)
 
     def remove_udev_net(self):
         # remove udev persistent net rule so it is regenerated on reboot

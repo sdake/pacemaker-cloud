@@ -232,13 +232,17 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 1:
             self.do_help("deployable_assembly_list")
         else:
-            print ' Name'
-            print '--------------'
             if self.d.exists(options[0]):
-                for a in self.d.get(options[0]).assembly_list_get():
-                    print ' %-12s' % (a)
+                self.print_assembly_list(self.d.get(options[0]).assembly_list_get())
             else:
                 print '*** deployable %s does not exist' % options[0]
+
+    def print_assembly_list(self, al):
+        print ' %-12s %-14s %-32s' % ('Name', 'Infrastucture', 'UUID')
+        print '-------------------------------------------------------------'
+        for a in al:
+            print ' %-12s %-14s %-32s' % (a.name, a.infrastructure, a.uuid)
+
 
     def do_assembly_clone(self, s):
         """
@@ -308,11 +312,7 @@ class pcloudsh(cmd.Cmd, object):
         if not len(options) == 0:
             self.do_help("assembly_list");
         else:
-            all = self.a.all_get()
-            print ' %-12s %-32s' % ('Name', 'UUID')
-            print '------------------------------------------------'
-            for a in all:
-                print ' %-12s %-32s' % (a.name, a.uuid)
+            self.print_assembly_list(self.a.all_get())
 
     def do_jeos_create(self, s):
         """

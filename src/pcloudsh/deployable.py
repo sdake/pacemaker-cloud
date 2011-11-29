@@ -107,10 +107,11 @@ class DeployableDb(object):
 
     def assembly_list_get(self):
         al = []
+        fac = assembly_factory.AssemblyFactory(self.factory.l)
         if self.xml_node.children != None:
             for c in self.xml_node.children:
                 if c.hasProp('name'):
-                    al.append(c.prop('name'))
+                    al.append(fac.get(c.prop('name')))
         return al
 
 
