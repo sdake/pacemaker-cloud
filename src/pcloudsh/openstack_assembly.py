@@ -120,12 +120,12 @@ class OpenstackAssembly(assembly.Assembly):
 
         image_meta = {'name': self.name,
                       'is_public': True,
-                      'disk_format': 'raw',
+                      'disk_format': 'qcow2',
                       'min_disk': 0,
                       'min_ram': 0,
                       'location': 'file://%s' % (self.image),
                       'owner': self.username,
-                      'container_format': 'ovf'}
+                      'container_format': 'bare'}
 
         images = c.get_images(**parameters)
         for image in images:
@@ -134,7 +134,8 @@ class OpenstackAssembly(assembly.Assembly):
                 return
 
         try:
-            image_meta = c.add_image(image_meta, None)
+            with open(self.image) as ifile:
+                image_meta = c.add_image(image_meta, ifile)
             image_id = image_meta['id']
             print " Added new image with ID: %s" % image_id
             print " Returned the following metadata for the new image:"
