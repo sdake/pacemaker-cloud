@@ -25,10 +25,12 @@ import time
 import random
 import logging
 import cmd
+
 from pcloudsh import jeos
 from pcloudsh import assembly_factory
 from pcloudsh import deployable_factory
 from pcloudsh import eventrunner
+
 
 class pcloudsh(cmd.Cmd, object):
 
@@ -37,15 +39,9 @@ class pcloudsh(cmd.Cmd, object):
     distros = ('F15','F16','rhel61','U10')
     infrastructures = ('libvirt','aeolus','openstack','ovirt')
 
-    def __init__(self):
+    def __init__(self, logger):
 
-        self.l = logging.getLogger('pcloud')
-        hdlr = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(' %(message)s')
-        hdlr.setFormatter(formatter)
-        self.l.addHandler(hdlr)
-        self.l.setLevel(logging.DEBUG)
-
+        self.l = logger
         self.j = jeos.JeosFactory()
         self.a = assembly_factory.AssemblyFactory(self.l)
         self.d = deployable_factory.DeployableFactory(self.l)
@@ -431,10 +427,20 @@ if __name__ == '__main__':
         print "pcloudsh must be run as root"
         sys.exit(1)
 
+    logger = logging.root
+    if not logger:
+        logger = logging.getLogger('pcloudsh')
+        hdlr = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(' %(levelname)s %(message)s')
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
+
+    logger.setLevel(logging.INFO)
+
     if len(sys.argv) > 1:
-        pcloudsh().onecmd('%s' % string.join(sys.argv[1:]))
+        pcloudsh(logger).onecmd('%s' % string.join(sys.argv[1:]))
     else:
         er = eventrunner.EventRunner()
         er.setDaemon(True)
         er.start()
-        pcloudsh().cmdloop()
+        pcloudsh(logger).cmdloop()

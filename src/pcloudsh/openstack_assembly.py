@@ -37,7 +37,7 @@ class OpenstackAssembly(assembly.Assembly):
     def __init__(self, factory, name):
         assembly.Assembly.__init__(self, factory, name)
         os.system("modprobe nbd")
-
+        self.l.debug('OpenstackAssembly creating %s' % name)
         if self.deployment == None:
             self.keydir = None
         else:
@@ -45,12 +45,12 @@ class OpenstackAssembly(assembly.Assembly):
         self.keyfile = 'nova_key'
 
     def start(self):
-        self.l.info('starting openstack:%s:%s' % (self.deployment, self.name))
+        self.l.debug('starting openstack:%s:%s' % (self.deployment, self.name))
         cmd = 'su -c \". ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
-        self.l.info('cmd: %s' % (str(cmd)))
+        self.l.debug('cmd: %s' % (str(cmd)))
         try:
             out = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
-            self.l.info('cmd out: %s' % (str(out)))
+            self.l.debug('cmd out: %s' % (str(out)))
         except:
             self.l.exception('*** couldn\'t start %s' % self.name)
 

@@ -19,7 +19,6 @@
 #
 import os
 import time
-import logging
 import libxml2
 import exceptions
 

@@ -21,7 +21,6 @@ import time
 import libvirt
 import re
 import random
-import logging
 import libxml2
 import shutil
 import exceptions
@@ -159,7 +158,7 @@ class Deployable(DeployableDb):
 
     def __init__(self, factory, name):
         DeployableDb.__init__(self, factory, name)
-        self.cpe = cpe.Cpe()
+        self.cpe = cpe.Cpe(self.factory.l)
 
     def delete(self):
         pass

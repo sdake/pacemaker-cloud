@@ -18,7 +18,6 @@
 #
 import os
 import time
-import logging
 import libxml2
 import exceptions
 import uuid
@@ -26,12 +25,9 @@ import subprocess
 import shutil
 from pwd import getpwnam
 
-from glance import client as glance_client
-from glance.common import exception
-from glance.common import utils
-
-from nova import exception
 from nova import flags
+from nova import log
+from nova import exception
 from nova import utils
 from nova.auth import manager
 
@@ -41,6 +37,10 @@ from pcloudsh import assembly
 from pcloudsh import assembly_factory
 
 FLAGS = flags.FLAGS
+FLAGS.logging_context_format_string = ' %(levelname)s %(message)s'
+FLAGS.logging_default_format_string = ' %(levelname)s %(message)s'
+FLAGS.logging_debug_format_suffix = ' [%(filename)s:%(lineno)d]'
+log.setup()
 
 class OpenstackDeployable(deployable.Deployable):
     def __init__(self, factory, name, username):

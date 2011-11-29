@@ -24,7 +24,7 @@ import time
 
 class Cpe(object):
 
-    def __init__(self):
+    def __init__(self, logger):
 
         self.cpe_obj = None
         self.conn = cqpid.Connection('localhost:49000')
@@ -32,7 +32,7 @@ class Cpe(object):
         self.session = qmf2.ConsoleSession(self.conn)
         self.session.setAgentFilter('[]')
         self.session.open()
-        self.l = logging.getLogger()
+        self.l = logger
 
         attempts = 0
         while self.cpe_obj is None:

@@ -19,7 +19,6 @@
 #
 import os
 import time
-import logging
 import libxml2
 import exceptions
 
@@ -56,6 +55,7 @@ class AssemblyFactory(db_helper.DbFactory):
         db_helper.DbFactory.__init__(self, 'db_assemblies.xml', 'assemblies', 'assembly')
 
     def create_instance(self, name, infrastructure=None):
+        self.l.debug('creating %s as %s' % (name, infrastructure))
         if infrastructure == None:
             return assembly.Assembly(self, name)
         if not have_mod[infrastructure]:
@@ -79,6 +79,7 @@ class AssemblyFactory(db_helper.DbFactory):
             n = node.prop('name')
             i = node.prop('infrastructure')
             if i == None:
+                self.l.warn('AssemblyFactory loading %s as libvirt' % n)
                 i = 'libvirt'
             if n not in self.all:
                 self.all[n] = self.create_instance(n, i)
@@ -115,7 +116,7 @@ class AssemblyFactory(db_helper.DbFactory):
 
     def register(self, name, infrastructure, dep_name, username):
         if not have_mod[infrastructure]:
-            self.error('cant register %s as %s module not available' % (name, infrastructure))
+            self.l.error('cant register %s as %s module not available' % (name, infrastructure))
             return
 
         # reload with the correct class
@@ -124,6 +125,7 @@ class AssemblyFactory(db_helper.DbFactory):
         a.username = username
         a.deployment = dep_name
         self.all[name] = a
+        self.l.debug(str(a))
         a.save()
         if infrastructure == 'openstack':
             a.register_with_openstack(username)
