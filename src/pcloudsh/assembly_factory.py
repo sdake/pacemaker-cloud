@@ -18,9 +18,6 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
 import os
-import time
-import libxml2
-import exceptions
 
 from pcloudsh import assembly
 from pcloudsh import pcmkconfig
