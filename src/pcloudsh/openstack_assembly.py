@@ -61,26 +61,30 @@ class OpenstackAssembly(assembly.Assembly):
 
         image_name_search = ' (%s)' % image_name
         ami = None
-        for line in output:
+        for line in output.split('\n'):
             if line != None and image_name_search in line:
                 ami_s = line.split()
                 if len(ami_s) > 1:
                     ami = ami_s[1]
 
         if ami is None:
-            print 'ami not found'
+            self.l.error('ami not found for %s', image_name)
             return None
+
+        self.l.debug('image:%s => [ami:%s]' % (image_name, ami))
 
         cmd = 'su -c \". ./novarc && euca-describe-instances\" %s' % self.username
         output = subprocess.check_output(cmd, shell=True, cwd=self.keydir)
         inst = None
-        for line in output:
+        for line in output.split('\n'):
             if line != None and ami in line:
                 inst_s = line.split()
                 if len(inst_s) > 0:
                     inst = inst_s[1]
-                    self.l.info('%s => [ami:%s, instance: %s]' % (image_name, ami, inst))
+                    self.l.debug('image:%s => [ami:%s, instance: %s]' % (image_name, ami, inst))
                     return inst
+
+        self.l.error('instance not found for [image:%s, ami:%s]' % (image_name, ami))
         return None
 
     def stop(self):
