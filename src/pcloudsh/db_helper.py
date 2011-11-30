@@ -33,7 +33,7 @@ class DbFactory(object):
         self.singular = singular
         self.xml_file = '%s/%s' % (self.conf.dbdir, filename)
         it_exists = os.access(self.xml_file, os.R_OK)
-        libxml2.keepBlanksDefault(1)
+        libxml2.keepBlanksDefault(False)
 
         try:
             if it_exists:
