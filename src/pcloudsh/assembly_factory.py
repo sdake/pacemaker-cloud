@@ -117,12 +117,12 @@ class AssemblyFactory(db_helper.DbFactory):
             return
 
         # reload with the correct class
+        self.all[name].save()
         del self.all[name]
         a = self.create_instance(name, infrastructure)
         a.username = username
         a.deployment = dep_name
         self.all[name] = a
-        self.l.debug(str(a))
         a.save()
         if infrastructure == 'openstack':
             a.register_with_openstack(username)
