@@ -93,7 +93,9 @@ class OpenstackAssembly(assembly.Assembly):
         inst = self.image_to_instance(self.name)
         if inst != None:
             try:
-                p1 = subprocess.Popen('su -c \". ./novarc && euca-terminate-instances %s\" %s' % (inst, self.username),
+                cmd = 'su -c \". ./novarc && euca-terminate-instances %s\" %s' % (inst, self.username)
+                self.l.debug('cmd: %s' % (str(cmd)))
+                p1 = subprocess.Popen(cmd,
                     shell=True, cwd=self.keydir,
                     stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                 out = p1.communicate()
