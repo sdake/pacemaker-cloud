@@ -8,6 +8,7 @@ AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 
 AM_PATH_PYTHON
+AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CXX
