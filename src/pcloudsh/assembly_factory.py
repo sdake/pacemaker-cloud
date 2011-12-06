@@ -76,7 +76,6 @@ class AssemblyFactory(db_helper.DbFactory):
             n = node.prop('name')
             i = node.prop('infrastructure')
             if i == None:
-                self.l.warn('AssemblyFactory loading %s as libvirt' % n)
                 i = 'libvirt'
             if n not in self.all:
                 self.all[n] = self.create_instance(n, i)

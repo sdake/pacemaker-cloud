@@ -62,14 +62,14 @@ class LibVirtAssembly(assembly.Assembly):
         st = 'Undefined'
         try:
             c = libvirt.open("qemu:///system")
-            ass = self.libvirt_conn.lookupByName(self.name)
+            ass = c.lookupByName(self.name)
             if ass.isActive():
-                st = 'Running'
+                st = 'running'
             else:
-                st = 'Stopped'
+                st = 'stopped'
         except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
-                st = 'Stopped'
+                st = 'finished'
             else:
                 self.l.exception(e)
         finally:

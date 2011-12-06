@@ -103,7 +103,11 @@ class OpenstackAssembly(assembly.Assembly):
                 self.l.exception('*** couldn\'t stop %s' % self.name)
 
     def status(self):
-        return 'Unknown (not impl. yet)'
+        inst = self.image_to_instance(self.name)
+        if inst != None:
+            return 'running'
+        else:
+            return 'stopped'
 
     def register_with_openstack(self, username):
         self.keydir = os.path.join(self.conf.dbdir, self.deployment, 'novacreds')

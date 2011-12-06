@@ -108,8 +108,8 @@ class VMLauncher(AgentHandler):
                     self.session.methodSuccess(handle)
 
                 elif methodName == "status":
-                    fac.get(name).status()
-                    handle.addReturnArgument("status", status)
+                    st = fac.get(name).status()
+                    handle.addReturnArgument("status", st)
                     self.session.methodSuccess(handle)
 
             except BaseException, e:
