@@ -18,6 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "config.h"
+
+#include <assert.h>
+
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
 #include "mainloop.h"
@@ -93,12 +97,7 @@ QmfObject::method_call_async(std::string method,
 	uint32_t correlation_id;
 	QmfAsyncRequest *ar;
 
-	if (_method_response_fn == NULL) {
-		qb_log(LOG_WARNING,
-		       "can't do async call without response callback");
-		return;
-	}
-
+	assert(_method_response_fn);
 	ar = new QmfAsyncRequest();
 	ar->method = method;
 	ar->obj = this;
