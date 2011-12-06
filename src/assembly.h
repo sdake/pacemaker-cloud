@@ -21,75 +21,45 @@
 #ifndef ASSEMBLY_H_DEFINED
 #define ASSEMBLY_H_DEFINED
 
-#include "qmf_multiplexer.h"
+#include <string>
+#include <libxml/parser.h>
 
 class Deployable;
-class Resource;
+class VmLauncher;
 
 class Assembly {
-private:
-	static const uint32_t HEARTBEAT_INIT = 1;
-	static const uint32_t HEARTBEAT_NOT_RECEIVED = 2;
-	static const uint32_t HEARTBEAT_OK = 3;
-	static const uint32_t HEARTBEAT_SEQ_BAD = 4;
+protected:
 
-	typedef uint32_t (Assembly::*fsm_state_fn)(void);
-	typedef void (Assembly::*fsm_action_fn)(void);
-
-	QmfObject _mh_serv;
-	QmfObject _mh_rsc;
-	QmfObject _mh_host;
-
-	uint32_t _hb_state;
 	uint32_t _state;
-	static const uint32_t NUM_STATES = 3;
-	fsm_state_fn state_table[NUM_STATES];
-	fsm_action_fn state_action_table[NUM_STATES][NUM_STATES];
-	uint32_t _last_sequence;
-	GTimer* _last_heartbeat;
+
 	Deployable *_dep;
+	VmLauncher *_vml;
 
 	std::string _name;
 	std::string _uuid;
 	int _refcount;
 
-	std::map<std::string, struct operation_history*> op_history;
-
-	uint32_t check_state_online(void);
-	uint32_t check_state_offline(void);
-	void state_offline_to_online(void);
-	void state_online_to_offline(void);
 	void deref(void);
 
 public:
-	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
-	void check_state(void);
-	bool process_qmf_events(qmf::ConsoleEvent &event);
-
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
 	static const uint32_t STATE_ONLINE = 2;
 
 	Assembly();
-	Assembly(Deployable *dep, std::string& name,
+	Assembly(Deployable *dep, VmLauncher *vml, std::string& name,
 		 std::string& uuid);
 	~Assembly();
 
-	void stop(void);
+	virtual void insert_status(xmlNode *status) {};
+
+	virtual void stop(void);
+	virtual void start(void);
+	virtual void restart(void);
+	virtual void status_response(std::string& status) {};
+
 	uint32_t state_get(void) { return _state; };
 	const std::string& name_get(void) const { return _name; }
 	const std::string& uuid_get(void) const { return _uuid; }
-
-	void service_execute(struct pe_operation *op, std::string method,
-			     qpid::types::Variant::Map in_args);
-	void resource_execute(struct pe_operation *op, std::string method,
-			      qpid::types::Variant::Map args);
-	void insert_status(xmlNode *status);
-
-	void op_history_del_by_resource(Resource* r);
-	void op_history_save(Resource* r, struct pe_operation *op,
-			     enum ocf_exitcode ec);
-	void op_history_clear(void);
-	void op_history_insert(xmlNode *rsc, struct operation_history *oh);
 };
 #endif /* ASSEMBLY_H_DEFINED */

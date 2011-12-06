@@ -29,6 +29,7 @@
 #include "pcmk_pe.h"
 #include "common_agent.h"
 #include "qmf_multiplexer.h"
+#include "vmlauncher.h"
 
 class Assembly;
 class Resource;
@@ -36,12 +37,14 @@ class Resource;
 class Deployable : public QmfMultiplexer {
 private:
 	CommonAgent *_agent;
-	QmfObject _vm_launcher;
+	VmLauncher *_vml;
 	std::string _name;
 	std::string _uuid;
 	std::string _dc_uuid;
 	std::string _crmd_uuid;
+	std::string _username;
 	int _file_count;
+	bool _active_monitoring;
 
 	std::map<std::string, Assembly*> _assemblies;
 	std::map<std::string, Resource*> _resources;

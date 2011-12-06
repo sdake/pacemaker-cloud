@@ -30,7 +30,8 @@ SUBDIRS = pcloudsh
 
 sbin_PROGRAMS = cped dped
 noinst_PROGRAMS = cpe-tool2 pe_test
-noinst_HEADERS = assembly.h config.h cpe_agent.h dpe_agent.h cpe_httpd.h mainloop.h \
+noinst_HEADERS = assembly.h assembly_am.h assembly_pm.h config.h cpe_agent.h \
+	dpe_agent.h cpe_httpd.h mainloop.h vmlauncher.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
 	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h \
@@ -52,7 +53,8 @@ cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) \
 		$(libmicrohttpd_LIBS) $(libcurl_LIBS) $(libxml2_LIBS)
 
 dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
-		deployable.cpp assembly.cpp config_loader.cpp dpe_agent.cpp \
+		deployable.cpp assembly.cpp assembly_am.cpp assembly_pm.cpp \
+		config_loader.cpp dpe_agent.cpp vmlauncher.cpp \
 		resource.cpp qmf_multiplexer.cpp qmf_object.cpp qmf_agent.cpp
 
 dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \

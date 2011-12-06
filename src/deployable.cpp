@@ -33,19 +33,11 @@
 #include "mainloop.h"
 #include "config_loader.h"
 #include "deployable.h"
-#include "assembly.h"
+#include "assembly_am.h"
+#include "assembly_pm.h"
 #include "resource.h"
 
 using namespace std;
-
-static void
-my_method_response(QmfAsyncRequest* ar,
-		   qpid::types::Variant::Map out_args,
-		   enum QmfObject::rpc_result rc)
-{
-	qb_log(LOG_DEBUG, "%s result: %d", ar->method.c_str(), rc);
-}
-
 
 Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
@@ -63,11 +55,7 @@ Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 
 	url_set("localhost:49000");
 	filter_set("[or, [eq, _vendor, [quote, 'matahariproject.org']], [eq, _vendor, [quote, 'pacemakercloud.org']]]");
-
-	_vm_launcher.query_set("{class:Vmlauncher, package:org.pacemakercloud}");
-	_vm_launcher.method_response_handler_set(my_method_response);
-	qmf_object_add(&_vm_launcher);
-
+	_vml = new VmLauncher(this);
 	start();
 	reload();
 }
@@ -116,10 +104,7 @@ Deployable::stop(void)
 {
 	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
 	     a_iter != _assemblies.end(); a_iter++) {
-		qpid::types::Variant::Map in_args;
-		in_args["name"] = a_iter->second->name_get();
-		in_args["uuid"] = a_iter->second->uuid_get();
-		_vm_launcher.method_call_async("stop", in_args, this, 5000);
+		a_iter->second->stop();
 	}
 }
 
@@ -145,18 +130,14 @@ Deployable::create_assemblies(xmlNode * assemblies)
 		std::transform(ass_uuid.begin(), ass_uuid.end(), ass_uuid.begin(), ::toupper);
 
 		qb_log(LOG_DEBUG, "loading assembly: %s", ass_name.c_str());
-
-		qpid::types::Variant::Map in_args;
-		in_args["name"] = ass_name;
-		in_args["uuid"] = ass_uuid;
-		_vm_launcher.method_call_async("start", in_args, this, 5000);
-
-		for (child_node = cur_node->children; child_node; child_node = child_node->next) {
-			if (child_node->type != XML_ELEMENT_NODE) {
-				continue;
-			}
-			if (strcmp((char*)child_node->name, "services") == 0) {
-				create_services(ass_name, child_node->children);
+		if (_active_monitoring) {
+			for (child_node = cur_node->children; child_node; child_node = child_node->next) {
+				if (child_node->type != XML_ELEMENT_NODE) {
+					continue;
+				}
+				if (strcmp((char*)child_node->name, "services") == 0) {
+					create_services(ass_name, child_node->children);
+				}
 			}
 		}
 		assembly_add(ass_name, ass_uuid);
@@ -198,6 +179,10 @@ Deployable::reload(void)
 	_pe = xsltApplyStylesheet(ss, _config, params);
 
 	dep_node = xmlDocGetRootElement(_config);
+	string monitor = (char*)xmlGetProp(dep_node, BAD_CAST "monitor");
+	_active_monitoring = (monitor != "passive");
+	_username = (char*)xmlGetProp(dep_node, BAD_CAST "username");
+
 	for (cur_node = dep_node->children; cur_node;
 	     cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
@@ -295,7 +280,7 @@ Deployable::process(void)
 	Resource *r;
 	::qpid::sys::Mutex::ScopedLock _lock(xml_lock);
 
-	if (_pe == NULL) {
+	if (_pe == NULL || !_active_monitoring) {
 		return;
 	}
 	_status_changed = true;
@@ -392,10 +377,7 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 	_agent->agent_session.raiseEvent(event);
 	schedule_processing();
 	if (state == "failed") {
-		qpid::types::Variant::Map in_args;
-		in_args["name"] = a->name_get();
-		in_args["uuid"] = a->uuid_get();
-		_vm_launcher.method_call_async("restart", in_args, this, 5000);
+		a->restart();
 	}
 }
 
@@ -409,7 +391,12 @@ Deployable::assembly_add(string& name, string& uuid)
 	}
 
 	try {
-		a = new Assembly(this, name, uuid);
+		if (_active_monitoring) {
+			a = new AssemblyAm(this, _vml, name, uuid);
+		} else {
+			a = new AssemblyPm(this, _vml, name, uuid);
+		}
+		a->start();
 	} catch (qpid::types::Exception e) {
 		qb_log(LOG_ERR, "Exception creating Assembly %s",
 		       e.what());

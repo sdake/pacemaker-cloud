@@ -29,7 +29,7 @@
 #include "pcmk_pe.h"
 #include "mainloop.h"
 #include "resource.h"
-#include "assembly.h"
+#include "assembly_am.h"
 #include "deployable.h"
 
 using namespace std;
@@ -124,7 +124,7 @@ Resource::__execute(struct pe_operation *op)
 	qpid::types::Variant::Map in_params;
 	const char *rmethod = op->method;
 	string node_uuid = op->node_uuid;
-	Assembly *ass = _dep->assembly_get(node_uuid);
+	AssemblyAm *ass = dynamic_cast<AssemblyAm*>(_dep->assembly_get(node_uuid));
 	assert(ass != NULL);
 
 	qb_enter();
@@ -201,7 +201,7 @@ void
 Resource::delete_op_history(struct pe_operation *op)
 {
 	string node_uuid = op->node_uuid;
-	Assembly* a = _dep->assembly_get(node_uuid);
+	AssemblyAm *a = dynamic_cast<AssemblyAm*>(_dep->assembly_get(node_uuid));
 
 	/* delete the op history
 	 */
@@ -224,7 +224,7 @@ void
 Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 {
 	string node_uuid = op->node_uuid;
-	Assembly *ass = _dep->assembly_get(node_uuid);
+	AssemblyAm *ass = dynamic_cast<AssemblyAm*>(_dep->assembly_get(node_uuid));
 	assert(ass != NULL);
 
 	if (ec != op->target_outcome) {

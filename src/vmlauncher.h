@@ -18,66 +18,32 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "config.h"
+#ifndef VMLAUNCHER_H__DEFINED
+#define VMLAUNCHER_H__DEFINED
 
-#include <qb/qblog.h>
-
-#include <iostream>
-#include <sstream>
+#include <string>
 #include <map>
 
-#include "mainloop.h"
+#include <qmf/ConsoleSession.h>
+#include "qmf_multiplexer.h"
 #include "assembly.h"
-#include "deployable.h"
 
-using namespace std;
+class Deployable;
 
-void
-Assembly::deref(void)
-{
-	_refcount--;
-	if (_refcount == 0) {
-		delete this;
-	}
-}
+class VmLauncher {
+private:
+	QmfObject _vm_launcher;
+	Deployable * _dep;
 
-void
-Assembly::start(void)
-{
-	_vml->start(this);
-}
+public:
+	VmLauncher() {};
+	~VmLauncher() {};
+	VmLauncher(Deployable* dep);
 
-void
-Assembly::stop(void)
-{
-	if (_state > STATE_INIT) {
-		_state = STATE_INIT;
-		_vml->stop(this);
-	}
-	deref();
-}
+	void start(Assembly *a);
+	void stop(Assembly *a);
+	void restart(Assembly *a);
+	void status(Assembly *a);
+};
 
-void
-Assembly::restart(void)
-{
-	_vml->restart(this);
-}
-
-Assembly::Assembly() :
-	_refcount(1), _dep(NULL),
-	_name(""), _uuid(""), _state(STATE_OFFLINE)
-{
-}
-
-Assembly::~Assembly()
-{
-	qb_log(LOG_DEBUG, "~Assembly(%s)", _name.c_str());
-}
-
-Assembly::Assembly(Deployable *dep, VmLauncher *vml, std::string& name,
-		   std::string& uuid) :
-	 _refcount(1), _dep(dep), _vml(vml),
-	_name(name), _uuid(uuid), _state(STATE_OFFLINE)
-{
-	_refcount++;
-}
+#endif /* VMLAUNCHER_H__DEFINED */
