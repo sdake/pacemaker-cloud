@@ -68,7 +68,7 @@ class pcloudsh(cmd.Cmd, object):
 
     def do_deployable_create(self, s):
         """
-  deployable_create <deployable_name> <libvirt|aeolus|openstack|ovirt> <username>- create a new deployable
+  deployable_create <deployable_name> <libvirt|aeolus|openstack|ovirt> <username> <am|pm> - create a new deployable
 
   The deployable_create action creates a new deployable and stores it in the
   pcloudsh database.
@@ -76,23 +76,32 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         inf = ''
         user = ''
+        monitor = 'active'
         if len(options) == 1:
             inf = 'libvirt'
             user = 'root'
-        elif len(options) == 3:
+        elif len(options) == 3 or len(options) == 4:
             inf = options[1]
             user = options[2]
             if not inf in self.infrastructures:
                 print '*** wrong infrastructure must be one of: libvirt, aeolus, openstack or ovirt'
                 return False
-        elif not len(options) == 3:
+            if len(options) == 4:
+                if options[3] ==  'pm':
+                    monitor = 'passive'
+                elif options[3] ==  'am':
+                    monitor = 'active'
+                else:
+                    print '*** wrong monitor type must be one of: am or pm'
+                    return False
+        elif not len(options) == 4:
             self.do_help("deployable_create")
             return False
 
         if self.d.exists(options[0]):
             print '*** deployable %s already exists' % options[0]
         else:
-            self.d.create(options[0], inf, user)
+            self.d.create(options[0], inf, user, monitor)
 
     def do_deployable_delete(self, s):
         """

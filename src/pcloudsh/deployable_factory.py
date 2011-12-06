@@ -95,8 +95,9 @@ class DeployableFactory(db_helper.DbFactory):
             self.all[name].delete()
         self.delete_instance(name)
 
-    def create(self, name, infrastructure, username):
+    def create(self, name, infrastructure, username, monitor):
         d = self.get(name, infrastructure, username)
+        d.monitor = monitor
         if d.create():
             d.save()
         else:

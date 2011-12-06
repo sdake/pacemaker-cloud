@@ -37,6 +37,7 @@ class DeployableDb(object):
         self.conf = pcmkconfig.Config()
         self.factory = factory
         self.l = factory.l
+        self.monitor = None
 
         query = factory.doc.xpathEval("/%s/%s[@name='%s']" % (self.factory.plural,
             self.factory.singular, name))
@@ -45,6 +46,10 @@ class DeployableDb(object):
             self.xml_node = query[0]
             self.name = self.xml_node.prop("name")
             self.username = self.xml_node.prop("username")
+            if self.xml_node.hasProp('monitor'):
+                self.monitor = self.xml_node.prop("monitor")
+            else:
+                self.monitor = 'active'
         else:
             self.xml_node = None
             self.name = name
@@ -57,11 +62,13 @@ class DeployableDb(object):
             node.newProp("name", self.name)
             node.newProp("infrastructure", self.infrastructure)
             node.newProp("username", self.username)
+            node.newProp("monitor", self.monitor)
             self.xml_node = node
         else:
             self.xml_node.setProp('name', self.name)
             self.xml_node.setProp('infrastructure', self.infrastructure)
             self.xml_node.setProp('username', self.username)
+            self.xml_node.setProp('monitor', self.monitor)
 
         self.factory.save()
 
@@ -122,6 +129,8 @@ class DeployableDb(object):
         dep = doc.newChild(None, "deployable", None)
         dep.setProp("name", self.name)
         dep.setProp("uuid", self.name) # TODO
+        dep.setProp("monitor", self.monitor)
+        dep.setProp("username", self.username)
         n_asses = dep.newChild(None, "assemblies", None)
         constraints = dep.newChild(None, 'constraints', None)
 
