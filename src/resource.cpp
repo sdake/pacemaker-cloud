@@ -67,6 +67,7 @@ Resource::failed(struct pe_operation *op)
 	qb_log(LOG_NOTICE, "resource %s FAILED (%d)",
 	       _id.c_str(), _actual_failures);
 
+	_state = STATE_STOPPED;
 	_dep->service_state_changed(ass_name, rname, running, reason);
 	if (_max_failures > 0 && _failure_period > 0) {
 		float p;
@@ -80,6 +81,7 @@ Resource::failed(struct pe_operation *op)
 			_actual_failures = 0;
 			qb_util_stopwatch_start(_escalation_period);
 			escalated = true;
+			_state = STATE_UNKNOWN;
 		}
 		if (p > _failure_period) {
 			/* reset */
@@ -259,6 +261,7 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 	}
 
 	if (ass->state_get() != Assembly::STATE_ONLINE) {
+		_state = STATE_UNKNOWN;
 		if (op->interval == 0) {
 			pe_resource_completed(op, OCF_UNKNOWN_ERROR);
 		}
@@ -282,9 +285,11 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 			if (ec == OCF_OK) {
 				running = "running";
 				reason = "Started OK";
+				_state = STATE_RUNNING;
 			} else {
 				running = "failed";
 				reason = pe_resource_reason_get(ec);
+				_state = STATE_STOPPED;
 			}
 			_dep->service_state_changed(ass->name_get(), rname, running, reason);
 		} else if (pe_resource_is_hard_error(ec)) {
@@ -292,6 +297,7 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 			string running = "failed";
 			string reason = pe_resource_reason_get(ec);
 			_dep->service_state_changed(ass->name_get(), rname, running, reason);
+			_state = STATE_STOPPED;
 		}
 
 		pe_resource_completed(op, ec);
@@ -304,13 +310,33 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 	} else if (ec != op->target_outcome) {
 		failed(op);
 	}
+	if (strcmp(op->method, "monitor") == 0 ||
+	    strcmp(op->method, "status") == 0) {
+		string rname = op->rtype;
+		string running;
+		string reason;
+		if (ec == op->target_outcome &&
+		    _state != STATE_RUNNING) {
+			running = "running";
+			reason = "Already running";
+			_state = STATE_RUNNING;
+			_dep->service_state_changed(ass->name_get(), rname, running, reason);
+		} else if (op->times_executed <= 1 &&
+			   ec != op->target_outcome &&
+			   _state != STATE_STOPPED) {
+			running = "stopped";
+			reason = "Not yet running";
+			_state = STATE_STOPPED;
+			_dep->service_state_changed(ass->name_get(), rname, running, reason);
+		}
+	}
 }
 
 Resource::Resource(Deployable *d, string& id, string& type, string& class_name,
 		   string& provider, int num_failures, int failure_period)
 :  _dep(d), _id(id), _type(type), _class(class_name), _provider(provider),
    _max_failures(num_failures), _failure_period(failure_period),
-   _actual_failures(0)
+   _actual_failures(0), _state(STATE_UNKNOWN)
 {
 	if (_max_failures > 0 && _failure_period > 0) {
 		_escalation_period = qb_util_stopwatch_create();

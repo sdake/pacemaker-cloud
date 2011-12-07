@@ -54,6 +54,11 @@ private:
 	int _actual_failures;
 	qb_util_stopwatch_t * _escalation_period;
 
+	static const uint32_t STATE_UNKNOWN = 0;
+	static const uint32_t STATE_RUNNING = 1;
+	static const uint32_t STATE_STOPPED= 2;
+	uint32_t _state;
+
 public:
 	qb_loop_timer_handle _monitor_timer;
 	struct pe_operation *_monitor_op;
