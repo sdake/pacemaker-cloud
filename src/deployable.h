@@ -32,6 +32,7 @@
 #include "vmlauncher.h"
 
 class Assembly;
+class AssemblyAm;
 class Resource;
 
 class Deployable : public QmfMultiplexer {
@@ -88,6 +89,8 @@ public:
 				  std::string &state, std::string &reason);
 	void assembly_state_changed(Assembly *a, std::string state,
 				    std::string reason);
+	void escalate_service_failure(AssemblyAm *a,
+				      const std::string& service_name);
 };
 
 #endif /* DEPLOYABLE_H__DEFINED */

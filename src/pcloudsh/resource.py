@@ -32,6 +32,8 @@ class Resource(object):
         self.klass = 'lsb'
         self.provider = 'heartbeat'
         self.monitor_interval = '60s'
+        self.escalation_failures = 'INFINITY'
+        self.escalation_period = 'INFINITY'
         self.xml_node = None
 
     def load_from_xml(self, xml):
@@ -41,6 +43,10 @@ class Resource(object):
         self.type = xml.prop('type')
         self.klass = xml.prop('class')
         self.provider = xml.prop('provider')
+        if xml.hasProp('escalation_failures'):
+            self.escalation_failures = xml.prop('escalation_failures')
+        if xml.hasProp('escalation_period'):
+            self.escalation_period = xml.prop('escalation_period')
 
         self.params = {}
         if xml.children == None:
@@ -59,6 +65,8 @@ class Resource(object):
             nd = libxml2.parseFile('%s/%s.xml' % (self.conf.resource_templatesdir, self.type))
             n = nd.getRootElement()
             n.newProp('name', self.name)
+            n.newProp('escalation_period', self.escalation_period)
+            n.newProp('escalation_failures', self.escalation_failures)
             self.factory.root_get().addChild(n)
             self.xml_node = n
         else:
@@ -67,6 +75,8 @@ class Resource(object):
             self.xml_node.setProp('class', self.klass)
             self.xml_node.setProp('provider', self.provider)
             self.xml_node.setProp('monitor_interval', self.monitor_interval)
+            self.xml_node.setProp('escalation_period', self.escalation_period)
+            self.xml_node.setProp('escalation_failures', self.escalation_failures)
 
     def delete(self):
         if self.xml_node != None:

@@ -45,6 +45,8 @@ public:
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
 	static const uint32_t STATE_ONLINE = 2;
+	static const uint32_t STATE_PENDING_ESCALATION = 3;
+	static const uint32_t NUM_STATES = 4;
 
 	Assembly();
 	Assembly(Deployable *dep, VmLauncher *vml, std::string& name,

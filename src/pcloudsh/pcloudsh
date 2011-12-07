@@ -393,6 +393,30 @@ class pcloudsh(cmd.Cmd, object):
             a = self.a.get(options[2])
             a.resource_add(options[0], options[1])
 
+    def do_escalation_resource_set(self, s):
+        """
+  escalation_resource_set <resource name> <assembly_name> <num_failures> <period>
+
+  SYNOPSIS: The escalation is triggered if the number of failures exceeds 
+           <num_failures> within the time <period> (seconds)
+        """
+        options = s.split()
+        option_len = len(options)
+        if option_len != 4:
+            self.do_help("escalation_resource_set");
+        else:
+            an = options[1]
+            rn = options[0]
+            if not self.a.exists(an):
+                print '*** assembly %s does not exist' % an
+                return
+
+            escalation_f = options[2]
+            escalation_p = options[3]
+            a = self.a.get(an)
+            a.escalation_resource_set(rn, escalation_f, escalation_p)
+
+
     def do_assembly_resource_remove(self, s):
         """
   assembly_resource_remove <resource name> <assembly_name>

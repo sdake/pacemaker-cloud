@@ -61,10 +61,35 @@ Resource::failed(struct pe_operation *op)
 	string rname = op->rtype;
 	string running = "failed";
 	string reason = "monitor failed";
-	qb_log(LOG_NOTICE, "resource %s FAILED", _id.c_str());
+	bool escalated = false;
+
+	_actual_failures++;
+	qb_log(LOG_NOTICE, "resource %s FAILED (%d)",
+	       _id.c_str(), _actual_failures);
 
 	_dep->service_state_changed(ass_name, rname, running, reason);
-	_dep->schedule_processing();
+	if (_max_failures > 0 && _failure_period > 0) {
+		float p;
+		qb_util_stopwatch_stop(_escalation_period);
+
+		p = qb_util_stopwatch_sec_elapsed_get(_escalation_period);
+		if (_actual_failures >= _max_failures && p <= _failure_period) {
+			string node_uuid = op->node_uuid;
+			AssemblyAm *ass = dynamic_cast<AssemblyAm*>(_dep->assembly_get(node_uuid));
+			_dep->escalate_service_failure(ass, rname);
+			_actual_failures = 0;
+			qb_util_stopwatch_start(_escalation_period);
+			escalated = true;
+		}
+		if (p > _failure_period) {
+			/* reset */
+			_actual_failures = 0;
+			qb_util_stopwatch_start(_escalation_period);
+		}
+	}
+	if (!escalated) {
+		_dep->schedule_processing();
+	}
 }
 
 void
@@ -282,8 +307,20 @@ Resource::completed(struct pe_operation *op, enum ocf_exitcode ec)
 }
 
 Resource::Resource(Deployable *d, string& id, string& type, string& class_name,
-		   string& provider)
-:  _dep(d), _id(id), _type(type), _class(class_name), _provider(provider)
+		   string& provider, int num_failures, int failure_period)
+:  _dep(d), _id(id), _type(type), _class(class_name), _provider(provider),
+   _max_failures(num_failures), _failure_period(failure_period),
+   _actual_failures(0)
 {
+	if (_max_failures > 0 && _failure_period > 0) {
+		_escalation_period = qb_util_stopwatch_create();
+		qb_util_stopwatch_start(_escalation_period);
+	}
 }
 
+Resource::~Resource()
+{
+	if (_max_failures > 0 && _failure_period > 0) {
+		qb_util_stopwatch_free(_escalation_period);
+	}
+}

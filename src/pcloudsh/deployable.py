@@ -150,6 +150,8 @@ class DeployableDb(object):
                 n_srv.setProp("class", r.klass)
                 n_srv.setProp("type", r.type)
                 n_srv.setProp("monitor_interval", r.monitor_interval)
+                n_srv.setProp('escalation_period',   r.escalation_period)
+                n_srv.setProp('escalation_failures', r.escalation_failures)
 
                 if len(r.params) > 0:
                     n_ps = n_srv.newChild(None, 'paramaters', None)

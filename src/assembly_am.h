@@ -43,7 +43,6 @@ private:
 	typedef uint32_t (AssemblyAm::*fsm_state_fn)(void);
 	typedef void (AssemblyAm::*fsm_action_fn)(void);
 
-	static const uint32_t NUM_STATES = 3;
 	fsm_state_fn state_table[NUM_STATES];
 	fsm_action_fn state_action_table[NUM_STATES][NUM_STATES];
 	
@@ -75,5 +74,6 @@ public:
 	void op_history_clear(void);
 	void op_history_insert(xmlNode *rsc, struct operation_history *oh);
 	void insert_status(xmlNode *status);
+	void escalate(void);
 };
 #endif /* ASSEMBLY_AM_H_DEFINED */

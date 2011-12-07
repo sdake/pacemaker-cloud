@@ -88,7 +88,8 @@ heartbeat_check_tmo(void *data)
 	qb_loop_timer_handle th;
 
 	a->check_state();
-	if (a->state_get() == AssemblyAm::STATE_ONLINE) {
+	if (a->state_get() == AssemblyAm::STATE_ONLINE ||
+	    a->state_get() == AssemblyAm::STATE_PENDING_ESCALATION) {
 		mainloop_timer_add(4000, a,
 				   heartbeat_check_tmo, &th);
 	}
@@ -419,6 +420,21 @@ AssemblyAm::heartbeat_recv(uint32_t timestamp, uint32_t sequence)
 }
 
 void
+AssemblyAm::escalate(void)
+{
+	uint32_t new_state = _state;
+
+	if (_state == STATE_ONLINE) {
+		new_state = STATE_PENDING_ESCALATION;
+		if (state_action_table[_state][new_state]) {
+			(this->*state_action_table[_state][new_state])();
+		}
+		_state = new_state;
+	}
+	restart();
+}
+
+void
 AssemblyAm::check_state(void)
 {
 	uint32_t new_state = (this->*state_table[_state])();
@@ -436,12 +452,20 @@ AssemblyAm::AssemblyAm() :
 {
 	state_table[STATE_OFFLINE] = &AssemblyAm::check_state_offline;
 	state_table[STATE_ONLINE] = &AssemblyAm::check_state_online;
+	state_table[STATE_PENDING_ESCALATION] = &AssemblyAm::check_state_online;
 	state_table[STATE_INIT] = NULL;
 
 	state_action_table[STATE_OFFLINE][STATE_ONLINE] = &AssemblyAm::state_offline_to_online;
 	state_action_table[STATE_OFFLINE][STATE_OFFLINE] = NULL;
+	state_action_table[STATE_OFFLINE][STATE_PENDING_ESCALATION] = NULL;
+
 	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &AssemblyAm::state_online_to_offline;
 	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
+	state_action_table[STATE_ONLINE][STATE_PENDING_ESCALATION] = NULL;
+
+	state_action_table[STATE_PENDING_ESCALATION][STATE_OFFLINE] = &AssemblyAm::state_online_to_offline;
+	state_action_table[STATE_PENDING_ESCALATION][STATE_ONLINE] = NULL;
+	state_action_table[STATE_PENDING_ESCALATION][STATE_PENDING_ESCALATION] = NULL;
 
 	_last_heartbeat = g_timer_new();
 }
@@ -457,12 +481,20 @@ AssemblyAm::AssemblyAm(Deployable *dep, VmLauncher *vml, std::string& name,
 {
 	state_table[STATE_OFFLINE] = &AssemblyAm::check_state_offline;
 	state_table[STATE_ONLINE] = &AssemblyAm::check_state_online;
+	state_table[STATE_PENDING_ESCALATION] = &AssemblyAm::check_state_online;
 	state_table[STATE_INIT] = NULL;
 
 	state_action_table[STATE_OFFLINE][STATE_ONLINE] = &AssemblyAm::state_offline_to_online;
 	state_action_table[STATE_OFFLINE][STATE_OFFLINE] = NULL;
+	state_action_table[STATE_OFFLINE][STATE_PENDING_ESCALATION] = NULL;
+
 	state_action_table[STATE_ONLINE][STATE_OFFLINE] = &AssemblyAm::state_online_to_offline;
 	state_action_table[STATE_ONLINE][STATE_ONLINE] = NULL;
+	state_action_table[STATE_ONLINE][STATE_PENDING_ESCALATION] = NULL;
+
+	state_action_table[STATE_PENDING_ESCALATION][STATE_OFFLINE] = &AssemblyAm::state_online_to_offline;
+	state_action_table[STATE_PENDING_ESCALATION][STATE_ONLINE] = NULL;
+	state_action_table[STATE_PENDING_ESCALATION][STATE_PENDING_ESCALATION] = NULL;
 
 	qb_log(LOG_DEBUG, "AssemblyAm(%s:%s)", name.c_str(), uuid.c_str());
 

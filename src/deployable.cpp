@@ -75,6 +75,12 @@ Deployable::create_services(string& ass_name, xmlNode * services)
 	string type;
 	string cl;
 	string pr;
+	string escalation_failures;
+	long val;
+	int num_failures = -1;
+	string escalation_period;
+	int failure_period = -1;
+	char *endptr;
 
 	for (cur_node = services; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
@@ -89,12 +95,34 @@ Deployable::create_services(string& ass_name, xmlNode * services)
 
 		cl = (char*)xmlGetProp(cur_node, BAD_CAST "class");
 		pr = (char*)xmlGetProp(cur_node, BAD_CAST "provider");
+		escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
+
+		val = strtol(escalation_failures.c_str(), &endptr, 10);
+		if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+		    (errno != 0 && val == 0) ||
+		    (endptr == escalation_failures.c_str())) {
+			num_failures = -1;
+		} else {
+			num_failures = val;
+		}
+
+		escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
+		val = strtol(escalation_period.c_str(), &endptr, 10);
+		if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+		    (errno != 0 && val == 0) ||
+		    (endptr == escalation_period.c_str())) {
+			failure_period = -1;
+		} else {
+			failure_period = val;
+		}
 
 		qb_log(LOG_DEBUG, "loading service: %s", name.c_str());
 
 		if (_resources[name] == NULL) {
-			_resources[name] = new Resource(this, name, type,
-							cl, pr);
+			_resources[name] = new Resource(this, name,
+							type, cl, pr,
+							num_failures,
+							failure_period);
 		}
 	}
 }
@@ -348,6 +376,24 @@ Deployable::schedule_processing(void)
 				   _status_timeout,
 				   &_processing_timer);
 	}
+}
+
+void
+Deployable::escalate_service_failure(AssemblyAm *a,
+				     const std::string& service_name)
+{
+	qb_loop_timer_handle th;
+	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
+
+	qb_log(LOG_NOTICE, "Escalating failure of service %s to assembly %s:%s",
+	       service_name.c_str(), _uuid.c_str(), a->name_get().c_str());
+	event.setProperty("deployable", _uuid);
+	event.setProperty("assembly", a->name_get());
+	event.setProperty("state", "failed");
+	event.setProperty("reason", "escalating service failure");
+	_agent->agent_session.raiseEvent(event);
+
+	a->escalate();
 }
 
 void

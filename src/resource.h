@@ -22,6 +22,7 @@
 #define RESOURCE_H_DEFINED
 
 #include <string>
+#include <qb/qbutil.h>
 #include <libxml/parser.h>
 
 struct operation_history {
@@ -48,13 +49,18 @@ private:
 	std::string _class;
 	std::string _provider;
 	Deployable *_dep;
+	int _max_failures;
+	int _failure_period;
+	int _actual_failures;
+	qb_util_stopwatch_t * _escalation_period;
 
 public:
 	qb_loop_timer_handle _monitor_timer;
 	struct pe_operation *_monitor_op;
 	Resource();
 	Resource(Deployable *d, std::string& id, std::string& type,
-		 std::string& class_name, std::string& provider);
+		 std::string& class_name, std::string& provider,
+		 int num_failures, int failure_period);
 	~Resource();
 
 	void stop(struct pe_operation *op);

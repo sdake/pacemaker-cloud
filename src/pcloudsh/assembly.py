@@ -340,7 +340,19 @@ class Assembly(object):
         r.name = rsc_name
         r.type = rsc_type
         r.save()
+        self.save()
 
+    def escalation_resource_set(self, rsc_name, escalation_f, escalation_p):
+        self.resource_factory_setup()
+
+        if not self.rf.exists(rsc_name):
+            print '*** Resource %s does not exist in Assembly %s' % (rsc_name, self.name)
+            return
+
+        r = self.rf.get(rsc_name)
+        r.escalation_failures = escalation_f
+        r.escalation_period = escalation_p
+        r.save()
         self.save()
 
     def resource_remove(self, rsc_name):
