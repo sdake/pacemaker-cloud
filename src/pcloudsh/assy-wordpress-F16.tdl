@@ -1,0 +1,22 @@
+<template>
+  <name>F16-x86_64-jeos</name>
+  <os>
+    <name>Fedora</name>
+    <version>16</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>file:/var/lib/libvirt/images/Fedora-16-x86_64-DVD.iso</iso>
+    </install>
+    <rootpw>password</rootpw>
+  </os>
+  <description>Fedora 16</description>
+
+  <packages>
+    <package name="wordpress">
+      <file>wordpress</file>
+    </package>
+    <package name="httpd">
+      <file>whttpd</file>
+    </package>
+  </packages>
+</template>
