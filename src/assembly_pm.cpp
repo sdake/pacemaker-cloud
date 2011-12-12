@@ -42,8 +42,8 @@ AssemblyPm::AssemblyPm() :
 }
 
 AssemblyPm::AssemblyPm(Deployable *dep, VmLauncher *vml, std::string& name,
-		       std::string& uuid) :
-	Assembly(dep, vml, name, uuid)
+		       std::string& uuid, int num_failures, int failure_period):
+	Assembly(dep, vml, name, uuid, num_failures, failure_period)
 {
 	qb_enter();
 }
@@ -113,6 +113,8 @@ AssemblyPm::status_response(std::string& status)
 			       _name.c_str());
 			_dep->assembly_state_changed(this, "running", "All good");
 		} else {
+			we_are_going_down();
+
 			mainloop_timer_del(state_check_th);
 			qb_log(LOG_NOTICE, "AssemblyPm (%s) STATE_OFFLINE.",
 			       _name.c_str());

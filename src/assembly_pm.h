@@ -30,7 +30,7 @@ private:
 public:
 	AssemblyPm();
 	AssemblyPm(Deployable *dep, VmLauncher *vml, std::string& name,
-		 std::string& uuid);
+		   std::string& uuid, int num_failures, int failure_period);
 	~AssemblyPm();
 
 	void stop(void);

@@ -39,8 +39,14 @@ protected:
 	std::string _uuid;
 	int _refcount;
 
+	int _max_failures;
+	int _failure_period;
+	int _actual_failures;
+	qb_util_stopwatch_t * _escalation_period;
+
 	void deref(void);
 
+	void we_are_going_down(void);
 public:
 	static const uint32_t STATE_INIT = 0;
 	static const uint32_t STATE_OFFLINE = 1;
@@ -50,7 +56,7 @@ public:
 
 	Assembly();
 	Assembly(Deployable *dep, VmLauncher *vml, std::string& name,
-		 std::string& uuid);
+		 std::string& uuid, int num_failures, int failure_period);
 	~Assembly();
 
 	virtual void insert_status(xmlNode *status) {};

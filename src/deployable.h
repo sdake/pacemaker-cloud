@@ -56,13 +56,16 @@ private:
 
 	int _resource_counter;
 	bool _status_changed;
+	bool _escalation_pending;
 	qb_loop_timer_handle _processing_timer;
 
 	void create_assemblies(xmlNode * nodes);
 	void create_services(std::string& ass_name, xmlNode * services);
 
 	int32_t assembly_add(std::string& name,
-			     std::string& uuid);
+			     std::string& uuid,
+			     int num_failures,
+			     int failure_period);
 	int32_t assembly_remove(std::string& name,
 				std::string& uuid);
 
@@ -91,6 +94,7 @@ public:
 				    std::string reason);
 	void escalate_service_failure(AssemblyAm *a,
 				      const std::string& service_name);
+	void escalate_assembly_failure(Assembly *a);
 };
 
 #endif /* DEPLOYABLE_H__DEFINED */

@@ -141,6 +141,8 @@ class DeployableDb(object):
             n_ass = n_asses.newChild(None, 'assembly', None)
             n_ass.setProp("name", a.name)
             n_ass.setProp("uuid", a.uuid)
+            n_ass.setProp("escalation_failures", a.escalation_failures)
+            n_ass.setProp("escalation_period", a.escalation_period)
             n_servs = n_ass.newChild(None, "services", None)
 
             for r in a.resources_get():

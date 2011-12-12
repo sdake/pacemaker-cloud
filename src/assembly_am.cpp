@@ -378,6 +378,8 @@ AssemblyAm::state_online_to_offline(void)
 	 */
 	_hb_state = AssemblyAm::HEARTBEAT_INIT;
 
+	we_are_going_down();
+
 	/* kill the resource history
 	 */
 	op_history_clear();
@@ -476,8 +478,9 @@ AssemblyAm::~AssemblyAm()
 }
 
 AssemblyAm::AssemblyAm(Deployable *dep, VmLauncher *vml, std::string& name,
-		       std::string& uuid) :
-	_hb_state(HEARTBEAT_INIT), Assembly(dep, vml, name, uuid)
+		       std::string& uuid, int num_failures, int failure_period):
+	Assembly(dep, vml, name, uuid, num_failures, failure_period),
+	_hb_state(HEARTBEAT_INIT)
 {
 	state_table[STATE_OFFLINE] = &AssemblyAm::check_state_offline;
 	state_table[STATE_ONLINE] = &AssemblyAm::check_state_online;

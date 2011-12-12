@@ -10,4 +10,4 @@ ExecStart=/usr/sbin/dped -v %i
 ExecReload=/bin/kill -HUP $MAINPID
 Type=simple
 TimeoutSec=5
-Restart=on-abort
+Restart=on-failure

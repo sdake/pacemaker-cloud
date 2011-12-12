@@ -48,6 +48,8 @@ class Assembly(object):
         self.infrastructure = None
         self.username = None
         self.deployment = None
+        self.escalation_failures = 'INFINITY'
+        self.escalation_period = 'INFINITY'
         if (len(query)):
             self.xml_node = query[0]
             self.name = self.xml_node.prop ("name")
@@ -60,6 +62,10 @@ class Assembly(object):
                 self.username = self.xml_node.prop("username")
             if self.xml_node.hasProp('deployment'):
                 self.deployment = self.xml_node.prop("deployment")
+            if self.xml_node.hasProp('escalation_period'):
+                self.escalation_period = self.xml_node.prop("escalation_period")
+            if self.xml_node.hasProp('escalation_failures'):
+                self.escalation_failures = self.xml_node.prop("escalation_failures")
         else:
             self.factory = factory
             self.name = name
@@ -82,6 +88,10 @@ class Assembly(object):
                 ass.newProp("username", self.username)
             if self.deployment != None:
                 ass.newProp("deployment", self.deployment)
+            if self.escalation_failures != None:
+                ass.newProp("escalation_failures", self.escalation_failures)
+            if self.escalation_period != None:
+                ass.newProp("escalation_period", self.escalation_period)
             self.xml_node = ass
         else:
             self.xml_node.setProp('name', self.name)
@@ -94,6 +104,10 @@ class Assembly(object):
                 self.xml_node.setProp("username", self.username)
             if self.deployment != None:
                 self.xml_node.setProp("deployment", self.deployment)
+            if self.escalation_failures != None:
+                self.xml_node.setProp("escalation_failures", self.escalation_failures)
+            if self.escalation_period != None:
+                self.xml_node.setProp("escalation_period", self.escalation_period)
 
         self.factory.save()
 

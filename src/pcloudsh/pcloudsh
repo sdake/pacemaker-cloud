@@ -319,6 +319,28 @@ class pcloudsh(cmd.Cmd, object):
         else:
             self.print_assembly_list(self.a.all_get())
 
+    def do_escalation_assembly_set(self, s):
+        """
+  escalation_assembly_set <assembly_name> <num_failures> <period>
+
+  SYNOPSIS: The escalation is triggered if the number of failures exceeds
+           <num_failures> within the time <period> (seconds)
+        """
+        options = s.split()
+        option_len = len(options)
+        if option_len != 3:
+            self.do_help("escalation_assembly_set");
+        else:
+            an = options[0]
+            if not self.a.exists(an):
+                print '*** assembly %s does not exist' % an
+                return
+
+            a = self.a.get(an)
+            a.escalation_failures = options[1]
+            a.escalation_period = options[2]
+            a.save()
+
     def do_jeos_create(self, s):
         """
   jeos_create <%s> <x86_64>'
@@ -397,7 +419,7 @@ class pcloudsh(cmd.Cmd, object):
         """
   escalation_resource_set <resource name> <assembly_name> <num_failures> <period>
 
-  SYNOPSIS: The escalation is triggered if the number of failures exceeds 
+  SYNOPSIS: The escalation is triggered if the number of failures exceeds
            <num_failures> within the time <period> (seconds)
         """
         options = s.split()

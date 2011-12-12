@@ -42,7 +42,7 @@ using namespace std;
 Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
 	_status_changed(false), _agent(agent), _file_count(0),
-	_resource_counter(0)
+	_resource_counter(0), _escalation_pending(false)
 {
 	uuid_t tmp_id;
 	char tmp_id_s[37];
@@ -144,6 +144,12 @@ Deployable::create_assemblies(xmlNode * assemblies)
 	string start = "start";
 	xmlNode *cur_node = NULL;
 	xmlNode *child_node = NULL;
+	string escalation_failures;
+	long val;
+	int num_failures = -1;
+	string escalation_period;
+	int failure_period = -1;
+	char *endptr;
 
 	for (cur_node = assemblies; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
@@ -151,6 +157,26 @@ Deployable::create_assemblies(xmlNode * assemblies)
 		}
 		ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
 		ass_uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
+		escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
+
+		val = strtol(escalation_failures.c_str(), &endptr, 10);
+		if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+		    (errno != 0 && val == 0) ||
+		    (endptr == escalation_failures.c_str())) {
+			num_failures = -1;
+		} else {
+			num_failures = val;
+		}
+
+		escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
+		val = strtol(escalation_period.c_str(), &endptr, 10);
+		if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+		    (errno != 0 && val == 0) ||
+		    (endptr == escalation_period.c_str())) {
+			failure_period = -1;
+		} else {
+			failure_period = val;
+		}
 
 		/* make sure the uuid is uppercase to match what dmidecode
 		 * produces.
@@ -168,7 +194,7 @@ Deployable::create_assemblies(xmlNode * assemblies)
 				}
 			}
 		}
-		assembly_add(ass_name, ass_uuid);
+		assembly_add(ass_name, ass_uuid, num_failures, failure_period);
 	}
 }
 
@@ -397,6 +423,25 @@ Deployable::escalate_service_failure(AssemblyAm *a,
 }
 
 void
+Deployable::escalate_assembly_failure(Assembly *a)
+{
+	qb_loop_timer_handle th;
+	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
+
+	qb_log(LOG_NOTICE, "Escalating failure of assembly %s to deployable %s",
+	       a->name_get().c_str(), _uuid.c_str());
+	event.setProperty("deployable", _uuid);
+	event.setProperty("assembly", a->name_get());
+	event.setProperty("state", "failed");
+	event.setProperty("reason", "escalating assembly failure");
+	_agent->agent_session.raiseEvent(event);
+
+	_escalation_pending = true;
+	stop();
+	qb_loop_stop(_agent->mainloop);
+}
+
+void
 Deployable::service_state_changed(const string& ass_name, string& service_name,
 				  string &state, string &reason)
 {
@@ -421,6 +466,9 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
+	if (_escalation_pending) {
+		exit(EXIT_FAILURE);
+	}
 	schedule_processing();
 	if (state == "failed") {
 		a->restart();
@@ -428,7 +476,8 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 }
 
 int32_t
-Deployable::assembly_add(string& name, string& uuid)
+Deployable::assembly_add(string& name, string& uuid,
+			 int num_failures, int failure_period)
 {
 	Assembly *a = _assemblies[uuid];
 	if (a) {
@@ -438,9 +487,9 @@ Deployable::assembly_add(string& name, string& uuid)
 
 	try {
 		if (_active_monitoring) {
-			a = new AssemblyAm(this, _vml, name, uuid);
+			a = new AssemblyAm(this, _vml, name, uuid, num_failures, failure_period);
 		} else {
-			a = new AssemblyPm(this, _vml, name, uuid);
+			a = new AssemblyPm(this, _vml, name, uuid, num_failures, failure_period);
 		}
 		a->start();
 	} catch (qpid::types::Exception e) {

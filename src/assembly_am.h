@@ -60,7 +60,7 @@ public:
 
 	AssemblyAm();
 	AssemblyAm(Deployable *dep, VmLauncher *vml, std::string& name,
-		 std::string& uuid);
+		   std::string& uuid, int num_failures, int failure_period);
 	~AssemblyAm();
 
 	void service_execute(struct pe_operation *op, std::string method,
