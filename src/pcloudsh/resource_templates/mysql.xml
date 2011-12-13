@@ -1,0 +1,1 @@
+<resource type="mysql" class="lsb" provider="heartbeat" monitor_interval="10s"/>
