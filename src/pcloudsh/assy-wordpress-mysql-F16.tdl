@@ -11,6 +11,24 @@
   </os>
   <description>Fedora 16</description>
 
+  <commands>
+    <command name="commands">
+systemctl start mysqld.service
+
+cat >> /tmp/mysql-wordpress-config &lt;&lt; EOF
+CREATE DATABASE wordpress_database;
+GRANT ALL PRIVILEGES ON wordpress_database.* TO "wordpress_user"@"assy-wordpress-F16"
+IDENTIFIED BY "wordpress_password";
+FLUSH PRIVILEGES;
+EXIT
+EOF
+
+cat /tmp/mysql-wordpress-config | mysql
+
+rm -f /tmp/mysql-wordpress-config
+    </command>
+  </commands>
+
   <packages>
     <package name="mysql">
       <file>mysql</file>
