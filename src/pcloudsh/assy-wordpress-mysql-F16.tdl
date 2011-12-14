@@ -26,6 +26,8 @@ EOF
 cat /tmp/mysql-wordpress-config | mysql
 
 rm -f /tmp/mysql-wordpress-config
+
+/bin/sed --in-place --e s/Restart=always// /lib/systemd/system/mysqld.service
     </command>
   </commands>
 
