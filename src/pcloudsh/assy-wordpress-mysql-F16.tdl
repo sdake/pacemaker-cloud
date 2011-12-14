@@ -31,10 +31,10 @@ rm -f /tmp/mysql-wordpress-config
 
 cat >> /etc/rc.d/init.d/mysqld &lt;&lt; EOF
 #!/bin/bash
-/bin/systemctl $1 mysqld.service
-rc=$?
+/bin/systemctl \$1 mysqld.service
+rc=\$?
 
-exit $rc
+exit \$rc
 EOF
 
 chmod 755 /etc/rc.d/init.d/mysqld
