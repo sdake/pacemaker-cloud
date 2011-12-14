@@ -1,0 +1,1 @@
+<resource type="mysqld" class="lsb" provider="pacemaker" monitor_interval="20s"/>

@@ -35,7 +35,7 @@ rscs_DATA = resource_templates/dummy.xml \
 			resource_templates/ntpd.xml \
 			resource_templates/apache2.xml \
 			resource_templates/qpidd.xml \
-			resource_templates/mysql.xml
+			resource_templates/mysqld.xml
 
 bin_SCRIPTS = pcloudsh vmlauncher
 
