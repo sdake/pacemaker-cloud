@@ -57,6 +57,7 @@ private:
 	int _resource_counter;
 	bool _status_changed;
 	bool _escalation_pending;
+	bool _dep_is_up;
 	qb_loop_timer_handle _processing_timer;
 
 	void create_assemblies(xmlNode * nodes);
@@ -69,6 +70,7 @@ private:
 	int32_t assembly_remove(std::string& name,
 				std::string& uuid);
 
+	void deployable_state_changed(string state, string reason);
 public:
 	Deployable();
 	Deployable(std::string& uuid, CommonAgent *agent);

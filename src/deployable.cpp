@@ -42,7 +42,7 @@ using namespace std;
 Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
 	_status_changed(false), _agent(agent), _file_count(0),
-	_resource_counter(0), _escalation_pending(false)
+	_resource_counter(0), _escalation_pending(false), _dep_is_up(false)
 {
 	uuid_t tmp_id;
 	char tmp_id_s[37];
@@ -455,10 +455,24 @@ Deployable::service_state_changed(const string& ass_name, string& service_name,
 	_agent->agent_session.raiseEvent(event);
 }
 
+
+void
+Deployable::deployable_state_changed(string state, string reason)
+{
+	qb_loop_timer_handle th;
+	qmf::Data event = qmf::Data(_agent->package.event_deployable_state_change);
+
+	event.setProperty("deployable", _uuid);
+	event.setProperty("reason", reason);
+	event.setProperty("state", state);
+	_agent->agent_session.raiseEvent(event);
+}
+
 void
 Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 {
 	qb_loop_timer_handle th;
+	bool is_up = true;
 	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
 
 	event.setProperty("deployable", _uuid);
@@ -466,6 +480,29 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
+
+	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
+	     a_iter != _assemblies.end(); a_iter++) {
+		Assembly *a = a_iter->second;
+		if (a->state_get() != Assembly::STATE_ONLINE) {
+			is_up = false;
+			break;
+		}
+	}
+	if (_escalation_pending) {
+		deployable_state_changed("failed",
+					 "assembly failure escalated to deployable");
+	} else {
+		if (is_up != _dep_is_up) {
+			_dep_is_up = is_up;
+			if (_dep_is_up) {
+				deployable_state_changed("running", "all assemblies active");
+			} else {
+				deployable_state_changed("recovering", "change in assembly state");
+			}
+		}
+	}
+
 	if (_escalation_pending) {
 		exit(EXIT_FAILURE);
 	}
