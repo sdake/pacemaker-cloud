@@ -28,6 +28,8 @@ import uuid
 import guestfs
 import fileinput
 import subprocess
+import base64
+import M2Crypto
 
 from pcloudsh import ifconfig
 from pcloudsh import resource
@@ -149,6 +151,60 @@ class Assembly(object):
             pass
         self.guest_unmount()
 
+    def generate_openssh_key(self):
+        """
+        Method to generate an OpenSSH compatible public/private keypair.
+        """
+        print("Generating new openssh key at %s/keys/%s\n" % (self.conf.dbdir, self.name))
+        privname = "/%s/keys/%s" % (self.conf.dbdir, self.name)
+        pubname = "/%s/keys/%s.pub" % (self.conf.dbdir, self.name)
+
+        if os.access(privname, os.F_OK) and not os.access(pubname, os.F_OK):
+            # hm, private key exists but not public?  We have to regenerate
+            os.unlink(privname)
+
+        if not os.access(privname, os.F_OK) and os.access(pubname, os.F_OK):
+            # hm, public key exists but not private?  We have to regenerate
+            os.unlink(pubname)
+
+        # when we get here, either both the private and public key exist, or
+        # neither exist.  If they don't exist, generate them
+        if not os.access(privname, os.F_OK) and not os.access(pubname, os.F_OK):
+            def _null_callback(p, n, out):
+                """
+                Method to silence the default M2Crypto.RSA.gen_key output.
+                """
+                pass
+
+            key = M2Crypto.RSA.gen_key(2048, 65537, _null_callback)
+
+            # this is the binary public key, in ssh "BN" (BigNumber) MPI format.
+            # The ssh BN MPI format consists of 4 bytes that describe the length
+            # of the following data, followed by the data itself in big-endian
+            # format.  The start of the string is 0x0007, which represent the 7
+            # bytes following that make up 'ssh-rsa'.  The key exponent and
+            # modulus as fetched out of M2Crypto are already in MPI format, so
+            # we can just use them as-is.  We then have to base64 encode the
+            # result, add a little header information, and then we have a
+            # full public key.
+            pubkey = '\x00\x00\x00\x07' + 'ssh-rsa' + key.e + key.n
+
+            username = os.getlogin()
+            hostname = os.uname()[1]
+            keystring = 'ssh-rsa %s root@pcmk-cloud\n' % (base64.b64encode(pubkey))
+            key.save_key(privname, cipher=None)
+            os.chmod(privname, 0600)
+            open(pubname, 'w').write(keystring)
+            os.chmod(pubname, 0644)
+
+    def install_ssh_key(self):
+        pubname = "/%s/keys/%s.pub" % (self.conf.dbdir, self.name)
+        self.guest_mount()
+        self.generate_openssh_key()
+        self.gfs.mkdir('/root/.ssh')
+        self.gfs.upload(pubname, '/root/.ssh/authorized_keys')
+        self.guest_unmount()
+        
     def clone_network_setup_debian(self, macaddr, qpid_broker_ip):
         self.guest_mount()
         # change hostname
@@ -321,6 +377,10 @@ class Assembly(object):
 
         # remove the udev net rule after the VM configuration is completed
         self.remove_udev_net()
+
+        # install a ssh key that we can use later to handle start
+        # and failure recovery reconfiguration
+        self.install_ssh_key()
 
         self.jeos_name = source.jeos_name
         self.save()

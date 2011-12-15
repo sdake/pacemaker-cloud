@@ -58,4 +58,7 @@ assydir = $(localstatedir)/lib/pacemaker-cloud/assemblies
 assy_DATA = assy1.tdl assy1-F14.tdl assy1-F15.tdl assy1-F16.tdl assy1-U10.tdl \
 	assy-wordpress-mysql-F16.tdl assy-wordpress-F16.tdl
 
-EXTRA_DIST = $(rscs_DATA) $(jeos_DATA) $(assy_DATA) $(bin_SCRIPTS) $(pcloudsh_PYTHON)
+keysdir = $(localstatedir)/lib/pacemaker-cloud/keys
+keys_DATA = keys/README
+
+EXTRA_DIST = $(rscs_DATA) $(jeos_DATA) $(assy_DATA) $(keys_DATA) $(bin_SCRIPTS) $(pcloudsh_PYTHON)

@@ -125,6 +125,8 @@ fi
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/assemblies
 %dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/jeos
+%dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/keys/
+%dir %attr(0755, root, root) %{_localstatedir}/lib/pacemaker-cloud/keys/README
 %{_localstatedir}/lib/pacemaker-cloud/assemblies/assy1.tdl
 %{_localstatedir}/lib/pacemaker-cloud/assemblies/assy1-F14.tdl
 %{_localstatedir}/lib/pacemaker-cloud/assemblies/assy1-F15.tdl
