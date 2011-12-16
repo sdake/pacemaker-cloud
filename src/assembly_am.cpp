@@ -439,13 +439,15 @@ AssemblyAm::escalate(void)
 void
 AssemblyAm::check_state(void)
 {
+	uint32_t old_state = _state;
 	uint32_t new_state = (this->*state_table[_state])();
-
-	if (state_action_table[_state][new_state]) {
-		(this->*state_action_table[_state][new_state])();
-	}
-	if (_state != new_state) {
+	
+	if (old_state != new_state) {
 		_state = new_state;
+	}
+
+	if (state_action_table[old_state][new_state]) {
+		(this->*state_action_table[old_state][new_state])();
 	}
 }
 
