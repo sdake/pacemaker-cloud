@@ -13,6 +13,14 @@
 
   <commands>
     <command name="commands">
+mkdir /var/lib/mysql/wordpress_database
+
+chown mysql.mysql /var/lib/mysql/wordpress_database
+
+echo "10.0.0.1:/mnt/wordpress_db /var/lib/mysql/wordpress_database nfs4 defaults 0 0" >> /etc/fstab
+
+mount /var/lib/mysql/wordpress_database
+
 systemctl start mysqld.service
 
 cat >> /tmp/mysql-wordpress-config &lt;&lt; EOF
