@@ -14,6 +14,8 @@
   <commands>
     <command name='commands'>
 /bin/sed --in-place --e s/database_name_here/wordpress_database/ --e s/username_here/wordpress_user/ --e s/password_here/wordpress_password/ --e s/localhost/assy-wordpress-mysql-F16/ /usr/share/wordpress/wp-config.php
+
+cp /usr/share/wordpress/wp-config.php /usr/share/wordpress/wp-config.orig
     </command>
   </commands>
 
