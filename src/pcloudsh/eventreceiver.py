@@ -31,7 +31,8 @@ class EventReceiver(qmf2.ConsoleHandler):
     def eventRaised(self, agent, data, timestamp, severity):
         props = data.getProperties()
         print "Event: %r" % (props)
-        if not 'assembly' in props:
+        reason = props['reason']
+        if reason == 'all assemblies active':
             dep = props['deployable']
             state = props['state']
             script = '%s/%s.sh' % (self.conf.dbdir, dep)
