@@ -13,13 +13,8 @@
 
   <commands>
     <command name="commands">
-mkdir /var/lib/mysql/wordpress_database
-
-chown mysql.mysql /var/lib/mysql/wordpress_database
-
 echo "10.0.0.1:/mnt/wordpress_db /var/lib/mysql/wordpress_database nfs4 defaults 0 0" >> /etc/fstab
 
-mount /var/lib/mysql/wordpress_database
 
 systemctl start mysqld.service
 
@@ -34,6 +29,16 @@ EOF
 cat /tmp/mysql-wordpress-config | mysql
 
 rm -f /tmp/mysql-wordpress-config
+
+mv /var/lib/mysql/wordpress_database /var/lib/mysql/wordpress_database.orig
+
+mkdir /var/lib/mysql/wordpress_database
+
+mount /var/lib/mysql/wordpress_database
+
+chown mysql.mysql /var/lib/mysql/wordpress_database
+
+mv /var/lib/mysql/wordpress_database.orig/* /var/lib/mysql/wordpress_database
 
 /bin/sed --in-place --e s/Restart=always// /lib/systemd/system/mysqld.service
 
