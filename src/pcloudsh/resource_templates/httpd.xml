@@ -1,1 +1,1 @@
-<resource type="httpd" class="lsb" provider="pacemaker" monitor_interval="65s"/>
+<resource type="httpd" class="lsb" provider="pacemaker" monitor_interval="10s"/>
