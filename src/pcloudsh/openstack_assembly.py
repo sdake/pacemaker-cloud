@@ -46,6 +46,11 @@ class OpenstackAssembly(assembly.Assembly):
 
     def start(self):
         self.l.debug('starting openstack:%s:%s' % (self.deployment, self.name))
+
+        inst = self.image_to_instance(self.name)
+        if inst != None:
+            return
+
         cmd = 'su -c \". ./novarc && euca-run-instances %s -k nova_key\" %s' % (self.name, self.username)
         self.l.debug('cmd: %s' % (str(cmd)))
         try:
