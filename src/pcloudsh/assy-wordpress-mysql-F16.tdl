@@ -13,7 +13,7 @@
 
   <commands>
     <command name="commands">
-echo "10.0.0.1:/mnt/wordpress_db /var/lib/mysql/wordpress_database nfs4 defaults 0 0" >> /etc/fstab
+echo "10.0.0.1:/mnt/wordpress_db /var/lib/mysql/wordpress_database nfs nfsvers=3 0 0" >> /etc/fstab
 
 
 systemctl start mysqld.service
