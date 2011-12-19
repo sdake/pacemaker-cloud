@@ -43,6 +43,7 @@ QmfAgent::~QmfAgent()
 {
 	QmfAsyncRequest *ar;
 	qpid::types::Variant::Map empty_args;
+	empty_args["rc"] = OCF_UNKNOWN_ERROR;
 
 	map<uint32_t, QmfAsyncRequest*>::iterator call;
 	for (call = _outstanding_calls.begin();

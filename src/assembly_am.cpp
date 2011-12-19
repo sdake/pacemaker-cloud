@@ -49,7 +49,11 @@ resource_method_response(QmfAsyncRequest* ar,
 	if (rpc_rc == QmfObject::RPC_OK) {
 		op = (struct pe_operation *)ar->user_data;
 		rsc = (Resource *)op->resource;
-		rc = pe_resource_ocf_exitcode_get(op, out_args["rc"].asUint32());
+		if (out_args.count("rc") > 0) {
+			rc = pe_resource_ocf_exitcode_get(op, out_args["rc"].asUint32());
+		} else {
+			rc = OCF_UNKNOWN_ERROR;
+		}
 		op->times_executed++;
 
 		rsc->completed(op, rc);
@@ -60,7 +64,7 @@ resource_method_response(QmfAsyncRequest* ar,
 		op = (struct pe_operation *)ar->user_data;
 		rsc = (Resource *)op->resource;
 
-		if (out_args.size() >= 1) {
+		if (out_args.count("error_text") > 0) {
 			string error(out_args["error_text"]);
 			qb_log(LOG_NOTICE, "%s'ing: %s [%s:%s] on %s (interval:%d ms) result:%s",
 			       op->method, op->rname, op->rclass, op->rtype, op->hostname,
