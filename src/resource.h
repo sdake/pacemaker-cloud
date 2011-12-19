@@ -68,6 +68,7 @@ public:
 		 int num_failures, int failure_period);
 	~Resource();
 
+	bool is_running(void) {return _state == STATE_RUNNING; }
 	void stop(struct pe_operation *op);
 	void delete_op_history(struct pe_operation *op);
 	void start_recurring(struct pe_operation *op);

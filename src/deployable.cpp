@@ -453,6 +453,8 @@ Deployable::service_state_changed(const string& ass_name, string& service_name,
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
+
+	check_state();
 }
 
 
@@ -472,7 +474,6 @@ void
 Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 {
 	qb_loop_timer_handle th;
-	bool is_up = true;
 	qmf::Data event = qmf::Data(_agent->package.event_assembly_state_change);
 
 	event.setProperty("deployable", _uuid);
@@ -480,6 +481,27 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 	event.setProperty("state", state);
 	event.setProperty("reason", reason);
 	_agent->agent_session.raiseEvent(event);
+
+	if (_escalation_pending) {
+		deployable_state_changed("failed",
+					 "assembly failure escalated to deployable");
+	} else {
+		check_state();
+	}
+
+	if (_escalation_pending) {
+		exit(EXIT_FAILURE);
+	}
+	schedule_processing();
+	if (state == "failed") {
+		a->restart();
+	}
+}
+
+void
+Deployable::check_state(void)
+{
+	bool is_up = true;
 
 	for (map<string, Assembly*>::iterator a_iter = _assemblies.begin();
 	     a_iter != _assemblies.end(); a_iter++) {
@@ -489,26 +511,23 @@ Deployable::assembly_state_changed(Assembly *a, string state, string reason)
 			break;
 		}
 	}
-	if (_escalation_pending) {
-		deployable_state_changed("failed",
-					 "assembly failure escalated to deployable");
-	} else {
-		if (is_up != _dep_is_up) {
-			_dep_is_up = is_up;
-			if (_dep_is_up) {
-				deployable_state_changed("running", "all assemblies active");
-			} else {
-				deployable_state_changed("recovering", "change in assembly state");
+	if (is_up) {
+		for (map<string, Resource*>::iterator r_iter = _resources.begin();
+		     r_iter != _resources.end(); r_iter++) {
+			Resource *r = r_iter->second;
+			if (!r->is_running()) {
+				is_up = false;
+				break;
 			}
 		}
 	}
-
-	if (_escalation_pending) {
-		exit(EXIT_FAILURE);
-	}
-	schedule_processing();
-	if (state == "failed") {
-		a->restart();
+	if (is_up != _dep_is_up) {
+		_dep_is_up = is_up;
+		if (_dep_is_up) {
+			deployable_state_changed("running", "all assemblies active");
+		} else {
+			deployable_state_changed("recovering", "change in assembly state");
+		}
 	}
 }
 

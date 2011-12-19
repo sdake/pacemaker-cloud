@@ -71,6 +71,7 @@ private:
 				std::string& uuid);
 
 	void deployable_state_changed(string state, string reason);
+	void check_state(void);
 public:
 	Deployable();
 	Deployable(std::string& uuid, CommonAgent *agent);
