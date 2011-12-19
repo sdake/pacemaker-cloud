@@ -20,6 +20,8 @@
  */
 #include "config.h"
 
+#define HEALTHCHECK_TIMEOUT 20
+
 #include <qb/qblog.h>
 
 #include <iostream>
@@ -332,11 +334,11 @@ AssemblyAm::check_state_online(void)
 
 	if (_hb_state == HEARTBEAT_OK) {
 		elapsed = g_timer_elapsed(_last_heartbeat, NULL);
-		if (elapsed > (5 * 1.5)) {
+		if (elapsed > HEALTHCHECK_TIMEOUT) {
 			_hb_state = AssemblyAm::HEARTBEAT_NOT_RECEIVED;
 			qb_log(LOG_WARNING,
-			       "assembly (%s) heartbeat too late! (%.2f > 5 seconds)",
-			       _name.c_str(), elapsed);
+			       "assembly (%s) heartbeat too late! (%.2f > %d seconds)",
+			       _name.c_str(), elapsed, HEALTHCHECK_TIMEOUT);
 		}
 	}
 	if (_hb_state != HEARTBEAT_OK) {
@@ -416,10 +418,10 @@ AssemblyAm::heartbeat_recv(uint32_t timestamp, uint32_t sequence)
 	}
 	g_timer_stop(_last_heartbeat);
 	elapsed = g_timer_elapsed(_last_heartbeat, NULL);
-	if (elapsed > (5 * 1.5)) {
+	if (elapsed > HEALTHCHECK_TIMEOUT) {
 		_hb_state = AssemblyAm::HEARTBEAT_NOT_RECEIVED;
-		qb_log(LOG_WARNING, "assembly heartbeat too late! (%.2f > 5 seconds)",
-		       elapsed);
+		qb_log(LOG_WARNING, "assembly heartbeat too late! (%.2f > %d seconds)",
+		       elapsed, HEALTHCHECK_TIMEOUT);
 		return;
 	}
 	g_timer_start(_last_heartbeat);
