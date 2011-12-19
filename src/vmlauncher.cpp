@@ -11,7 +11,7 @@
  * (at your option) any later version.
  *
  * pacemaker-cloud is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * but WITHOUT ANY WARRANTY; without ev:w!en the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
@@ -55,6 +55,9 @@ void
 VmLauncher::start(Assembly *a)
 {
 	qpid::types::Variant::Map in_args;
+
+	qb_log(LOG_NOTICE, "vmlauncher starting '%s'\n", a->name_get().c_str());
+
 	in_args["name"] = a->name_get();
 	in_args["uuid"] = a->uuid_get();
 	_vm_launcher.method_call_async("start", in_args, a, 5000);
@@ -64,6 +67,8 @@ void
 VmLauncher::stop(Assembly *a)
 {
 	qpid::types::Variant::Map in_args;
+	qb_log(LOG_NOTICE, "vmlauncher stopping '%s'\n", a->name_get().c_str());
+
 	in_args["name"] = a->name_get();
 	in_args["uuid"] = a->uuid_get();
 	_vm_launcher.method_call_async("stop", in_args, a, 5000);
@@ -73,6 +78,9 @@ void
 VmLauncher::restart(Assembly *a)
 {
 	qpid::types::Variant::Map in_args;
+	qb_log(LOG_NOTICE, "vmlauncher restarting '%s'\n",
+		a->name_get().c_str());
+
 	in_args["name"] = a->name_get();
 	in_args["uuid"] = a->uuid_get();
 	_vm_launcher.method_call_async("restart", in_args, a, 5000);
@@ -82,6 +90,9 @@ void
 VmLauncher::status(Assembly *a)
 {
 	qpid::types::Variant::Map in_args;
+
+	qb_log(LOG_NOTICE, "vmlauncher status '%s'\n", a->name_get().c_str());
+
 	in_args["name"] = a->name_get();
 	in_args["uuid"] = a->uuid_get();
 	_vm_launcher.method_call_async("status", in_args, a, 5000);
