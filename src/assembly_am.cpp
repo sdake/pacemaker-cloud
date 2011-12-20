@@ -439,7 +439,7 @@ AssemblyAm::escalate(void)
 		}
 		_state = new_state;
 	}
-	restart();
+	stop();
 }
 
 void
