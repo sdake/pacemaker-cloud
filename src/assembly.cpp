@@ -50,11 +50,7 @@ Assembly::start(void)
 void
 Assembly::stop(void)
 {
-	if (_state > STATE_INIT) {
-		_state = STATE_INIT;
-		_vml->stop(this);
-	}
-	deref();
+	_vml->stop(this);
 }
 
 void
