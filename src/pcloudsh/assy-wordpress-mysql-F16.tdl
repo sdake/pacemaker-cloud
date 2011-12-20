@@ -13,8 +13,29 @@
 
   <commands>
     <command name="commands">
-echo "10.0.0.1:/mnt/wordpress_db /var/lib/mysql/wordpress_database nfs nfsvers=3 0 0" >> /etc/fstab
+echo "ping -i 0.1 10.0.0.1 > /dev/null &amp;" >> /etc/rc.d/rc.local
 
+iscsiadm -m discovery -t sendtargets -p 192.168.122.1
+
+iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 192.168.122.1 --login
+
+echo "y" | mkfs.ext3 /dev/sda
+
+mv /var/lib/mysql /var/lib/mysql.orig
+
+mkdir /var/lib/mysql
+
+mount /dev/sda /var/lib/mysql
+
+chown mysql.mysql /var/lib/mysql
+
+/bin/cp -aR /var/lib/mysql.org/* /var/lib/mysql
+
+echo "iscsiadm -m discovery -t sendtargets -p 10.0.0.1" >> /etc/rc.d/rc.local
+
+echo "iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 10.0.0.1 --login" >> /etc/rc.d/rc.local
+
+echo "mount /dev/sda /var/lib/mysql" >> /etc/rc.d/rc.local
 
 systemctl start mysqld.service
 
@@ -28,17 +49,7 @@ EOF
 
 cat /tmp/mysql-wordpress-config | mysql
 
-rm -f /tmp/mysql-wordpress-config
-
-mv /var/lib/mysql/wordpress_database /var/lib/mysql/wordpress_database.orig
-
-mkdir /var/lib/mysql/wordpress_database
-
-mount /var/lib/mysql/wordpress_database
-
-chown mysql.mysql /var/lib/mysql/wordpress_database
-
-mv /var/lib/mysql/wordpress_database.orig/* /var/lib/mysql/wordpress_database
+systemctl stop mysqld.service
 
 /bin/sed --in-place --e s/Restart=always// /lib/systemd/system/mysqld.service
 
@@ -60,6 +71,9 @@ chmod 755 /etc/rc.d/init.d/mysqld
     </package>
     <package name="mysql-server">
       <file>mysql-server</file>
+    </package>
+    <package name="iscsi-initiator-utils">
+      <file>iscsi-initiator-utils</file>
     </package>
   </packages>
 </template>
