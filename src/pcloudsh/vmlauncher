@@ -20,6 +20,7 @@
 import os
 import os.path
 import sys
+import time
 import argparse
 import signal
 import daemon
@@ -104,6 +105,10 @@ class VMLauncher(AgentHandler):
 
                 elif methodName == "restart":
                     fac.get(name).stop()
+                    st = 'running'
+                    while st != 'stopped':
+                        time.sleep(1)
+                        st = fac.get(name).status()
                     fac.get(name).start()
                     self.session.methodSuccess(handle)
 
