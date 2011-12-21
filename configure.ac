@@ -73,7 +73,7 @@ fail=0
     [fail=1; AC_MSG_WARN([Please install pacemaker-devel])])
 
   AC_CHECK_HEADER([heartbeat/glue_config.h],,
-    [fail=1; AC_MSG_FAILURE([Please install heartbeat-devel])])
+    [fail=1; AC_MSG_FAILURE([Please install cluster-glue-libs-devel])])
 
   AC_CHECK_HEADER([clplumbing/lsb_exitcodes.h],,
     [fail=1; AC_MSG_FAILURE([Please install cluster-glue-libs-devel])])
