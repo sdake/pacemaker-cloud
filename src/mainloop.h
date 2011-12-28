@@ -25,6 +25,7 @@
 
 #include <qmf/AgentSession.h>
 #include <qmf/AgentEvent.h>
+#include <qmf/posix/EventNotifier.h>
 
 typedef struct mainloop_qmf_session_s
 {
@@ -56,6 +57,11 @@ int32_t mainloop_timer_add(uint32_t msec_duration,
 int32_t mainloop_timer_del(qb_loop_timer_handle th);
 
 bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
+
+int32_t mainloop_fd_add(uint32_t fd,
+        int32_t events,
+        void *data,
+        qb_loop_poll_dispatch_fn dispatch_fn);
 
 #ifdef __cplusplus
 }

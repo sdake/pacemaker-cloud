@@ -21,12 +21,14 @@
 #include "config.h"
 
 #include <qb/qblog.h>
+#include <sys/epoll.h>
 #include <uuid/uuid.h>
 
 #include <string>
 #include <map>
 
 #include <qmf/DataAddr.h>
+#include <qmf/posix/EventNotifier.h>
 
 #include "mainloop.h"
 #include "qmf_agent.h"
@@ -78,16 +80,14 @@ QmfMultiplexer::process_events(void)
 	return true;
 }
 
-static void
-_poll_for_qmf_events(void* data)
+static int
+_poll_for_qmf_events(int32_t fd, int32_t revents, void *data)
 {
 	QmfMultiplexer *m = (QmfMultiplexer *)data;
 	qb_loop_timer_handle timer_handle;
 
-	if (m->process_events()) {
-		mainloop_timer_add(1000, data,
-				   _poll_for_qmf_events,
-				   &timer_handle);
+	if (revents | EPOLLIN) {
+		m->process_events();
 	}
 }
 
@@ -101,6 +101,8 @@ void
 QmfMultiplexer::start(void)
 {
 	qb_loop_timer_handle timer_handle;
+	int fd;
+	qmf::posix::EventNotifier *event_notifier;
 
 	connection = new qpid::messaging::Connection(_url, "");
 	connection->open();
@@ -109,11 +111,12 @@ QmfMultiplexer::start(void)
 	session->setAgentFilter(_filter);
 	session->open();
 
+	event_notifier = new qmf::posix::EventNotifier(*session);
+
 	qb_log(LOG_DEBUG, "session to %s open [filter:%s",
 	       _url.c_str(), _filter.c_str());
 
-	mainloop_timer_add(1000, this,
-			   _poll_for_qmf_events,
-			   &timer_handle);
+	mainloop_fd_add(event_notifier->getHandle(), EPOLLIN, this,
+		_poll_for_qmf_events);
 }
 

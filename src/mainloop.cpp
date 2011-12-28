@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <sys/epoll.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
 #include "mainloop.h"
@@ -32,8 +33,8 @@ mainloop_default_set(qb_loop_t* l)
 	default_loop = l;
 }
 
-static void
-mainloop_qmf_session_dispatch(void *user_data)
+static int
+_poll_for_qmf_events(int32_t fd, int32_t revents, void *user_data)
 {
 	mainloop_qmf_session_t *trig = (mainloop_qmf_session_t *)user_data;
 	bool rerun = true;
@@ -44,14 +45,7 @@ mainloop_qmf_session_dispatch(void *user_data)
 
 		rerun = trig->dispatch(&trig->event, trig->user_data);
 	}
-	if (rerun) {
-		qb_loop_timer_add(default_loop,
-				  QB_LOOP_MED,
-				  500 * QB_TIME_NS_IN_MSEC,
-				  trig,
-				  mainloop_qmf_session_dispatch,
-				  &th);
-	} else {
+	if (rerun == 0) {
 		free(trig);
 	}
 }
@@ -62,7 +56,8 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 		void* userdata)
 {
 	mainloop_qmf_session_t *qmf_source;
-	qb_loop_timer_handle th;
+        qmf::posix::EventNotifier *event_notifier;
+
 
 	qmf_source = (mainloop_qmf_session_t *)calloc(1, sizeof(mainloop_qmf_session_t));
 	assert(qmf_source != NULL);
@@ -70,13 +65,10 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	qmf_source->dispatch = dispatch;
 	qmf_source->user_data = userdata;
 	qmf_source->asession = asession;
+	event_notifier = new qmf::posix::EventNotifier(*asession);
 
-	qb_loop_timer_add(default_loop,
-			  QB_LOOP_MED,
-			  500 * QB_TIME_NS_IN_MSEC,
-			  qmf_source,
-			  mainloop_qmf_session_dispatch,
-			  &th);
+        mainloop_fd_add(event_notifier->getHandle(), EPOLLIN, qmf_source,
+                _poll_for_qmf_events);
 
 	return qmf_source;
 }
@@ -104,6 +96,16 @@ mainloop_timer_add(uint32_t msec_duration,
 				 data,
 				 dispatch_fn,
 				 timer_handle_out);
+}
+
+int32_t
+mainloop_fd_add(uint32_t fd,
+	int32_t events,
+	void *data,
+	qb_loop_poll_dispatch_fn dispatch_fn)
+{
+	return qb_loop_poll_add(default_loop, QB_LOOP_MED,
+		fd, events, data, dispatch_fn);
 }
 
 int32_t
