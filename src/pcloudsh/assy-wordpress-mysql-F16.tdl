@@ -13,8 +13,6 @@
 
   <commands>
     <command name="commands">
-echo "ping -i 0.1 10.0.0.1 > /dev/null &amp;" >> /etc/rc.d/rc.local
-
 iscsiadm -m discovery -t sendtargets -p 192.168.122.1
 
 iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 192.168.122.1 --login
