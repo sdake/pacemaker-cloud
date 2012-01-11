@@ -30,11 +30,50 @@ class EventReceiver(qmf2.ConsoleHandler):
 
     def eventRaised(self, agent, data, timestamp, severity):
         props = data.getProperties()
-        print "Event: %r" % (props)
         reason = props['reason']
+        state = props['state']
+
+        try:
+            service = props['service']
+        except:
+            service = ""
+
+        try:
+            assembly = props['assembly']
+        except:
+            assembly = ""
+
+        try:
+          deployable = props['deployable']
+        except:
+            deployable = ""
+
+        print 'reasaon %s' % reason
         if reason == 'all assemblies active':
-            dep = props['deployable']
-            state = props['state']
-            script = '%s/%s.sh' % (self.conf.dbdir, dep)
+            script = '%s/%s.sh' % (self.conf.dbdir, deployable)
             if os.access(script, os.R_OK):
                 os.system('%s %s' % (script, state))
+
+        if reason == 'All good':
+            print 'The assembly %s in deployable %s is ACTIVE.' % (assembly, deployable)
+
+        if reason == 'Started OK':
+            print 'The resource %s in assembly %s in deployable %s is ACTIVE.' % (service, assembly, deployable)
+
+        if reason == 'monitor failed':
+            print 'The resource %s in assembly %s in deployable %s FAILED.' % (service, assembly, deployable)
+
+        if reason == 'all assemblies active':
+            print 'The deployable %s is ACTIVE.' % deployable
+
+        if reason == 'Not reachable':
+            print 'The assembly %s in deployable %s FAILED.' % (assembly, deployable)
+
+        if reason == 'change in assembly state':
+            print 'The deployable %s is RECOVERING.' % deployable
+
+        if reason == 'escalating service failure':
+            print 'A service recovery escalation terminated assembly %s in deployable %s.' % (assembly, deployable)
+
+        if reason == 'assembly failure escalated to deployable':
+            print 'An assembly recovery escalation terminated deployable %s.' % deployable
