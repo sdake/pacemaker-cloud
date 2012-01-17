@@ -30,6 +30,12 @@
 
 * [libcurl](http://curl.haxx.se/)
 
+### 1.1) Dependencies to run pcloudsh
+
+* m2crypto
+* python-libguestfs
+* python-qpid-qmf
+* python-daemon
 
 ## 2) Building on Specific Distributions
 
