@@ -243,7 +243,7 @@ class pcloudsh(cmd.Cmd, object):
                 print '*** deployable %s does not exist' % options[0]
 
     def print_assembly_list(self, al):
-        print ' %-12s %-14s %-32s' % ('Name', 'Infrastucture', 'UUID')
+        print ' %-12s %-14s %-32s' % ('Name', 'Infrastructure', 'UUID')
         print '-------------------------------------------------------------'
         for a in al:
             print ' %-12s %-14s %-32s' % (a.name, a.infrastructure, a.uuid)
@@ -393,7 +393,7 @@ class pcloudsh(cmd.Cmd, object):
 
   The jeos_list action lists existing JEOS images registered with the system.
         """
-        print ' %-12s %-32s' % ('Name', 'arch')
+        print ' %-12s %-32s' % ('Name', 'Arch')
         print '------------------------------------------------'
         for j in self.j.all_get():
             print ' %-12s %-32s' % (j.name, j.arch)
