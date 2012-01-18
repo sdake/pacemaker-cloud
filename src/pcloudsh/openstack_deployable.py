@@ -112,6 +112,8 @@ class OpenstackDeployable(deployable.Deployable):
         os.system('unzip %s -d %s' % (zipfilename, novacreds))
         os.system('ssh-keygen -f %s' % os.path.join(novacreds, 'nova_key'))
 
+        self.conf.load_novarc(self.name)
+
         cwd = os.getcwd()
         os.chdir(novacreds)
         os.system('euca-add-keypair nova_key > nova_key.priv')
@@ -122,7 +124,6 @@ class OpenstackDeployable(deployable.Deployable):
                 os.chown(os.path.join(novacreds, fn), uid, gid)
                 os.chmod(os.path.join(novacreds, fn), 0600)
 
-        self.conf.load_novarc(self.name)
         return True
 
     def delete(self):
