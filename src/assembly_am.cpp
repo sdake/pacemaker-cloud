@@ -276,10 +276,12 @@ AssemblyAm::op_history_del_by_resource(Resource* r)
 void
 AssemblyAm::op_history_clear(void)
 {
-	for (map<string, struct operation_history*>::iterator iter = op_history.begin();
-	     iter != op_history.end(); iter++) {
-		struct operation_history *oh = iter->second;
-		op_history.erase(iter);
+	map<std::string, struct operation_history*>::iterator it;
+	
+	for (it = op_history.begin(); it != op_history.end();
+		op_history.erase(it++)) {
+
+		struct operation_history *oh = it->second;
 		delete oh->rsc_id;
 		delete oh->operation;
 		free(oh);
