@@ -14,7 +14,6 @@
   <commands>
     <command name="commands">
 iscsiadm -m discovery -t sendtargets -p 192.168.122.1
-
 iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 192.168.122.1 --login
 
 echo "y" | mkfs.ext3 /dev/sda
@@ -27,13 +26,17 @@ mount /dev/sda /var/lib/mysql
 
 chown mysql.mysql /var/lib/mysql
 
-/bin/cp -aR /var/lib/mysql.org/* /var/lib/mysql
+cp -aR /var/lib/mysql.org/* /var/lib/mysql
 
-echo "iscsiadm -m discovery -t sendtargets -p 10.0.0.1" >> /etc/rc.d/rc.local
-
-echo "iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 10.0.0.1 --login" >> /etc/rc.d/rc.local
-
-echo "mount /dev/sda /var/lib/mysql" >> /etc/rc.d/rc.local
+echo '
+iscsiadm -m discovery -t sendtargets -p 10.0.0.1
+iscsiadm --mode node --targetname iqn.2001-04.com.beast-iqn.2001-04.com.beast.wordpress --portal 10.0.0.1 --login
+until mount /dev/sda /var/lib/mysql; do
+    sleep .1
+    count=$(($count+1))
+    [ $count -gt 50 ] &amp;&amp; break # Only try for 5 seconds
+done
+' >> /etc/rc.d/rc.local
 
 systemctl start mysqld.service
 
