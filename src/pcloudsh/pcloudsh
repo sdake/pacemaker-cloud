@@ -279,12 +279,12 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 3:
-            self.do_help("assembly_create");
+            self.do_help("assembly_create")
         elif not options[1] in self.distros:
-            self.do_help("assembly_create");
+            self.do_help("assembly_create")
             print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[2] == 'x86_64':
-            self.do_help("assembly_create");
+            self.do_help("assembly_create")
         else:
             self.a.create(options[0], '%s-%s' % (options[1], options[2]))
     do_assembly_create.__doc__ %= '|'.join(distros)
@@ -301,7 +301,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 1:
-            self.do_help("assembly_delete");
+            self.do_help("assembly_delete")
         else:
             self.a.delete(options[0])
 
@@ -315,7 +315,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 0:
-            self.do_help("assembly_list");
+            self.do_help("assembly_list")
         else:
             self.print_assembly_list(self.a.all_get())
 
@@ -329,7 +329,7 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         option_len = len(options)
         if option_len != 3:
-            self.do_help("escalation_assembly_set");
+            self.do_help("escalation_assembly_set")
         else:
             an = options[0]
             if not self.a.exists(an):
@@ -354,12 +354,12 @@ class pcloudsh(cmd.Cmd, object):
 
         options = s.split()
         if not len(options) == 2:
-            self.do_help("jeos_create");
+            self.do_help("jeos_create")
         elif not options[0] in self.distros:
-            self.do_help("jeos_create");
+            self.do_help("jeos_create")
             print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[1] == 'x86_64':
-            self.do_help("jeos_create");
+            self.do_help("jeos_create")
         else:
             print 'Creating a JEOS image - this can take up to 30 minutes'
             self.j.create(options[0], options[1])
@@ -375,12 +375,12 @@ class pcloudsh(cmd.Cmd, object):
 
         options = s.split()
         if not len(options) == 2:
-            self.do_help("jeos_delete");
+            self.do_help("jeos_delete")
         elif not options[0] in self.distros:
-            self.do_help("jeos_delete");
+            self.do_help("jeos_delete")
             print 'supported platforms: %s' % ', '.join(self.distros)
         elif not options[1] == 'x86_64':
-            self.do_help("jeos_delete");
+            self.do_help("jeos_delete")
         else:
             self.j.delete(options[0], options[1])
     do_jeos_delete.__doc__ %= '|'.join(distros)
@@ -406,7 +406,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 3:
-            self.do_help("assembly_resource_add");
+            self.do_help("assembly_resource_add")
         else:
             print 'assembly_resource_add %s' % str(options)
             if not self.a.exists(options[2]):
@@ -425,7 +425,7 @@ class pcloudsh(cmd.Cmd, object):
         options = s.split()
         option_len = len(options)
         if option_len != 4:
-            self.do_help("escalation_resource_set");
+            self.do_help("escalation_resource_set")
         else:
             an = options[1]
             rn = options[0]
@@ -447,7 +447,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 2:
-            self.do_help("assembly_resource_remove");
+            self.do_help("assembly_resource_remove")
         else:
             print 'assembly_resource_remove %s' % str(options)
             if not self.a.exists(options[1]):
@@ -464,7 +464,7 @@ class pcloudsh(cmd.Cmd, object):
         """
         options = s.split()
         if not len(options) == 1:
-            self.do_help("assembly_resource_list");
+            self.do_help("assembly_resource_list")
         else:
             if not self.a.exists(options[0]):
                 print '*** assembly %s does not exist' % options[0]

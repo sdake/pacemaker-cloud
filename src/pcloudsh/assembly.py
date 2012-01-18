@@ -340,7 +340,7 @@ class Assembly(object):
             return -1
 
         print "source file is %s-jeos.xml" % source.jeos_name
-        self.jeos_doc = libxml2.parseFile("%s/jeos/%s-jeos.xml" % (self.conf.dbdir, source.jeos_name));
+        self.jeos_doc = libxml2.parseFile("%s/jeos/%s-jeos.xml" % (self.conf.dbdir, source.jeos_name))
 
         source_xml = self.jeos_doc.xpathEval('/domain/devices/disk/source')
         print 'Copying %s to %s' % (source.image, self.image)

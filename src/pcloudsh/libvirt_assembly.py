@@ -34,7 +34,7 @@ class LibVirtAssembly(assembly.Assembly):
     def start(self):
         self.l.info('starting virt:%s:%s' % (self.deployment, self.name))
         libvirt_xml = libxml2.parseFile('/var/lib/pacemaker-cloud/assemblies/%s.xml' % self.name)
-        libvirt_doc = libvirt_xml.serialize(None, 1);
+        libvirt_doc = libvirt_xml.serialize(None, 1)
         try:
             c = libvirt.open("qemu:///system")
             libvirt_dom = c.createXML(libvirt_doc, 0)
