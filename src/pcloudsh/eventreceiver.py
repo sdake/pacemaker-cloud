@@ -17,9 +17,8 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
 import os
-import cqpid
+import sys
 import qmf2
-import threading
 from pcloudsh import pcmkconfig
 
 class EventReceiver(qmf2.ConsoleHandler):
@@ -33,47 +32,43 @@ class EventReceiver(qmf2.ConsoleHandler):
         reason = props['reason']
         state = props['state']
 
-        try:
-            service = props['service']
-        except:
-            service = ""
+        service = props.get('service','')
+        assembly = props.get('assembly','')
+        deployable = props.get('deployable','')
 
-        try:
-            assembly = props['assembly']
-        except:
-            assembly = ""
+        if sys.stdout.isatty():
+            ACTIVE = "\x1b[1;37;42mACTIVE\x1b[0m"
+            RECOVERING ="\x1b[30;43mRECOVERING\x1b[0m"
+            FAILED = "\x1b[01;37;41mFAILED\x1b[0m"
+        else:
+            ACTIVE = "ACTIVE"
+            RECOVERING ="RECOVERING"
+            FAILED = "FAILED"
 
-        try:
-          deployable = props['deployable']
-        except:
-            deployable = ""
+        event_desc = {
+            'All good':
+              'The assembly [%(assembly)s] in deployable [%(deployable)s] is %(ACTIVE)s.',
+            'Started OK':
+              'The resource [%(service)s] in assembly [%(assembly)s] in deployable [%(deployable)s] is %(ACTIVE)s.',
+            'monitor failed':
+              'The resource [%(service)s] in assembly [%(assembly)s] in deployable [%(deployable)s] %(FAILED)s.',
+            'all assemblies active':
+              'The deployable [%(deployable)s] is %(ACTIVE)s.',
+            'Not reachable':
+              'The assembly [%(assembly)s] in deployable [%(deployable)s] %(FAILED)s.',
+            'change in assembly state':
+              'The deployable [%(deployable)s] is %(RECOVERING)s.',
+            'escalating service failure':
+              'A service recovery escalation terminated assembly [%(assembly)s] in deployable [%(deployable)s].',
+            'assembly failure escalated to deployable':
+              'An assembly recovery escalation terminated deployable [%(deployable)s].'
+        }
 
-        print 'reasaon %s' % reason
+        print event_desc.get(reason,'') % locals()
+        print '  Reason: %s' % reason
+
+        # Run helper script in case IPs have changed
         if reason == 'all assemblies active':
             script = '%s/%s.sh' % (self.conf.dbdir, deployable)
             if os.access(script, os.R_OK):
                 os.system('%s %s' % (script, state))
-
-        if reason == 'All good':
-            print 'The assembly %s in deployable %s is ACTIVE.' % (assembly, deployable)
-
-        if reason == 'Started OK':
-            print 'The resource %s in assembly %s in deployable %s is ACTIVE.' % (service, assembly, deployable)
-
-        if reason == 'monitor failed':
-            print 'The resource %s in assembly %s in deployable %s FAILED.' % (service, assembly, deployable)
-
-        if reason == 'all assemblies active':
-            print 'The deployable %s is ACTIVE.' % deployable
-
-        if reason == 'Not reachable':
-            print 'The assembly %s in deployable %s FAILED.' % (assembly, deployable)
-
-        if reason == 'change in assembly state':
-            print 'The deployable %s is RECOVERING.' % deployable
-
-        if reason == 'escalating service failure':
-            print 'A service recovery escalation terminated assembly %s in deployable %s.' % (assembly, deployable)
-
-        if reason == 'assembly failure escalated to deployable':
-            print 'An assembly recovery escalation terminated deployable %s.' % deployable
