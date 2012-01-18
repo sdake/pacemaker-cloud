@@ -42,7 +42,8 @@ using namespace std;
 Deployable::Deployable(std::string& uuid, CommonAgent *agent) :
 	_name(""), _uuid(uuid), _crmd_uuid(""), _config(NULL), _pe(NULL),
 	_status_changed(false), _agent(agent), _file_count(0),
-	_resource_counter(0), _escalation_pending(false), _dep_is_up(false)
+	_resource_counter(0), _escalation_pending(false), _dep_is_up(false),
+	_processing_timer(0)
 {
 	uuid_t tmp_id;
 	char tmp_id_s[37];
