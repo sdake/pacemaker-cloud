@@ -201,7 +201,7 @@ class pcloudsh(cmd.Cmd, object):
             self.do_help("deployable_assembly_add")
         else:
             if self.d.exists(options[0]):
-                self.d.get(options[0]).assembly_add(options[1])
+                self.d.get(options[0]).assembly_add(options[1], self.a)
             else:
                 print '*** deployable %s does not exist' % options[0]
 
@@ -220,7 +220,7 @@ class pcloudsh(cmd.Cmd, object):
             self.do_help("deployable_assembly_remove")
         else:
             if self.d.exists(options[0]):
-                self.d.get(options[0]).assembly_remove(options[1])
+                self.d.get(options[0]).assembly_remove(options[1], self.a)
             else:
                 print '*** deployable %s does not exist' % options[0]
 

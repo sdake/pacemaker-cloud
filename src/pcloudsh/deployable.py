@@ -72,8 +72,9 @@ class DeployableDb(object):
 
         self.factory.save()
 
-    def assembly_add(self, aname):
-        fac = assembly_factory.AssemblyFactory(self.factory.l)
+    def assembly_add(self, aname, fac=None):
+        if not fac:
+            fac = assembly_factory.AssemblyFactory(self.factory.l)
         if not fac.exists(aname):
             print '*** Assembly %s does not exist' % (aname)
             return
@@ -90,9 +91,9 @@ class DeployableDb(object):
 
         fac.register(aname, self.infrastructure, self.name, self.username)
 
-    def assembly_remove(self, aname):
-
-        fac = assembly_factory.AssemblyFactory(self.factory.l)
+    def assembly_remove(self, aname, fac=None):
+        if not fac:
+            fac = assembly_factory.AssemblyFactory(self.factory.l)
         if not fac.exists(aname):
             print '*** Assembly %s does not exist' % (aname)
             return
@@ -111,9 +112,10 @@ class DeployableDb(object):
         print '*** Assembly %s is not in Deployable %s' % (aname, self.name)
 
 
-    def assembly_list_get(self):
+    def assembly_list_get(self, fac=None):
+        if not fac:
+            fac = assembly_factory.AssemblyFactory(self.factory.l)
         al = []
-        fac = assembly_factory.AssemblyFactory(self.factory.l)
         if self.xml_node.children != None:
             for c in self.xml_node.children:
                 if c.hasProp('name'):
