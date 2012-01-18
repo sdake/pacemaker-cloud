@@ -65,7 +65,6 @@ class EventReceiver(qmf2.ConsoleHandler):
         }
 
         print event_desc.get(reason,'') % locals()
-        print '  Reason: %s' % reason
 
         # Run helper script in case IPs have changed
         if reason == 'all assemblies active':
