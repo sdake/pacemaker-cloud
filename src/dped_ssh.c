@@ -8,6 +8,27 @@
 #include <libxslt/transform.h>
 #include <libdeltacloud/libdeltacloud.h>
 
+#define INSTANCE_STATE_PENDING 1
+#define INSTANCE_STATE_RUNNING 2
+#define INSTANCE_STATE_FAILED 3
+
+extern qb_loop_t* mainloop;
+
+static qb_loop_timer_handle timer_handle;
+
+static qb_loop_timer_handle timer_processing;
+
+static xmlNode *policy_root;
+
+static xmlDoc *policy;
+
+static void resource_execute_cb(struct pe_operation *op) {
+	printf("execute resource cb\n");
+}
+
+static void transition_completed_cb(void* user_data, int32_t result) {
+	printf("transition completed cb\n");
+}
 
 static const char *my_tags_stringify(uint32_t tags)
 {
@@ -103,9 +124,113 @@ static int instance_stop(char *image_name)
 
 	deltacloud_free_image_list(&images_head);
 	deltacloud_free_instance_list(&instances_head);
-
 	deltacloud_free(&api);
 	return 0;
+}
+
+static void insert_status(xmlNode *status, char *name)
+{
+	xmlNode *node_state = xmlNewChild(status, NULL, "node_state", NULL);
+        xmlNewProp(node_state, "id", name);
+        xmlNewProp(node_state, "uname", name);
+        xmlNewProp(node_state, "ha", BAD_CAST "active");
+        xmlNewProp(node_state, "expected", BAD_CAST "member");
+        xmlNewProp(node_state, "in_ccm", BAD_CAST "true");
+        xmlNewProp(node_state, "crmd", BAD_CAST "online");
+
+	/* check state*/
+	xmlNewProp(node_state, "join", "member");
+}
+
+static void schedule_processing(void);
+
+static void process(void)
+{
+	xmlNode *cur_node;
+	xmlNode *status;
+	int rc;
+
+	/*
+	 * Remove status descriptor
+	 */
+	policy_root = xmlDocGetRootElement(policy);
+	for (cur_node = policy_root->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE &&
+			strcmp((char*)cur_node->name, "status") == 0) {
+
+			xmlUnlinkNode(cur_node);
+			xmlFreeNode(cur_node);
+			break;
+		}
+	}
+	status = xmlNewChild(policy_root, NULL, "status", NULL);
+	insert_status(status, "f02a1f3a8c73496d8e99f21c5c6515f0");
+	insert_status(status, "7a8c488a252740a9b053cd171542d30a");
+
+	rc = pe_process_state(policy_root, resource_execute_cb,
+		transition_completed_cb,  NULL);
+	if (rc != 0) {
+		schedule_processing();
+	}
+}
+
+static void status_timeout(void *data)
+{
+	char *instance_id = (char *)data;
+
+	if (pe_is_busy_processing()) {
+		schedule_processing();
+	} else {
+		process();
+	}
+}
+
+static void schedule_processing(void)
+{
+        if (qb_loop_timer_expire_time_get(mainloop, timer_processing) > 0) {
+		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
+	} else {
+		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+			1000 * QB_TIME_NS_IN_MSEC, NULL,
+			status_timeout, &timer_processing);
+	}
+}
+
+void assembly_state_changed(char *instance_id, int state)
+{
+	schedule_processing();
+}
+
+void instance_state_detect(void *data)
+{
+	static struct deltacloud_api api;
+	char *instance_id = (char *)data;
+	struct deltacloud_instance instance;
+	int rc;
+
+	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
+		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
+		deltacloud_get_last_error_string());
+		return;
+	}
+	
+	rc = deltacloud_get_instance_by_id(&api, instance_id, &instance);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
+		deltacloud_get_last_error_string());
+		return;
+	}
+
+	if (strcmp(instance.state, "RUNNING") == 0) {
+		printf ("instance %s is RUNNING\n", instance_id);
+		assembly_state_changed(instance_id, INSTANCE_STATE_RUNNING);
+	} else
+	if (strcmp(instance.state, "PENDING") == 0) {
+		printf ("instance %s is PENDING\n", instance_id);
+		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+			1000 * QB_TIME_NS_IN_MSEC, instance_id,
+			instance_state_detect, &timer_handle);
+	}
 }
 
 static int32_t instance_create(char *image_name)
@@ -114,7 +239,6 @@ static int32_t instance_create(char *image_name)
 	struct deltacloud_image *images_head;
 	struct deltacloud_image *images;
 	char *instance_id;
-	struct deltacloud_instance instance;
 	int rc;
 
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
@@ -130,29 +254,17 @@ static int32_t instance_create(char *image_name)
 	}
 
 	for (images_head = images; images; images = images->next) {
-		if (strcmp (images->name, image_name) == 0) {
+		if (strcmp(images->name, image_name) == 0) {
 			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &instance_id);
 			printf ("creating instance id %s\n", instance_id);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
-				deltacloud_get_last_error_string());
+					deltacloud_get_last_error_string());
 				return -1;
 			}
-			for (;;) {
-				rc = deltacloud_get_instance_by_id(&api, instance_id, &instance);
-				if (rc < 0) {
-					fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
-					deltacloud_get_last_error_string());
-					return -1;
-				}
-				if (strcmp (instance.state, "RUNNING") == 0) {
-					break;
-				}
-			}
-			printf ("%s\n", instance.private_addresses->address);
+			instance_state_detect(instance_id);
 		}
 	}
-
 	deltacloud_free_image_list(&images_head);
 	deltacloud_free(&api);
 	return 0;
@@ -173,14 +285,6 @@ static void assemblies_create(xmlNode *assemblies)
 	}
 }
 
-static void resource_execute_cb(struct pe_operation *op) {
-	printf("execute resource cb\n");
-}
-
-static void transition_completed_cb(void* user_data, int32_t result) {
-	printf("transition completed cb\n");
-}
-
 static void stop_assemblies(xmlNode *assemblies)
 {
 	xmlNode *cur_node;
@@ -197,14 +301,9 @@ static void stop_assemblies(xmlNode *assemblies)
 }
 
 
-
-extern qb_loop_t* mainloop;
-
 int main (void)
 {
 	xmlDoc *original_config;
-	xmlDoc *policy;
-	xmlNode *policy_root;
 	xmlNode *cur_node;
 	xmlNode *dep_node;
         xsltStylesheetPtr ss;
