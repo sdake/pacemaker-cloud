@@ -21,11 +21,12 @@
 
 #define SSH_STATE_UNDEFINED		0
 #define SSH_STATE_CONNECT		1
-#define SSH_STATE_SESSION_STARTUP	2
-#define SSH_STATE_SESSION_KEYSETUP	3
-#define SSH_STATE_SESSION_OPENSESSION	4
-#define SSH_STATE_EXEC			5
-#define SSH_STATE_READ			6
+#define SSH_STATE_CONNECTING		2
+#define SSH_STATE_SESSION_STARTUP	3
+#define SSH_STATE_SESSION_KEYSETUP	4
+#define SSH_STATE_SESSION_OPENSESSION	5
+#define SSH_STATE_EXEC			6
+#define SSH_STATE_READ			7
 
 extern qb_loop_t* mainloop;
 
@@ -51,13 +52,20 @@ struct assembly {
 	int ssh_state;
 	qb_map_t *resources;
 	char *instance_id;
+	int healthcheck_failures;
 	int fd;
+	char time[32];
 	qb_loop_timer_handle healthcheck_timer;
 	LIBSSH2_SESSION *session;
 	LIBSSH2_CHANNEL *channel;
+	struct sockaddr_in sin;
 };
 
 static void assembly_state_changed(struct assembly *assembly, int state);
+
+static int32_t instance_create(struct assembly *assembly);
+
+static void connect_execute(void *data);
 
 static void resource_execute_cb(struct pe_operation *op) {
 	printf("execute resource cb\n");
@@ -242,57 +250,103 @@ static void schedule_processing(void)
 	}
 }
 
-int32_t ssh_read_dispatch_fn(int32_t fd, int32_t revents, void *data)
-{
-}
-
-void assembly_healthcheck(void *data)
+static void assembly_healthcheck(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
 	char buffer[1024];
 	int rc;
 	int i;
+	char *end;
 
-	while ((assembly->channel = libssh2_channel_open_session(assembly->session)) == NULL &&
-	libssh2_session_last_error(assembly->session, NULL, NULL, 0) == LIBSSH2_ERROR_EAGAIN);
-	while ((rc = libssh2_channel_exec(assembly->channel, "uptime")) ==
-		 LIBSSH2_ERROR_EAGAIN);
-	while ((rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer))) ==
-		LIBSSH2_ERROR_EAGAIN);
-	for (i = 0; i < rc; i++) {
-		printf ("%c", buffer[i]);
+	assembly->channel = libssh2_channel_open_session(assembly->session);
+	if (assembly->channel == NULL) {
+		qb_log(LOG_NOTICE,
+			"open session failed %d\n",
+			libssh2_session_last_errno(assembly->session));
+		goto error;
 	}
 
-	while ((rc = libssh2_channel_close(assembly->channel)) == LIBSSH2_ERROR_EAGAIN);
-	rc = qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
+	rc = libssh2_channel_exec(assembly->channel, "uptime");
+	if (rc != 0) {
+		qb_log(LOG_NOTICE,
+			"channel exec failed %d\n", rc);
+		goto error;
+	}
+		
+	rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer));
+	
+error:
+	end = strstr (buffer, " up");
+	if (end) {
+		*end = '\0';
+	
+		if (strcmp (buffer, assembly->time) == 0) {
+			assembly->healthcheck_failures += 1;
+		} else {
+			assembly->healthcheck_failures = 0;
+			strcpy (assembly->time, buffer);
+		}
+	}
+
+	if (end == NULL || rc != 0) {
+		assembly->healthcheck_failures += 1;
+	}
+
+	if (assembly->healthcheck_failures > 3) {
+		qb_log(LOG_NOTICE, "Executing a restart for assembly '%s'",
+			assembly->name);
+
+		assembly_state_changed(assembly, INSTANCE_STATE_FAILED);
+		return;
+	}
+
+	rc = libssh2_channel_close(assembly->channel);
+	if (rc != 0) {
+		qb_log(LOG_NOTICE,
+			"channel close failed %d\n", rc);
+	}
+
+	qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
 		3000 * QB_TIME_NS_IN_MSEC, assembly,
 		assembly_healthcheck, NULL);
 }
 
-int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
+static void ssh_assembly_connect(struct assembly *assembly)
 {
 	char name[1024];
 	char name_pub[1024];
 	int i;
 	int rc;
-	struct assembly *assembly = (struct assembly *)data;
 
 	assembly->session = libssh2_session_init();
-	libssh2_session_set_blocking(assembly->session, 0);
-	while ((rc = libssh2_session_startup(assembly->session, assembly->fd)) == LIBSSH2_ERROR_EAGAIN);
+//	libssh2_session_set_blocking(assembly->session, 0);
+	rc = libssh2_session_startup(assembly->session, assembly->fd);
+	if (rc != 0) {
+		qb_log(LOG_NOTICE,
+			"session startup failed %d\n", rc);
+		goto error;
+	}
 
-	qb_loop_poll_mod(mainloop, QB_LOOP_LOW, assembly->fd,
-		0, assembly, ssh_read_dispatch_fn);
+	libssh2_keepalive_config(assembly->session, 1, 2);
+
 	sprintf (name, "/var/lib/pacemaker-cloud/keys/%s",
 		assembly->name);
 	sprintf (name_pub, "/var/lib/pacemaker-cloud/keys/%s.pub",
 		assembly->name);
-	while ((rc = libssh2_userauth_publickey_fromfile(assembly->session,
-		"root", name_pub, name, "")) == LIBSSH2_ERROR_EAGAIN);
+	rc = libssh2_userauth_publickey_fromfile(assembly->session,
+		"root", name_pub, name, "");
+	if (rc != 0) {
+		qb_log(LOG_NOTICE,
+			"userauth_publickey_fromfile failed %d\n", rc);
+		goto error;
+	}
 	if (rc) {
 		qb_log(LOG_ERR,
 			"Authentication by public key for '%s' failed\n",
 			assembly->name);
+		/*
+		 * TODO give this another go
+		 */
 	} else {
 		qb_log(LOG_NOTICE,
 			"Authentication by public key for '%s' successful\n",
@@ -301,37 +355,55 @@ int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
 	}
 
 	assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
+error:
+	return;
 }
 
-void assembly_connect(struct assembly *assembly)
+static void connect_execute(void *data)
+{
+	struct assembly *assembly = (struct assembly *)data;
+	int rc;
+
+	rc = connect(assembly->fd, (struct sockaddr*)(&assembly->sin),
+		sizeof (struct sockaddr_in));
+	if (rc == 0) {
+		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
+			assembly->name);
+		ssh_assembly_connect (assembly);
+	} else {
+		qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, connect_execute);
+	}
+}
+
+static void assembly_connect(struct assembly *assembly)
 {
 	unsigned long hostaddr;
-	struct sockaddr_in sin;
 	int rc;
 
 	hostaddr = inet_addr(assembly->address);
 	assembly->fd = socket(AF_INET, SOCK_STREAM, 0);
 	fcntl(assembly->fd, O_NONBLOCK);
 
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(22);
-	sin.sin_addr.s_addr = hostaddr;
+	assembly->sin.sin_family = AF_INET;
+	assembly->sin.sin_port = htons(22);
+	assembly->sin.sin_addr.s_addr = hostaddr;
 	assembly->ssh_state = SSH_STATE_CONNECT;
-	rc = connect(assembly->fd, (struct sockaddr*)(&sin),
-		sizeof (struct sockaddr_in));
-	if (rc == 0) {
-		qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'", assembly->name);
-		qb_loop_poll_add(mainloop, QB_LOOP_LOW, assembly->fd,
-		EPOLLIN|EPOLLOUT, assembly, ssh_connect_dispatch_fn);
-	}
+
+	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
+		assembly->name);
+
+	qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, connect_execute);
 }
 
 static void assembly_state_changed(struct assembly *assembly, int state)
 {
+	if (state == INSTANCE_STATE_FAILED) {
+		instance_create(assembly);
+	}
 	schedule_processing();
 }
 
-void instance_state_detect(void *data)
+static void instance_state_detect(void *data)
 {
 	static struct deltacloud_api api;
 	struct assembly *assembly = (struct assembly *)data;
@@ -417,18 +489,18 @@ static int32_t instance_create(struct assembly *assembly)
 	return 0;
 }
 
-void resource_create(xmlNode *cur_node, struct assembly *assembly)
+static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 {
 	struct resource *resource;
 	char *name;
 
-	resource = malloc (sizeof (struct resource));
+	resource = calloc (1, sizeof (struct resource));
 	name = xmlGetProp(cur_node, "name");
 	resource->name = strdup(name);
 	qb_map_put(assembly->resources, name, assembly);
 }
 
-void resources_create(xmlNode *cur_node, struct assembly *assembly)
+static void resources_create(xmlNode *cur_node, struct assembly *assembly)
 {
 
 	
@@ -440,7 +512,7 @@ void resources_create(xmlNode *cur_node, struct assembly *assembly)
 	}
 }
 
-void assembly_create(xmlNode *cur_node)
+static void assembly_create(xmlNode *cur_node)
 {
 	struct assembly *assembly;
 	char *name;
@@ -448,7 +520,7 @@ void assembly_create(xmlNode *cur_node)
 	xmlNode *child_node;
 	size_t res;
 	
-	assembly = malloc(sizeof (struct assembly));
+	assembly = calloc(1, sizeof (struct assembly));
 	name = xmlGetProp(cur_node, "name");
 	assembly->name = strdup(name);
 	uuid = xmlGetProp(cur_node, "uuid");
