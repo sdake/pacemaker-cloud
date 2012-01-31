@@ -67,10 +67,12 @@ dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 dped_ssh_SOURCES = dped_ssh.c pcmk_pe_ssh.c
 
 dped_ssh_CFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
-	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS)
+	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_CFLAGS)
 
 dped_ssh_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS)
+	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_LIBS)
 
 cpe_tool2_SOURCES = cpe-tool2.c libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)

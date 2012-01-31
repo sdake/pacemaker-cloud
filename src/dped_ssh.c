@@ -2,17 +2,30 @@
 
 #include <glib.h>
 #include <qb/qbdefs.h>
+#include <sys/epoll.h>
 #include <qb/qbloop.h>
 #include <qb/qblog.h>
 #include <qb/qbmap.h>
 #include <libxml/parser.h>
 #include <libxslt/transform.h>
 #include <libdeltacloud/libdeltacloud.h>
+#include <libssh2.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <fcntl.h>
 
 #define INSTANCE_STATE_OFFLINE 1
 #define INSTANCE_STATE_PENDING 2
 #define INSTANCE_STATE_RUNNING 3
 #define INSTANCE_STATE_FAILED 4
+
+#define SSH_STATE_UNDEFINED		0
+#define SSH_STATE_CONNECT		1
+#define SSH_STATE_SESSION_STARTUP	2
+#define SSH_STATE_SESSION_KEYSETUP	3
+#define SSH_STATE_SESSION_OPENSESSION	4
+#define SSH_STATE_EXEC			5
+#define SSH_STATE_READ			6
 
 extern qb_loop_t* mainloop;
 
@@ -33,10 +46,17 @@ struct resource {
 struct assembly {
 	char *name;
 	char *uuid;
+	char *address;
 	int state;
+	int ssh_state;
 	qb_map_t *resources;
 	char *instance_id;
+	int fd;
+	LIBSSH2_SESSION *session;
+	LIBSSH2_CHANNEL *channel;
 };
+
+static void assembly_state_changed(struct assembly *assembly, int state);
 
 static void resource_execute_cb(struct pe_operation *op) {
 	printf("execute resource cb\n");
@@ -221,7 +241,76 @@ static void schedule_processing(void)
 	}
 }
 
-void assembly_state_changed(struct assembly *assembly, int state)
+int32_t ssh_read_dispatch_fn(int32_t fd, int32_t revents, void *data)
+{
+}
+
+int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
+{
+	char buffer[1024];
+	char name[1024];
+	char name_pub[1024];
+	int i;
+	int rc;
+	struct assembly *assembly = (struct assembly *)data;
+
+	assembly->session = libssh2_session_init();
+	libssh2_session_set_blocking(assembly->session, 0);
+	while ((rc = libssh2_session_startup(assembly->session, assembly->fd)) == LIBSSH2_ERROR_EAGAIN);
+	sprintf (name, "/var/lib/pacemaker-cloud/keys/%s",
+		assembly->name);
+	sprintf (name_pub, "/var/lib/pacemaker-cloud/keys/%s.pub",
+		assembly->name);
+	while ((rc = libssh2_userauth_publickey_fromfile(assembly->session,
+		"root", name_pub, name, "")) == LIBSSH2_ERROR_EAGAIN);
+	if (rc) {
+		qb_log(LOG_ERR,
+			"Authentication by public key for '%s' failed\n",
+			assembly->name);
+	} else {
+		qb_log(LOG_NOTICE,
+			"Authentication by public key for '%s' successful\n",
+			assembly->name);
+		while ((assembly->channel = libssh2_channel_open_session(assembly->session)) == NULL &&
+		libssh2_session_last_error(assembly->session, NULL, NULL, 0) ==
+			LIBSSH2_ERROR_EAGAIN);
+		while ((rc = libssh2_channel_exec(assembly->channel, "uptime")) ==
+			LIBSSH2_ERROR_EAGAIN);
+		while ((rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer))) ==
+			LIBSSH2_ERROR_EAGAIN);
+		for (i = 0; i < rc; i++) {
+			printf ("%c", buffer[i]);
+		}
+	}
+	qb_loop_poll_mod(mainloop, QB_LOOP_LOW, assembly->fd,
+		0, assembly, ssh_read_dispatch_fn);
+	assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
+}
+
+void assembly_connect(struct assembly *assembly)
+{
+	unsigned long hostaddr;
+	struct sockaddr_in sin;
+	int rc;
+
+	hostaddr = inet_addr(assembly->address);
+	assembly->fd = socket(AF_INET, SOCK_STREAM, 0);
+	fcntl(assembly->fd, O_NONBLOCK);
+
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(22);
+	sin.sin_addr.s_addr = hostaddr;
+	assembly->ssh_state = SSH_STATE_CONNECT;
+	rc = connect(assembly->fd, (struct sockaddr*)(&sin),
+		sizeof (struct sockaddr_in));
+	if (rc == 0) {
+		qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'", assembly->name);
+		qb_loop_poll_add(mainloop, QB_LOOP_LOW, assembly->fd,
+		EPOLLIN|EPOLLOUT, assembly, ssh_connect_dispatch_fn);
+	}
+}
+
+static void assembly_state_changed(struct assembly *assembly, int state)
 {
 	schedule_processing();
 }
@@ -231,7 +320,11 @@ void instance_state_detect(void *data)
 	static struct deltacloud_api api;
 	struct assembly *assembly = (struct assembly *)data;
 	struct deltacloud_instance instance;
+	struct deltacloud_instance *instance_p;
 	int rc;
+	int i;
+	char *sptr;
+	char *sptr_end;
 
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
@@ -246,10 +339,22 @@ void instance_state_detect(void *data)
 		return;
 	}
 
+
 	if (strcmp(instance.state, "RUNNING") == 0) {
+		for (i = 0, instance_p = &instance; instance_p; instance_p = instance_p->next, i++) {
+			/*
+			 * Eliminate the garbage output of this DC api
+			 */
+			sptr = instance_p->private_addresses->address +
+				strspn (instance_p->private_addresses->address, " \t\n");
+			sptr_end = sptr + strcspn (sptr, " \t\n");
+			*sptr_end = '\0';
+		}
+		
+		assembly->address = strdup (sptr);
 		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING.",
 			assembly->name);
-		assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
+		assembly_connect(assembly);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
 		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
@@ -387,6 +492,8 @@ int main (void)
         xsltStylesheetPtr ss;
 	const char *params[1];
 	int daemonize = 0;
+	int rc;
+
 	int loglevel = LOG_INFO;
 
 	qb_log_init("dped", LOG_DAEMON, loglevel);
@@ -404,6 +511,11 @@ int main (void)
 
         mainloop = qb_loop_create();
 
+	rc = libssh2_init(0);
+	if (rc != 0) {
+		qb_log(LOG_CRIT, "libssh2 initialization failed (%d).", rc);
+		return 1;	
+	}
 	params[0] = NULL;
 
 	original_config = xmlParseFile("/var/run/dep-wp.xml");
