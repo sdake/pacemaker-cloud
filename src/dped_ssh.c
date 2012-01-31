@@ -52,6 +52,7 @@ struct assembly {
 	qb_map_t *resources;
 	char *instance_id;
 	int fd;
+	qb_loop_timer_handle healthcheck_timer;
 	LIBSSH2_SESSION *session;
 	LIBSSH2_CHANNEL *channel;
 };
@@ -245,9 +246,31 @@ int32_t ssh_read_dispatch_fn(int32_t fd, int32_t revents, void *data)
 {
 }
 
+void assembly_healthcheck(void *data)
+{
+	struct assembly *assembly = (struct assembly *)data;
+	char buffer[1024];
+	int rc;
+	int i;
+
+	while ((assembly->channel = libssh2_channel_open_session(assembly->session)) == NULL &&
+	libssh2_session_last_error(assembly->session, NULL, NULL, 0) == LIBSSH2_ERROR_EAGAIN);
+	while ((rc = libssh2_channel_exec(assembly->channel, "uptime")) ==
+		 LIBSSH2_ERROR_EAGAIN);
+	while ((rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer))) ==
+		LIBSSH2_ERROR_EAGAIN);
+	for (i = 0; i < rc; i++) {
+		printf ("%c", buffer[i]);
+	}
+
+	while ((rc = libssh2_channel_close(assembly->channel)) == LIBSSH2_ERROR_EAGAIN);
+	rc = qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
+		3000 * QB_TIME_NS_IN_MSEC, assembly,
+		assembly_healthcheck, NULL);
+}
+
 int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
 {
-	char buffer[1024];
 	char name[1024];
 	char name_pub[1024];
 	int i;
@@ -257,6 +280,9 @@ int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
 	assembly->session = libssh2_session_init();
 	libssh2_session_set_blocking(assembly->session, 0);
 	while ((rc = libssh2_session_startup(assembly->session, assembly->fd)) == LIBSSH2_ERROR_EAGAIN);
+
+	qb_loop_poll_mod(mainloop, QB_LOOP_LOW, assembly->fd,
+		0, assembly, ssh_read_dispatch_fn);
 	sprintf (name, "/var/lib/pacemaker-cloud/keys/%s",
 		assembly->name);
 	sprintf (name_pub, "/var/lib/pacemaker-cloud/keys/%s.pub",
@@ -271,19 +297,9 @@ int32_t ssh_connect_dispatch_fn(int32_t fd, int32_t revents, void *data)
 		qb_log(LOG_NOTICE,
 			"Authentication by public key for '%s' successful\n",
 			assembly->name);
-		while ((assembly->channel = libssh2_channel_open_session(assembly->session)) == NULL &&
-		libssh2_session_last_error(assembly->session, NULL, NULL, 0) ==
-			LIBSSH2_ERROR_EAGAIN);
-		while ((rc = libssh2_channel_exec(assembly->channel, "uptime")) ==
-			LIBSSH2_ERROR_EAGAIN);
-		while ((rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer))) ==
-			LIBSSH2_ERROR_EAGAIN);
-		for (i = 0; i < rc; i++) {
-			printf ("%c", buffer[i]);
-		}
+		assembly_healthcheck(assembly);
 	}
-	qb_loop_poll_mod(mainloop, QB_LOOP_LOW, assembly->fd,
-		0, assembly, ssh_read_dispatch_fn);
+
 	assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
 }
 
