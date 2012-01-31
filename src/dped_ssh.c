@@ -35,6 +35,7 @@ struct assembly {
 	char *uuid;
 	int state;
 	qb_map_t *resources;
+	char *instance_id;
 };
 
 static void resource_execute_cb(struct pe_operation *op) {
@@ -228,7 +229,7 @@ void assembly_state_changed(char *instance_id, int state)
 void instance_state_detect(void *data)
 {
 	static struct deltacloud_api api;
-	char *instance_id = (char *)data;
+	struct assembly *assembly = (struct assembly *)data;
 	struct deltacloud_instance instance;
 	int rc;
 
@@ -238,7 +239,7 @@ void instance_state_detect(void *data)
 		return;
 	}
 	
-	rc = deltacloud_get_instance_by_id(&api, instance_id, &instance);
+	rc = deltacloud_get_instance_by_id(&api, assembly->instance_id, &instance);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
@@ -246,23 +247,25 @@ void instance_state_detect(void *data)
 	}
 
 	if (strcmp(instance.state, "RUNNING") == 0) {
-		printf ("instance %s is RUNNING\n", instance_id);
-		assembly_state_changed(instance_id, INSTANCE_STATE_RUNNING);
+		printf ("instance '%s' is RUNNING\n", assembly->instance_id);
+		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING.",
+			assembly->name);
+		assembly_state_changed(assembly->instance_id, INSTANCE_STATE_RUNNING);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
-		printf ("instance %s is PENDING\n", instance_id);
+		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
+			assembly->name);
 		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
-			1000 * QB_TIME_NS_IN_MSEC, instance_id,
+			1000 * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);
 	}
 }
 
-static int32_t instance_create(char *image_name)
+static int32_t instance_create(struct assembly *assembly)
 {
 	static struct deltacloud_api api;
 	struct deltacloud_image *images_head;
 	struct deltacloud_image *images;
-	char *instance_id;
 	int rc;
 
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
@@ -278,15 +281,15 @@ static int32_t instance_create(char *image_name)
 	}
 
 	for (images_head = images; images; images = images->next) {
-		if (strcmp(images->name, image_name) == 0) {
-			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &instance_id);
-			printf ("creating instance id %s\n", instance_id);
+		if (strcmp(images->name, assembly->name) == 0) {
+			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &assembly->instance_id);
+			printf ("creating instance id %s\n", assembly->instance_id);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 					deltacloud_get_last_error_string());
 				return -1;
 			}
-			instance_state_detect(instance_id);
+			instance_state_detect(assembly);
 		}
 	}
 	deltacloud_free_image_list(&images_head);
@@ -332,7 +335,7 @@ void assembly_create(xmlNode *cur_node)
 	assembly->uuid = strdup(uuid);
 	assembly->state = INSTANCE_STATE_OFFLINE;
 	assembly->resources = qb_skiplist_create();
-	instance_create(name);
+	instance_create(assembly);
 	qb_map_put(assemblies, name, assembly);
 
 	for (child_node = cur_node->children; child_node;
