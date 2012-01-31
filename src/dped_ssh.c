@@ -4,13 +4,15 @@
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 #include <qb/qblog.h>
+#include <qb/qbmap.h>
 #include <libxml/parser.h>
 #include <libxslt/transform.h>
 #include <libdeltacloud/libdeltacloud.h>
 
-#define INSTANCE_STATE_PENDING 1
-#define INSTANCE_STATE_RUNNING 2
-#define INSTANCE_STATE_FAILED 3
+#define INSTANCE_STATE_OFFLINE 1
+#define INSTANCE_STATE_PENDING 2
+#define INSTANCE_STATE_RUNNING 3
+#define INSTANCE_STATE_FAILED 4
 
 extern qb_loop_t* mainloop;
 
@@ -18,9 +20,22 @@ static qb_loop_timer_handle timer_handle;
 
 static qb_loop_timer_handle timer_processing;
 
+static qb_map_t *assemblies;
+
 static xmlNode *policy_root;
 
 static xmlDoc *policy;
+
+struct resource {
+	char *name;
+};
+
+struct assembly {
+	char *name;
+	char *uuid;
+	int state;
+	qb_map_t *resources;
+};
 
 static void resource_execute_cb(struct pe_operation *op) {
 	printf("execute resource cb\n");
@@ -95,7 +110,6 @@ static int instance_stop(char *image_name)
 		deltacloud_get_last_error_string());
 		return -1;
 	}
-	printf ("instance stop\n");
 	if (deltacloud_get_instances(&api, &instances) < 0) {
 	fprintf(stderr, "Failed to get deltacloud instances: %s\n",
 		deltacloud_get_last_error_string());
@@ -128,11 +142,12 @@ static int instance_stop(char *image_name)
 	return 0;
 }
 
-static void insert_status(xmlNode *status, char *name)
+static void insert_status(xmlNode *status, struct assembly *assembly)
 {
+	qb_log(LOG_INFO, "Inserting assembly %s", assembly->name);
 	xmlNode *node_state = xmlNewChild(status, NULL, "node_state", NULL);
-        xmlNewProp(node_state, "id", name);
-        xmlNewProp(node_state, "uname", name);
+        xmlNewProp(node_state, "id", assembly->uuid);
+        xmlNewProp(node_state, "uname", assembly->name);
         xmlNewProp(node_state, "ha", BAD_CAST "active");
         xmlNewProp(node_state, "expected", BAD_CAST "member");
         xmlNewProp(node_state, "in_ccm", BAD_CAST "true");
@@ -149,6 +164,11 @@ static void process(void)
 	xmlNode *cur_node;
 	xmlNode *status;
 	int rc;
+	struct assembly *assembly;
+	qb_map_iter_t *iter;
+	const char *p;
+	size_t res;
+	const char *key;
 
 	/*
 	 * Remove status descriptor
@@ -163,9 +183,13 @@ static void process(void)
 			break;
 		}
 	}
+
 	status = xmlNewChild(policy_root, NULL, "status", NULL);
-	insert_status(status, "f02a1f3a8c73496d8e99f21c5c6515f0");
-	insert_status(status, "7a8c488a252740a9b053cd171542d30a");
+	iter = qb_map_iter_create(assemblies);
+	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
+		insert_status(status, assembly);
+	}
+	qb_map_iter_free(iter);
 
 	rc = pe_process_state(policy_root, resource_execute_cb,
 		transition_completed_cb,  NULL);
@@ -270,18 +294,70 @@ static int32_t instance_create(char *image_name)
 	return 0;
 }
 
-static void assemblies_create(xmlNode *assemblies)
+void resource_create(xmlNode *cur_node, struct assembly *assembly)
 {
+	struct resource *resource;
+	char *name;
+
+	resource = malloc (sizeof (struct resource));
+	name = xmlGetProp(cur_node, "name");
+	resource->name = strdup(name);
+	qb_map_put(assembly->resources, name, assembly);
+}
+
+void resources_create(xmlNode *cur_node, struct assembly *assembly)
+{
+
+	
+	for (; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		resource_create(cur_node, assembly);
+	}
+}
+
+void assembly_create(xmlNode *cur_node)
+{
+	struct assembly *assembly;
+	char *name;
+	char *uuid;
+	xmlNode *child_node;
+	size_t res;
+	
+	assembly = malloc(sizeof (struct assembly));
+	name = xmlGetProp(cur_node, "name");
+	assembly->name = strdup(name);
+	uuid = xmlGetProp(cur_node, "uuid");
+	assembly->uuid = strdup(uuid);
+	assembly->state = INSTANCE_STATE_OFFLINE;
+	assembly->resources = qb_skiplist_create();
+	instance_create(name);
+	qb_map_put(assemblies, name, assembly);
+
+	for (child_node = cur_node->children; child_node;
+		child_node = child_node->next) {
+		if (child_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		if (strcmp(child_node->name, "services") == 0) {
+			resources_create(child_node->children, assembly);
+		}
+	}
+}
+
+static void assemblies_create(xmlNode *xml)
+{
+	struct resource *resource;
 	xmlNode *cur_node;
 
 	char *ass_name;
 
-        for (cur_node = assemblies; cur_node; cur_node = cur_node->next) {
+        for (cur_node = xml; cur_node; cur_node = cur_node->next) {
                 if (cur_node->type != XML_ELEMENT_NODE) {
                         continue;
                 }
-                ass_name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
-		instance_create(ass_name);
+		assembly_create(cur_node);
 	}
 }
 
@@ -337,6 +413,7 @@ int main (void)
 
         dep_node = xmlDocGetRootElement(original_config);
 
+	assemblies = qb_skiplist_create();
         for (cur_node = dep_node->children; cur_node;
              cur_node = cur_node->next) {
                 if (cur_node->type == XML_ELEMENT_NODE) {
