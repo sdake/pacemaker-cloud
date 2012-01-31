@@ -221,7 +221,7 @@ static void schedule_processing(void)
 	}
 }
 
-void assembly_state_changed(char *instance_id, int state)
+void assembly_state_changed(struct assembly *assembly, int state)
 {
 	schedule_processing();
 }
@@ -247,10 +247,9 @@ void instance_state_detect(void *data)
 	}
 
 	if (strcmp(instance.state, "RUNNING") == 0) {
-		printf ("instance '%s' is RUNNING\n", assembly->instance_id);
 		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING.",
 			assembly->name);
-		assembly_state_changed(assembly->instance_id, INSTANCE_STATE_RUNNING);
+		assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
 		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
