@@ -20,6 +20,8 @@
  */
 #include "config.h"
 
+#include <qb/qbdefs.h>
+#include <qb/qbutil.h>
 #include <qb/qblog.h>
 
 #include <iostream>
@@ -63,30 +65,30 @@ Resource::failed(struct pe_operation *op)
 	string reason = "monitor failed";
 	bool escalated = false;
 
-	_actual_failures++;
-	qb_log(LOG_NOTICE, "resource %s FAILED (%d)",
-	       _id.c_str(), _actual_failures);
-
 	_state = STATE_STOPPED;
 	_dep->service_state_changed(ass_name, rname, running, reason);
 	if (_max_failures > 0 && _failure_period > 0) {
+		uint64_t diff;
 		float p;
-		qb_util_stopwatch_stop(_escalation_period);
+		int last;
+		qb_util_stopwatch_split(_escalation_period);
 
-		p = qb_util_stopwatch_sec_elapsed_get(_escalation_period);
-		if (_actual_failures >= _max_failures && p <= _failure_period) {
+		last = qb_util_stopwatch_split_last(_escalation_period);
+		qb_log(LOG_NOTICE, "resource %s FAILED (%d)",
+				_id.c_str(), last + 1);
+		if (last < _max_failures - 1) {
+			return;
+		}
+		diff = qb_util_stopwatch_time_split_get(_escalation_period, last,
+							last - (_max_failures - 1));
+		p = diff / QB_TIME_US_IN_SEC;
+		if (p <= _failure_period) {
 			string node_uuid = op->node_uuid;
 			AssemblyAm *ass = dynamic_cast<AssemblyAm*>(_dep->assembly_get(node_uuid));
 			_dep->escalate_service_failure(ass, rname);
-			_actual_failures = 0;
 			qb_util_stopwatch_start(_escalation_period);
 			escalated = true;
 			_state = STATE_UNKNOWN;
-		}
-		if (p > _failure_period) {
-			/* reset */
-			_actual_failures = 0;
-			qb_util_stopwatch_start(_escalation_period);
 		}
 	}
 	if (!escalated) {
