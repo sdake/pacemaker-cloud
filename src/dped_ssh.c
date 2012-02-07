@@ -12,7 +12,6 @@
 #include <libssh2.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <fcntl.h>
 
 #define INSTANCE_STATE_OFFLINE 1
 #define INSTANCE_STATE_PENDING 2
@@ -34,7 +33,7 @@ static qb_loop_timer_handle timer_handle;
 
 static qb_loop_timer_handle timer_processing;
 
-static qb_map_t *assemblies;
+static qb_map_t *assembly_map;
 
 static xmlNode *policy_root;
 
@@ -42,6 +41,7 @@ static xmlDoc *policy;
 
 struct resource {
 	char *name;
+	char *type;
 };
 
 struct assembly {
@@ -50,7 +50,7 @@ struct assembly {
 	char *address;
 	int state;
 	int ssh_state;
-	qb_map_t *resources;
+	qb_map_t *resource_map;
 	char *instance_id;
 	int healthcheck_failures;
 	int fd;
@@ -67,8 +67,102 @@ static int32_t instance_create(struct assembly *assembly);
 
 static void connect_execute(void *data);
 
-static void resource_execute_cb(struct pe_operation *op) {
-	printf("execute resource cb\n");
+static int assembly_ssh_exec(struct assembly *assembly, char *command, int *ssh_rc)
+{
+	int rc;
+	int rc_close;
+
+	LIBSSH2_CHANNEL *channel;
+	char buffer[4096];
+	*ssh_rc = -1;
+
+retry_channel_open_session:
+	channel = libssh2_channel_open_session(assembly->session);
+	if (channel == NULL) {
+		rc = libssh2_session_last_errno(assembly->session);
+		if (rc == LIBSSH2_ERROR_TIMEOUT) {
+			goto retry_channel_open_session;
+		}
+		qb_log(LOG_NOTICE,
+			"open session failed %d\n", rc);
+		return -1;
+	}
+
+retry_channel_exec:
+	rc = libssh2_channel_exec(channel, command);
+	if (rc == LIBSSH2_ERROR_TIMEOUT) {
+		goto retry_channel_exec;
+	}
+	if (rc != 0) {
+		qb_log(LOG_NOTICE,
+			"libssh2_channel_exec failed %d\n", rc);
+		goto error_close;
+	}
+		
+retry_channel_read:
+	rc = libssh2_channel_read(channel, buffer, sizeof(buffer));
+	if (rc == LIBSSH2_ERROR_TIMEOUT) {
+		goto retry_channel_read;
+	}
+	if (rc < 0) {
+		qb_log(LOG_NOTICE,
+			"libssh2_channel_read failed %d\n", rc);
+		goto error_close;
+	}
+	
+error_close:
+	rc_close = libssh2_channel_close(channel);
+	if (rc_close == LIBSSH2_ERROR_TIMEOUT) {
+		goto error_close;
+	}
+	if (rc_close != 0) {
+		qb_log(LOG_NOTICE,
+			"libssh2_channel close failed %d\n", rc);
+		return rc_close;
+	}
+	rc_close = libssh2_channel_wait_closed(channel);
+	if (rc_close != 0) {
+		qb_log(LOG_NOTICE,
+			"libssh2_channel_wait_closed failed %d\n", rc);
+		return rc_close;
+	}
+	*ssh_rc = libssh2_channel_get_exit_status(channel);
+
+	return rc;
+}
+
+static void resource_execute_cb(struct pe_operation *op)
+{
+	struct assembly *assembly;
+	char command[4096];
+	int rc;
+	int ssh_rc;
+	int pe_exitcode;
+
+	assembly = qb_map_get(assembly_map, op->hostname);
+
+	qb_log(LOG_NOTICE, "resource_execute_cb method '%s' name '%s'",
+		op->method, op->rname);
+	if (strcmp(op->method, "monitor") == 0) {
+		sprintf (command, "systemctl status %s.service",
+			op->rtype);
+		rc = assembly_ssh_exec(assembly, command, &ssh_rc);
+		pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
+		qb_log(LOG_INFO,
+			"Monitoring resource '%s' on assembly '%s' ocf code '%d'\n",
+			op->rname, op->hostname, ssh_rc);
+		pe_resource_completed(op, pe_exitcode);
+	} else
+	if (strcmp (op->method, "start") == 0) {
+		sprintf (command, "systemctl start %s.service",
+			op->rtype);
+		rc = assembly_ssh_exec(assembly, command, &ssh_rc);
+		pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
+		qb_log(LOG_INFO,
+			"Starting resource '%s' on assembly '%s' ocf code '%d'\n",
+			op->rname, op->hostname, ssh_rc);
+		pe_resource_completed(op, ssh_rc);
+	}
 }
 
 static void transition_completed_cb(void* user_data, int32_t result) {
@@ -215,7 +309,7 @@ static void process(void)
 	}
 
 	status = xmlNewChild(policy_root, NULL, "status", NULL);
-	iter = qb_map_iter_create(assemblies);
+	iter = qb_map_iter_create(assembly_map);
 	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
 		insert_status(status, assembly);
 	}
@@ -382,7 +476,6 @@ static void assembly_connect(struct assembly *assembly)
 
 	hostaddr = inet_addr(assembly->address);
 	assembly->fd = socket(AF_INET, SOCK_STREAM, 0);
-	fcntl(assembly->fd, O_NONBLOCK);
 
 	assembly->sin.sin_family = AF_INET;
 	assembly->sin.sin_port = htons(22);
@@ -493,11 +586,16 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 {
 	struct resource *resource;
 	char *name;
+	char resource_name[4096];
+	char *type;
 
 	resource = calloc (1, sizeof (struct resource));
 	name = xmlGetProp(cur_node, "name");
-	resource->name = strdup(name);
-	qb_map_put(assembly->resources, name, assembly);
+	sprintf(resource_name, "rsc_%s_%s", assembly->name, name);
+	resource->name = strdup(resource_name);
+	type = xmlGetProp(cur_node, "type");
+	resource->type = strdup(type);
+	qb_map_put(assembly->resource_map, resource->name, resource);
 }
 
 static void resources_create(xmlNode *cur_node, struct assembly *assembly)
@@ -526,9 +624,9 @@ static void assembly_create(xmlNode *cur_node)
 	uuid = xmlGetProp(cur_node, "uuid");
 	assembly->uuid = strdup(uuid);
 	assembly->state = INSTANCE_STATE_OFFLINE;
-	assembly->resources = qb_skiplist_create();
+	assembly->resource_map = qb_skiplist_create();
 	instance_create(assembly);
-	qb_map_put(assemblies, name, assembly);
+	qb_map_put(assembly_map, name, assembly);
 
 	for (child_node = cur_node->children; child_node;
 		child_node = child_node->next) {
@@ -615,7 +713,7 @@ int main (void)
 
         dep_node = xmlDocGetRootElement(original_config);
 
-	assemblies = qb_skiplist_create();
+	assembly_map = qb_skiplist_create();
         for (cur_node = dep_node->children; cur_node;
              cur_node = cur_node->next) {
                 if (cur_node->type == XML_ELEMENT_NODE) {
