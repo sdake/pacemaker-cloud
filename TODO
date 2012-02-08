@@ -1,4 +1,4 @@
-======================
+ ======================
  Release Zoysia (1.0)
 ======================
 + Assembly/deployable/resource model for organizing virtual machines.
@@ -7,19 +7,38 @@
 + Full Aeolus integration including configuration, visualization and event
   recording.
 + Basic OpenStack integration including image building and restart. 
-+ Merged into Debian, EPEL6, Fedora 15, Fedora 16, Fedora 17, Ubuntu.
++ Merged into Debian, EPEL6, Fedora 15, Fedora 16, Fedora 17, Fedora 18, Ubuntu.
 + Local resource monitoring and VM healthchecking via Matahari.
++ Local resource monitoring and VM healthchecking via ssh.
 
 =======================
  Interim Release Goals
 =======================
 0.5 - Full Fedora 15/Fedora 16 integration of assembly/deployable/resource
       restart single node.
-0.6 - API communication between cped and aeolus.
+0.6 - Division of supported infrastructure into separate RPMs.
+      Ubuntu assembly support.
+      Wordpress + MySql demonstration.
+      Human parsable event display in pcloudsh.
       Aeolus restart on failure detection.
       OpenStack image generation and restart integration.
-0.7 - Visualization of VM event state changes in Aeolus conductor.
-0.8 - Recovery Escalation.
+      Recovery escalation.
+      QMF fd api usage to reduce cpu utilization.
+0.7 - Deltacloud integration for VM start/stop control in dped-mh.
+      Deltacloud integration for VM start/stop control in dped-ssh.
+      Removal of vmlauncher.
+      blocking ssh-based agent VM/resource control in separate binary dped-ssh.
+      timer splits for escalation in dped-mh.
+      timer splits for escalation in dped-ssh.
+      startup ordering of resources and VMs in dped-mh.
+      startup ordering of resources and VMs in dped-ssh.
+      Full Fedora 17 integration.
+      Allow shell to choose between matahari or ssh monitoring
+      rewrite cped in python (could move to next release).
+0.8 - API communication between cped and Aeolus.
+      restart VMs and resources on failure via Aeolus.
+      support Aeolus launching a DPED via CPE interface.
+      make dped-ssh non-blocking
 0.9 - Application resource monitoring integration with Aeolus conductor.
 1.0 - Configuration and event recording with Aeolus conductor.
 
@@ -30,19 +49,17 @@
   Person (WHO)
 ------------------
 a = Angus
-p = Padraig
 s = Steven
 u = Unassigned
 
 ------------------
  Components (CMP)
 ------------------
-VML = VM Launcher
 CPE = Cloud Policy Engine main binary
-DPE = Deployable Policy Engine binary
+DPEM = Deployable Policy Engine binary in C++ for QMF/Matahari connections
+DPES = Deployable Policy Engine binary in C for SSH connections
 PSH = Pacemaker Cloud Shell
 API = API communication between IAAS platform and Pacemaker Cloud
-DEP = A dependency needing work
 PKG = Packaging 
 MAN = Manual Pages
 DEM = demonstrations
@@ -50,18 +67,29 @@ DEM = demonstrations
 --- ---   ------------------------------------------------------------------
 WHO CMP   Description
 --- ---   ------------------------------------------------------------------
-a - PKG - lsb init scripts
-a - PKG - EPEL packages
-p - API - Aeolus conductor API implementation
-p - API - Aeolus conductor API integration
-s - DEM - 3 tier web application demonstration
-s - API - Aeolus VM state visualization
-a - PSH - OpenStack image generation and launching
-u - API - OpenStack API integration for start & isolate vm image
-a - DPE - add support for recovery escalation policy
-u - SHL - show assembly online/offline
-u - SHL - show resource status
-a - CPE - extend upstart/systemd client code to include getting events on
+
+0.7: Release date: MARCH 15, 2012
+
+s - DPES - Implementation of SSH based monitoring in dped-ssh
+s - DPES - add support for recovery escalation policy to DPES
+a - DPEM - deltacloud integration in dped-ssh
+a - DPEM - startup ordering of resources and VMs in dped-mh
+s - SHL  - allow shell to choose between matahari or ssh monitoring process
+s - DPES - startup ordering of resources and VMs in dped-ssh
+s - DPES - deltacloud integration in dped-mh
+a - CPE  - rewrite cped in python
+s - VML  - Removal of vmlauncher
+s - SHL  - Full Fedora 17 integration
+
+post 0.7:
+u - DPES - make dped-ssh nonblocking
+u - PKG  - lsb init scripts
+u - PKG  - EPEL packages
+u - SHL  - show assembly online/offline
+u - SHL  - show resource status
+u - API  - Aeolus VM state visualization
+u - API  - Aeolus conductor API integration with CPE API
+u - CPE  - extend upstart/systemd client code to include getting events on
           failure.
 u - PKG - debian packaging
 
