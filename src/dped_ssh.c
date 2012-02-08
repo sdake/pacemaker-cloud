@@ -334,9 +334,6 @@ static void op_history_delete(struct pe_operation *op)
 		}
 	}
 
-        if (qb_loop_timer_expire_time_get(mainloop, resource->monitor_timer) > 0) {
-		qb_loop_timer_del(mainloop, resource->monitor_timer);
-	}
 	pe_resource_completed(op, OCF_OK);
 }
 
@@ -358,6 +355,7 @@ static void resource_execute_cb(struct pe_operation *op)
 	if (strcmp(op->method, "monitor") == 0) {
 		if (strstr(op->rname, op->hostname) != NULL) {
 			if (op->interval > 0) {
+				op_history_delete(op);
 				qb_loop_timer_add(mainloop, QB_LOOP_LOW,
 					op->interval * QB_TIME_NS_IN_MSEC, op,
 					monitor_timeout,
@@ -391,11 +389,11 @@ static void resource_execute_cb(struct pe_operation *op)
 		pe_resource_completed(op, pe_exitcode);
 	} else
 	if (strcmp(op->method, "delete") == 0) {
+		qb_loop_timer_del(mainloop, resource->monitor_timer);
 		op_history_delete(op);
 	} else {
 		assert(0);
 	}
-	
 }
 
 static void transition_completed_cb(void* user_data, int32_t result) {
