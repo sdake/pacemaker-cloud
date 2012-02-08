@@ -344,7 +344,6 @@ static void resource_execute_cb(struct pe_operation *op)
 	if (strcmp(op->method, "monitor") == 0) {
 		if (strstr(op->rname, op->hostname) != NULL) {
 			if (op->interval > 0) {
-				printf ("starting monitor timer\n");
 				qb_loop_timer_add(mainloop, QB_LOOP_LOW,
 					op->interval * QB_TIME_NS_IN_MSEC, op,
 					monitor_timeout,
@@ -385,7 +384,6 @@ static void resource_execute_cb(struct pe_operation *op)
 }
 
 static void transition_completed_cb(void* user_data, int32_t result) {
-	printf("transition completed cb\n");
 }
 
 static const char *my_tags_stringify(uint32_t tags)
@@ -528,7 +526,6 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 			continue;
 		}
 		resource_xml = insert_resource(resources_xml, oh->resource);
-printf ("resource name %s\n", oh->resource->name);
 		op_history_insert(resource_xml, oh);
 	}
 	
@@ -548,7 +545,6 @@ static void process(void)
 	char filename[1024];
 
 
-printf ("process\n");
 	/*
 	 * Remove status descriptor
 	 */
@@ -572,8 +568,6 @@ printf ("process\n");
 
 	rc = pe_process_state(pe_root, resource_execute_cb,
 		transition_completed_cb,  NULL);
-printf ("process rc=%d\n", rc);
-printf ("------Saving counter %d\n", counter);
 	sprintf (filename, "/tmp/z%d.xml", counter++);
 	xmlSaveFormatFileEnc(filename, _pe, "UTF-8", 1);
 	if (rc != 0) {
