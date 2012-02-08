@@ -373,6 +373,7 @@ static void resource_execute_cb(struct pe_operation *op)
 		qb_log(LOG_INFO,
 			"Stopping resource '%s' on assembly '%s' ocf code '%d'\n",
 			op->rname, op->hostname, pe_exitcode);
+			qb_loop_timer_del(mainloop, resource->monitor_timer);
 		pe_resource_completed(op, pe_exitcode);
 	} else
 	if (strcmp(op->method, "delete") == 0) {
