@@ -314,11 +314,25 @@ static void resource_monitor_execute(struct pe_operation *op)
 		resource_failed(op);
 	}
 }
+
 static void op_history_delete(struct pe_operation *op)
 {
-	struct resource *resource = (struct resource *)op->resource;
+	struct resource *resource;
+	qb_map_iter_t *iter;
+	const char *key;
+	struct operation_history *oh;
 
-	qb_map_rm(resource->assembly->resource_map, op->rname);
+	/*
+	 * Delete this resource from any operational histories
+	 */
+	iter = qb_map_iter_create(op_history_map);
+	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
+		resource = (struct resource *)oh->resource;
+	
+		if (resource == op->resource) {
+			qb_map_rm(op_history_map, key);
+		}
+	}
 
         if (qb_loop_timer_expire_time_get(mainloop, resource->monitor_timer) > 0) {
 		qb_loop_timer_del(mainloop, resource->monitor_timer);
