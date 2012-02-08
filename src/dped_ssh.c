@@ -1,6 +1,7 @@
 #include "pcmk_pe_ssh.h"
 
 #include <glib.h>
+#include <uuid/uuid.h>
 #include <qb/qbdefs.h>
 #include <sys/epoll.h>
 #include <qb/qbloop.h>
@@ -12,11 +13,13 @@
 #include <libssh2.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <assert.h>
 
 #define INSTANCE_STATE_OFFLINE 1
 #define INSTANCE_STATE_PENDING 2
 #define INSTANCE_STATE_RUNNING 3
 #define INSTANCE_STATE_FAILED 4
+#define INSTANCE_STATE_RECOVERING 5
 
 #define SSH_STATE_UNDEFINED		0
 #define SSH_STATE_CONNECT		1
@@ -35,13 +38,31 @@ static qb_loop_timer_handle timer_processing;
 
 static qb_map_t *assembly_map;
 
-static xmlNode *policy_root;
+static qb_map_t *op_history_map;
 
-static xmlDoc *policy;
+static int call_order = 0;
 
-struct resource {
-	char *name;
-	char *type;
+static int counter = 0;
+
+static char crmd_uuid[37];
+
+static xmlDocPtr _pe = NULL;
+
+static xmlDocPtr _config = NULL;
+
+struct operation_history {
+	char *rsc_id;
+	char *operation;
+	uint32_t call_id;
+	uint32_t interval;
+	enum ocf_exitcode rc;
+	uint32_t target_outcome;
+	time_t last_run;
+	time_t last_rc_change;
+	uint32_t graph_id;
+	uint32_t action_id;
+	char *op_digest;
+	struct resource *resource;
 };
 
 struct assembly {
@@ -61,11 +82,124 @@ struct assembly {
 	struct sockaddr_in sin;
 };
 
+struct resource {
+	char *name;
+	char *type;
+	char *class;
+	struct assembly *assembly;
+	qb_loop_timer_handle monitor_timer;
+};
+
 static void assembly_state_changed(struct assembly *assembly, int state);
 
 static int32_t instance_create(struct assembly *assembly);
 
 static void connect_execute(void *data);
+
+static void resource_monitor_execute(struct pe_operation *op);
+
+static void schedule_processing(void);
+
+
+static void op_history_save(struct resource *resource, struct pe_operation *op,
+	enum ocf_exitcode ec)
+{
+	struct operation_history *oh;
+	char buffer[4096];
+
+	sprintf(buffer, "%s_%s_%d", op->rname, op->method, op->interval);
+
+	oh = qb_map_get(op_history_map, buffer);
+	if (oh == NULL) {
+		oh = (struct operation_history *)calloc(1, sizeof(struct operation_history));
+		oh->resource = resource;
+		oh->rsc_id = strdup(buffer);
+		oh->operation = strdup(op->method);
+		oh->target_outcome = op->target_outcome;
+		oh->interval = op->interval;
+		oh->rc = OCF_PENDING;
+		oh->op_digest = op->op_digest;
+		qb_map_put(op_history_map, strdup(buffer), oh);
+	} else
+	if (strcmp(oh->op_digest, op->op_digest) != 0) {
+		free(oh->op_digest);
+		oh->op_digest = op->op_digest;
+	}
+        if (oh->rc != ec) {
+                oh->last_rc_change = time(NULL);
+                oh->rc = ec;
+        }
+
+        oh->last_run = time(NULL);
+        oh->call_id = call_order++;
+        oh->graph_id = op->graph_id;
+        oh->action_id = op->action_id;
+}
+
+static void xml_new_int_prop(xmlNode *n, const char *name, int32_t val)
+{
+	char int_str[36];
+	snprintf(int_str, 36, "%d", val);
+	xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+}
+
+static void xml_new_time_prop(xmlNode *n, const char *name, time_t val)
+{
+        char int_str[36];
+        snprintf(int_str, 36, "%d", val);
+        xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+}
+
+
+
+static void op_history_insert(xmlNode *resource_xml,
+	struct operation_history *oh)
+{
+	xmlNode *op;
+	char key[255];
+	char magic[255];
+
+	op = xmlNewChild(resource_xml, NULL, "lrm_rsc_op", NULL);
+
+	/*
+	 * TODO investigate if strdup is really needed here
+	 */
+	xmlNewProp(op, "id", strdup(oh->rsc_id));
+	xmlNewProp(op, "operation", strdup(oh->operation));
+	xml_new_int_prop(op, "call-id", oh->call_id);
+	xml_new_int_prop(op, "rc-code", oh->rc);
+	xml_new_int_prop(op, "interval", oh->interval);
+	xml_new_time_prop(op, "last-run", oh->last_run);
+	xml_new_time_prop(op, "last-rc-change", oh->last_rc_change);
+
+	snprintf(key, 255, "%d:%d:%d:%s",
+		oh->action_id, oh->graph_id, oh->target_outcome, crmd_uuid);
+
+	xmlNewProp(op, "transition-key", key);
+
+	snprintf(magic, 255, "0:%d:%s", oh->rc, key);
+	xmlNewProp(op, "transition-magic", magic);
+
+	xmlNewProp(op, "op-digest", oh->op_digest);
+	xmlNewProp(op, "crm-debug-origin", __func__);
+	xmlNewProp(op, "crm_feature_set", PE_CRM_VERSION);
+	xmlNewProp(op, "op-status", "0");
+	xmlNewProp(op, "exec-time", "0");
+	xmlNewProp(op, "queue-time","0");
+}
+
+
+static void monitor_timeout(void *data)
+{
+	struct pe_operation *op = (struct pe_operation *)data;
+	struct resource *resource = (struct resource *)op->resource;
+
+// TODO check if the timer is running
+	resource_monitor_execute(op);
+	qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+		op->interval * QB_TIME_NS_IN_MSEC, op, monitor_timeout,
+		&resource->monitor_timer);
+}	
 
 static int assembly_ssh_exec(struct assembly *assembly, char *command, int *ssh_rc)
 {
@@ -131,27 +265,96 @@ error_close:
 	return rc;
 }
 
-static void resource_execute_cb(struct pe_operation *op)
+static void assembly_state_changed(struct assembly *assembly, int state)
+{
+	if (state == INSTANCE_STATE_FAILED) {
+		instance_create(assembly);
+	}
+	schedule_processing();
+}
+
+static void service_state_changed(char *hostname, char *resource,
+	char *state, char *reason)
+{
+	assembly_state_changed(NULL, INSTANCE_STATE_RECOVERING);
+}
+static void resource_failed(struct pe_operation *op)
+{
+	struct resource *resource = (struct resource *)op->resource;
+	service_state_changed(op->hostname, op->rtype, "failed", "monitor failed");
+	qb_loop_timer_del(mainloop, resource->monitor_timer);
+}
+static void resource_monitor_execute(struct pe_operation *op)
 {
 	struct assembly *assembly;
-	char command[4096];
+	struct resource *resource;
 	int rc;
 	int ssh_rc;
 	int pe_exitcode;
+	char command[4096];
+	char buffer[4096];
 
 	assembly = qb_map_get(assembly_map, op->hostname);
+	resource = qb_map_get(assembly->resource_map, op->rname);
 
-	qb_log(LOG_NOTICE, "resource_execute_cb method '%s' name '%s'",
-		op->method, op->rname);
+	assert (resource);
+
+	sprintf (command, "systemctl status %s.service",
+		op->rtype);
+	rc = assembly_ssh_exec(assembly, command, &ssh_rc);
+	pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
+	qb_log(LOG_INFO,
+		"Monitoring resource '%s' on assembly '%s' ocf code '%d'\n",
+		op->rname, op->hostname, pe_exitcode);
+	if (strstr(op->rname, op->hostname) != NULL) {
+		op_history_save(resource, op, pe_exitcode);
+	}
+	pe_resource_completed(op, pe_exitcode);
+	if (pe_exitcode != op->target_outcome) {
+		resource_failed(op);
+	}
+}
+static void op_history_delete(struct pe_operation *op)
+{
+	struct resource *resource = (struct resource *)op->resource;
+
+	qb_map_rm(resource->assembly->resource_map, op->rname);
+
+        if (qb_loop_timer_expire_time_get(mainloop, resource->monitor_timer) > 0) {
+		qb_loop_timer_del(mainloop, resource->monitor_timer);
+	}
+	pe_resource_completed(op, OCF_OK);
+}
+
+static void resource_execute_cb(struct pe_operation *op)
+{
+	struct resource *resource;
+	struct assembly *assembly;
+	int rc;
+	int ssh_rc;
+	int pe_exitcode;
+	char command[4096];
+
+	assembly = qb_map_get(assembly_map, op->hostname);
+	resource = qb_map_get(assembly->resource_map, op->rname);
+	op->resource = resource;
+
+	qb_log(LOG_NOTICE, "resource_execute_cb method '%s' name '%s' interval '%d'",
+		op->method, op->rname, op->interval);
 	if (strcmp(op->method, "monitor") == 0) {
-		sprintf (command, "systemctl status %s.service",
-			op->rtype);
-		rc = assembly_ssh_exec(assembly, command, &ssh_rc);
-		pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
-		qb_log(LOG_INFO,
-			"Monitoring resource '%s' on assembly '%s' ocf code '%d'\n",
-			op->rname, op->hostname, ssh_rc);
-		pe_resource_completed(op, pe_exitcode);
+		if (strstr(op->rname, op->hostname) != NULL) {
+			if (op->interval > 0) {
+				printf ("starting monitor timer\n");
+				qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+					op->interval * QB_TIME_NS_IN_MSEC, op,
+					monitor_timeout,
+					&resource->monitor_timer);
+			} else {
+				resource_monitor_execute(op);
+			}
+		} else {
+			pe_resource_completed(op, OCF_NOT_RUNNING);
+		}
 	} else
 	if (strcmp (op->method, "start") == 0) {
 		sprintf (command, "systemctl start %s.service",
@@ -160,9 +363,25 @@ static void resource_execute_cb(struct pe_operation *op)
 		pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
 		qb_log(LOG_INFO,
 			"Starting resource '%s' on assembly '%s' ocf code '%d'\n",
-			op->rname, op->hostname, ssh_rc);
+			op->rname, op->hostname, pe_exitcode);
 		pe_resource_completed(op, ssh_rc);
+	} else
+	if (strcmp(op->method, "stop") == 0) {
+		sprintf (command, "systemctl stop %s.service",
+			op->rtype);
+		rc = assembly_ssh_exec(assembly, command, &ssh_rc);
+		pe_exitcode = pe_resource_ocf_exitcode_get(op, ssh_rc);
+		qb_log(LOG_INFO,
+			"Stopping resource '%s' on assembly '%s' ocf code '%d'\n",
+			op->rname, op->hostname, pe_exitcode);
+		pe_resource_completed(op, pe_exitcode);
+	} else
+	if (strcmp(op->method, "delete") == 0) {
+		op_history_delete(op);
+	} else {
+		assert(0);
 	}
+	
 }
 
 static void transition_completed_cb(void* user_data, int32_t result) {
@@ -265,23 +484,55 @@ static int instance_stop(char *image_name)
 	deltacloud_free(&api);
 	return 0;
 }
+static xmlNode *insert_resource(xmlNode *status, struct resource *resource)
+{
+	xmlNode *resource_xml;
+
+	resource_xml = xmlNewChild (status, NULL, "lrm_resource", NULL);
+	xmlNewProp(resource_xml, "id", resource->name);
+	xmlNewProp(resource_xml, "type", resource->type);
+	xmlNewProp(resource_xml, "class", resource->class);
+
+	return resource_xml;
+}
 
 static void insert_status(xmlNode *status, struct assembly *assembly)
 {
+	struct operation_history *oh;
+	xmlNode *resource_xml;
+	xmlNode *resources_xml;
+	xmlNode *lrm_xml;
+	struct resource *resource;
+	qb_map_iter_t *iter;
+	const char *key;
+
 	qb_log(LOG_INFO, "Inserting assembly %s", assembly->name);
+		
 	xmlNode *node_state = xmlNewChild(status, NULL, "node_state", NULL);
         xmlNewProp(node_state, "id", assembly->uuid);
         xmlNewProp(node_state, "uname", assembly->name);
-        xmlNewProp(node_state, "ha", BAD_CAST "active");
-        xmlNewProp(node_state, "expected", BAD_CAST "member");
-        xmlNewProp(node_state, "in_ccm", BAD_CAST "true");
-        xmlNewProp(node_state, "crmd", BAD_CAST "online");
+        xmlNewProp(node_state, "ha", "active");
+        xmlNewProp(node_state, "expected", "member");
+        xmlNewProp(node_state, "in_ccm", "true");
+        xmlNewProp(node_state, "crmd", "online");
 
 	/* check state*/
 	xmlNewProp(node_state, "join", "member");
+	lrm_xml = xmlNewChild(node_state, NULL, "lrm", NULL);
+	resources_xml = xmlNewChild(lrm_xml, NULL, "lrm_resources", NULL);
+	iter = qb_map_iter_create(op_history_map);
+	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
+		resource = oh->resource;
+	
+		if (strstr(resource->name, assembly->name) == NULL) {
+			continue;
+		}
+		resource_xml = insert_resource(resources_xml, oh->resource);
+printf ("resource name %s\n", oh->resource->name);
+		op_history_insert(resource_xml, oh);
+	}
+	
 }
-
-static void schedule_processing(void);
 
 static void process(void)
 {
@@ -293,12 +544,16 @@ static void process(void)
 	const char *p;
 	size_t res;
 	const char *key;
+	static xmlNode *pe_root;
+	char filename[1024];
 
+
+printf ("process\n");
 	/*
 	 * Remove status descriptor
 	 */
-	policy_root = xmlDocGetRootElement(policy);
-	for (cur_node = policy_root->children; cur_node; cur_node = cur_node->next) {
+	pe_root = xmlDocGetRootElement(_pe);
+	for (cur_node = pe_root->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE &&
 			strcmp((char*)cur_node->name, "status") == 0) {
 
@@ -308,15 +563,19 @@ static void process(void)
 		}
 	}
 
-	status = xmlNewChild(policy_root, NULL, "status", NULL);
+	status = xmlNewChild(pe_root, NULL, "status", NULL);
 	iter = qb_map_iter_create(assembly_map);
 	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
 		insert_status(status, assembly);
 	}
 	qb_map_iter_free(iter);
 
-	rc = pe_process_state(policy_root, resource_execute_cb,
+	rc = pe_process_state(pe_root, resource_execute_cb,
 		transition_completed_cb,  NULL);
+printf ("process rc=%d\n", rc);
+printf ("------Saving counter %d\n", counter);
+	sprintf (filename, "/tmp/z%d.xml", counter++);
+	xmlSaveFormatFileEnc(filename, _pe, "UTF-8", 1);
 	if (rc != 0) {
 		schedule_processing();
 	}
@@ -488,14 +747,6 @@ static void assembly_connect(struct assembly *assembly)
 	qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, connect_execute);
 }
 
-static void assembly_state_changed(struct assembly *assembly, int state)
-{
-	if (state == INSTANCE_STATE_FAILED) {
-		instance_create(assembly);
-	}
-	schedule_processing();
-}
-
 static void instance_state_detect(void *data)
 {
 	static struct deltacloud_api api;
@@ -586,8 +837,9 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 {
 	struct resource *resource;
 	char *name;
-	char resource_name[4096];
 	char *type;
+	char *class;
+	char resource_name[4096];
 
 	resource = calloc (1, sizeof (struct resource));
 	name = xmlGetProp(cur_node, "name");
@@ -595,6 +847,9 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	resource->name = strdup(resource_name);
 	type = xmlGetProp(cur_node, "type");
 	resource->type = strdup(type);
+	class = xmlGetProp(cur_node, "class");
+	resource->class = strdup(class);
+printf ("resource map put %s\n", resource->name);
 	qb_map_put(assembly->resource_map, resource->name, resource);
 }
 
@@ -669,14 +924,49 @@ static void stop_assemblies(xmlNode *assemblies)
 	}
 }
 
+void reload(void)
+{
+	xmlNode *cur_node;
+	xmlNode *dep_node;
+	uuid_t uuid_temp_id;
+        xsltStylesheetPtr ss;
+	const char *params[1];
+
+	uuid_generate(uuid_temp_id);
+	uuid_unparse(uuid_temp_id, crmd_uuid);
+
+	if (_config != NULL) {
+		xmlFreeDoc(_config);
+		_config = NULL;
+	}
+	if (_pe != NULL) {
+		xmlFreeDoc(_pe);
+		_pe = NULL;
+	}
+
+	_config = xmlParseFile("/var/run/dep-wp.xml");
+
+	ss = xsltParseStylesheetFile(BAD_CAST "/usr/share/pacemaker-cloud/cf2pe.xsl");
+	params[0] = NULL;
+
+        _pe = xsltApplyStylesheet(ss, _config, params);
+        xsltFreeStylesheet(ss);
+        dep_node = xmlDocGetRootElement(_config);
+
+
+        for (cur_node = dep_node->children; cur_node;
+             cur_node = cur_node->next) {
+                if (cur_node->type == XML_ELEMENT_NODE) {
+                        if (strcmp((char*)cur_node->name, "assemblies") == 0) {
+				assemblies_create(cur_node->children);
+                        }
+                }
+        }
+}
+
 
 int main (void)
 {
-	xmlDoc *original_config;
-	xmlNode *cur_node;
-	xmlNode *dep_node;
-        xsltStylesheetPtr ss;
-	const char *params[1];
 	int daemonize = 0;
 	int rc;
 
@@ -702,41 +992,11 @@ int main (void)
 		qb_log(LOG_CRIT, "libssh2 initialization failed (%d).", rc);
 		return 1;	
 	}
-	params[0] = NULL;
-
-	original_config = xmlParseFile("/var/run/dep-wp.xml");
-	ss = xsltParseStylesheetFile(BAD_CAST "/usr/share/pacemaker-cloud/cf2pe.xsl");
-
-        policy = xsltApplyStylesheet(ss, original_config, params);
-
-        xsltFreeStylesheet(ss);
-
-        dep_node = xmlDocGetRootElement(original_config);
 
 	assembly_map = qb_skiplist_create();
-        for (cur_node = dep_node->children; cur_node;
-             cur_node = cur_node->next) {
-                if (cur_node->type == XML_ELEMENT_NODE) {
-                        if (strcmp((char*)cur_node->name, "assemblies") == 0) {
-				assemblies_create(cur_node->children);
-                        }
-                }
-        }
-	policy_root = xmlDocGetRootElement(policy);
-	pe_process_state(policy_root, resource_execute_cb,
-		transition_completed_cb, NULL);
+	op_history_map = qb_skiplist_create();
 
-#ifdef COMPILE_OUT
-	printf ("stopping instances\n");
-        for (cur_node = dep_node->children; cur_node;
-             cur_node = cur_node->next) {
-                if (cur_node->type == XML_ELEMENT_NODE) {
-                        if (strcmp((char*)cur_node->name, "assemblies") == 0) {
-                                stop_assemblies(cur_node->children);
-                        }
-                }
-        }
-#endif
+	reload();
 
 	qb_loop_run(mainloop);
 	return 0;
