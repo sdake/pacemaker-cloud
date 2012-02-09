@@ -826,7 +826,6 @@ static int32_t instance_create(struct assembly *assembly)
 	for (images_head = images; images; images = images->next) {
 		if (strcmp(images->name, assembly->name) == 0) {
 			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &assembly->instance_id);
-			printf ("creating instance id %s\n", assembly->instance_id);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 					deltacloud_get_last_error_string());
@@ -856,7 +855,6 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	resource->type = strdup(type);
 	class = xmlGetProp(cur_node, "class");
 	resource->class = strdup(class);
-printf ("resource map put %s\n", resource->name);
 	qb_map_put(assembly->resource_map, resource->name, resource);
 }
 
