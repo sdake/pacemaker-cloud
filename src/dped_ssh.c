@@ -330,6 +330,8 @@ static void op_history_delete(struct pe_operation *op)
 		resource = (struct resource *)oh->resource;
 	
 		if (resource == op->resource) {
+			free(oh->rsc_id);
+			free(oh->operation);
 			qb_map_rm(op_history_map, key);
 		}
 	}
