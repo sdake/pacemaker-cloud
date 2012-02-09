@@ -119,7 +119,7 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 		oh->interval = op->interval;
 		oh->rc = OCF_PENDING;
 		oh->op_digest = op->op_digest;
-		qb_map_put(op_history_map, strdup(buffer), oh);
+		qb_map_put(op_history_map, oh->rsc_id, oh);
 	} else
 	if (strcmp(oh->op_digest, op->op_digest) != 0) {
 		free(oh->op_digest);
@@ -330,9 +330,9 @@ static void op_history_delete(struct pe_operation *op)
 		resource = (struct resource *)oh->resource;
 	
 		if (resource == op->resource) {
+			qb_map_rm(op_history_map, key);
 			free(oh->rsc_id);
 			free(oh->operation);
-			qb_map_rm(op_history_map, key);
 		}
 	}
 
