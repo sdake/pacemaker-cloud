@@ -73,9 +73,7 @@ struct assembly {
 	int ssh_state;
 	qb_map_t *resource_map;
 	char *instance_id;
-	int healthcheck_failures;
 	int fd;
-	char time[32];
 	qb_loop_timer_handle healthcheck_timer;
 	LIBSSH2_SESSION *session;
 	LIBSSH2_CHANNEL *channel;
@@ -613,57 +611,16 @@ static void schedule_processing(void)
 static void assembly_healthcheck(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
-	char buffer[1024];
 	int rc;
-	int i;
-	char *end;
+	int ssh_rc;
 
-	assembly->channel = libssh2_channel_open_session(assembly->session);
-	if (assembly->channel == NULL) {
+	rc = assembly_ssh_exec(assembly, "uptime", &ssh_rc);
+	if (rc == -1 || ssh_rc != 0) {
 		qb_log(LOG_NOTICE,
-			"open session failed %d\n",
-			libssh2_session_last_errno(assembly->session));
-		goto error;
-	}
-
-	rc = libssh2_channel_exec(assembly->channel, "uptime");
-	if (rc != 0) {
-		qb_log(LOG_NOTICE,
-			"channel exec failed %d\n", rc);
-		goto error;
-	}
-		
-	rc = libssh2_channel_read(assembly->channel, buffer, sizeof(buffer));
-	
-error:
-	end = strstr (buffer, " up");
-	if (end) {
-		*end = '\0';
-	
-		if (strcmp (buffer, assembly->time) == 0) {
-			assembly->healthcheck_failures += 1;
-		} else {
-			assembly->healthcheck_failures = 0;
-			strcpy (assembly->time, buffer);
-		}
-	}
-
-	if (end == NULL || rc != 0) {
-		assembly->healthcheck_failures += 1;
-	}
-
-	if (assembly->healthcheck_failures > 3) {
-		qb_log(LOG_NOTICE, "Executing a restart for assembly '%s'",
-			assembly->name);
-
+			"assembly healthcheck failed %d\n",
+			ssh_rc);
 		assembly_state_changed(assembly, INSTANCE_STATE_FAILED);
 		return;
-	}
-
-	rc = libssh2_channel_close(assembly->channel);
-	if (rc != 0) {
-		qb_log(LOG_NOTICE,
-			"channel close failed %d\n", rc);
 	}
 
 	qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
