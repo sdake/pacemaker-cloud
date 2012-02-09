@@ -330,6 +330,7 @@ static void op_history_delete(struct pe_operation *op)
 			qb_map_rm(op_history_map, key);
 			free(oh->rsc_id);
 			free(oh->operation);
+			free(oh);
 		}
 	}
 
