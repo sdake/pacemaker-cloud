@@ -161,11 +161,8 @@ static void op_history_insert(xmlNode *resource_xml,
 
 	op = xmlNewChild(resource_xml, NULL, "lrm_rsc_op", NULL);
 
-	/*
-	 * TODO investigate if strdup is really needed here
-	 */
-	xmlNewProp(op, "id", strdup(oh->rsc_id));
-	xmlNewProp(op, "operation", strdup(oh->operation));
+	xmlNewProp(op, "id", oh->rsc_id);
+	xmlNewProp(op, "operation", oh->operation);
 	xml_new_int_prop(op, "call-id", oh->call_id);
 	xml_new_int_prop(op, "rc-code", oh->rc);
 	xml_new_int_prop(op, "interval", oh->interval);
