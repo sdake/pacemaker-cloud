@@ -322,6 +322,7 @@ process_next_job(void* data)
 	enum transition_status graph_rc;
 	qb_loop_timer_handle th;
 
+printf ("process next job\n");
 	if (!graph_updated) {
 		qb_loop_timer_add(NULL, QB_LOOP_MED,
 			1000 * QB_TIME_NS_IN_MSEC,
@@ -399,7 +400,7 @@ pe_process_state(xmlNode *xml_input,
 
 	set_crm_log_level(LOG_INFO);
 
-	assert(validate_xml(xml_input, NULL, FALSE) == TRUE);
+//	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 
 	qb_log(LOG_INFO, "Executing deployable transition");
 

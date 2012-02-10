@@ -313,6 +313,7 @@ static void resource_monitor_execute(struct pe_operation *op)
 	pe_resource_completed(op, pe_exitcode);
 	if (pe_exitcode != op->target_outcome) {
 		resource_failed(op);
+		pe_resource_unref(op);
 	}
 }
 
