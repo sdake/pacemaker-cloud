@@ -30,7 +30,7 @@
 #define SSH_STATE_EXEC			6
 #define SSH_STATE_READ			7
 
-extern qb_loop_t* mainloop;
+static qb_loop_t* mainloop;
 
 static qb_loop_timer_handle timer_handle;
 

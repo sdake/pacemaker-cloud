@@ -55,8 +55,6 @@
 #define LSB_STATUS_NOT_INSTALLED 4
 #define LSB_STATUS_UNKNOWN_ERROR 199
 
-qb_loop_t* mainloop = NULL;
-
 extern xmlNode * do_calculations(pe_working_set_t *data_set,
 				 xmlNode *xml_input, ha_time_t *now);
 
@@ -325,7 +323,7 @@ process_next_job(void* data)
 	qb_loop_timer_handle th;
 
 	if (!graph_updated) {
-		qb_loop_timer_add(mainloop, QB_LOOP_MED,
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
 			1000 * QB_TIME_NS_IN_MSEC,
 			transition, process_next_job, &th);
 		return;
@@ -338,7 +336,7 @@ process_next_job(void* data)
 	qb_log(LOG_DEBUG, "run_graph returned: %s", transition_status(graph_rc));
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
-		qb_loop_timer_add(mainloop, QB_LOOP_MED,
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
 			1000 * QB_TIME_NS_IN_MSEC,
 			transition, process_next_job, &th);
 		return;
@@ -421,7 +419,7 @@ pe_process_state(xmlNode *xml_input,
 
 	graph_updated = TRUE;
 	
-	qb_loop_job_add(mainloop, QB_LOOP_HIGH, transition, process_next_job);
+	qb_loop_job_add(NULL, QB_LOOP_HIGH, transition, process_next_job);
 
 	qb_leave();
 	return 0;
