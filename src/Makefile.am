@@ -35,8 +35,7 @@ noinst_HEADERS = assembly.h assembly_am.h assembly_pm.h config.h cpe_agent.h \
 	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
 	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h \
-	qmf_multiplexer.h qmf_job.h qmf_agent.h cpe_impl.h pcmk_pe_ssh.h \
-	pcmk_pe_ssh.c
+	qmf_multiplexer.h qmf_job.h qmf_agent.h cpe_impl.h
 
 qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -64,7 +63,7 @@ dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 		$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
-dped_ssh_SOURCES = dped_ssh.c pcmk_pe_ssh.c
+dped_ssh_SOURCES = dped_ssh.c pcmk_pe.c
 
 dped_ssh_CFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
 	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \

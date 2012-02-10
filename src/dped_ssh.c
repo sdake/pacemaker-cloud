@@ -1,4 +1,4 @@
-#include "pcmk_pe_ssh.h"
+#include "pcmk_pe.h"
 
 #include <glib.h>
 #include <uuid/uuid.h>
