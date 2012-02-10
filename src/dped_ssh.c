@@ -380,7 +380,7 @@ static void resource_execute_cb(struct pe_operation *op)
 		qb_log(LOG_INFO,
 			"Starting resource '%s' on assembly '%s' ocf code '%d'\n",
 			op->rname, op->hostname, pe_exitcode);
-		pe_resource_completed(op, ssh_rc);
+		pe_resource_completed(op, pe_exitcode);
 	} else
 	if (strcmp(op->method, "stop") == 0) {
 		sprintf (command, "systemctl stop %s.service",
