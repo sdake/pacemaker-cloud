@@ -257,6 +257,12 @@ error_close:
 	}
 	*ssh_rc = libssh2_channel_get_exit_status(channel);
 
+	rc = libssh2_channel_free(channel);
+	if (rc < 0) {
+		qb_log(LOG_NOTICE,
+			"libssh2_channel_free failed %d\n", rc);
+	}
+
 	return rc;
 }
 
