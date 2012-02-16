@@ -23,6 +23,7 @@
 #include <sys/epoll.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
+#include <qb/qbloop.h>
 #include "mainloop.h"
 
 static qb_loop_t* default_loop = NULL;

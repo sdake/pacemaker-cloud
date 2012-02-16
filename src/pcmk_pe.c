@@ -29,8 +29,10 @@
 #include <crm/transition.h>
 #include <crm/pengine/status.h>
 #undef LOG_TRACE
+#include <qb/qbdefs.h>
 #include <qb/qblog.h>
-#include "mainloop.h"
+#include <qb/qbloop.h>
+#include <qb/qbutil.h>
 #include "pcmk_pe.h"
 
 #define LSB_PENDING -1
@@ -101,7 +103,7 @@ static char * ocf_reasons[10] = {
 	"failed on the master",
 };
 
-bool
+int
 pe_resource_is_hard_error(enum ocf_exitcode ec)
 {
 	return (ec == OCF_INVALID_PARAM ||
@@ -320,10 +322,11 @@ process_next_job(void* data)
 	enum transition_status graph_rc;
 	qb_loop_timer_handle th;
 
+printf ("process next job\n");
 	if (!graph_updated) {
-		mainloop_timer_add(1000,
-				   transition,
-				   process_next_job, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
+			1000 * QB_TIME_NS_IN_MSEC,
+			transition, process_next_job, &th);
 		return;
 	}
 	qb_enter();
@@ -334,9 +337,9 @@ process_next_job(void* data)
 	qb_log(LOG_DEBUG, "run_graph returned: %s", transition_status(graph_rc));
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
-		mainloop_timer_add(1000,
-				   transition,
-				   process_next_job, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
+			1000 * QB_TIME_NS_IN_MSEC,
+			transition, process_next_job, &th);
 		return;
 	}
 
@@ -397,7 +400,7 @@ pe_process_state(xmlNode *xml_input,
 
 	set_crm_log_level(LOG_INFO);
 
-	assert(validate_xml(xml_input, NULL, FALSE) == TRUE);
+//	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 
 	qb_log(LOG_INFO, "Executing deployable transition");
 
@@ -416,9 +419,9 @@ pe_process_state(xmlNode *xml_input,
 	//print_graph(LOG_INFO, transition);
 
 	graph_updated = TRUE;
-	mainloop_job_add(QB_LOOP_HIGH,
-			 transition,
-			 process_next_job);
+	
+	qb_loop_job_add(NULL, QB_LOOP_HIGH, transition, process_next_job);
+
 	qb_leave();
 	return 0;
 }

@@ -44,6 +44,8 @@ PKG_CHECK_MODULES(libqb, libqb)
 PKG_CHECK_MODULES(uuid, uuid)
 PKG_CHECK_MODULES(libmicrohttpd, libmicrohttpd)
 PKG_CHECK_MODULES(libcurl, libcurl)
+PKG_CHECK_MODULES(libdeltacloud, libdeltacloud)
+PKG_CHECK_MODULES(libssh2, libssh2)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
