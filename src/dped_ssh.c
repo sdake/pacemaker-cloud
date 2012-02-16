@@ -115,7 +115,6 @@ struct ssh_operation {
 	struct qb_list_head list;
 	struct pe_operation *op;
 	qb_loop_timer_handle ssh_timer;
-	qb_loop_timer_handle job;
 	enum ssh_exec_state ssh_exec_state;
 	qb_loop_job_dispatch_fn completion_func;
 	LIBSSH2_CHANNEL *channel;
@@ -410,7 +409,7 @@ error_close:
 	return;
 
 job_repeat_schedule:
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 50 * QB_TIME_NS_IN_MSEC, ssh_op, assembly_ssh_exec_two, &ssh_op->job);
+	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec_two);
 }
 
 static void assembly_state_changed(struct assembly *assembly, int state)
@@ -471,7 +470,8 @@ static void ssh_timeout(void *data)
 	qb_list_for_each_safe(list, list_temp, &ssh_op->assembly->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
 		qb_loop_timer_del(mainloop, ssh_op_del->ssh_timer);
-		qb_loop_timer_del(mainloop, ssh_op_del->job);
+		qb_loop_job_del(mainloop, QB_LOOP_LOW, ssh_op_del,
+			assembly_ssh_exec_two);
 		if (ssh_op_del->resource) {
 			qb_loop_timer_del(mainloop, ssh_op_del->resource->monitor_timer);
 		}
@@ -509,7 +509,7 @@ static void resource_monitor_execute(struct pe_operation *op)
 
 	sprintf (ssh_op->command, "systemctl status %s.service", op->rtype);
 
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 50 * QB_TIME_NS_IN_MSEC, ssh_op, assembly_ssh_exec_two, &ssh_op->job);
+	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec_two);
 	qb_loop_timer_add(mainloop, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 }
 
@@ -820,7 +820,8 @@ static void assembly_healthcheck_completion(void *data)
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
 		qb_loop_timer_del(mainloop, ssh_op->assembly->keepalive_timer);
-		qb_loop_timer_del(mainloop, ssh_op->job);
+		qb_loop_job_del(mainloop, QB_LOOP_LOW, ssh_op,
+			assembly_ssh_exec_two);
 		assembly_state_changed(ssh_op->assembly, INSTANCE_STATE_FAILED);
 		//free(ssh_op);
 		return;
@@ -855,7 +856,7 @@ static void assembly_healthcheck(void *data)
 	qb_list_init(&ssh_op->list);
 	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
 	sprintf (ssh_op->command, "uptime");
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 50 * QB_TIME_NS_IN_MSEC, ssh_op, assembly_ssh_exec_two, &ssh_op->job);
+	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec_two);
 	qb_loop_timer_add(NULL, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 }
 
