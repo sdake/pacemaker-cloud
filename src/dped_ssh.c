@@ -418,15 +418,16 @@ static void assembly_state_changed(struct assembly *assembly, int state)
 	schedule_processing();
 }
 
-static void service_state_changed(char *hostname, char *resource,
-	char *state, char *reason)
+static void service_state_changed(struct assembly *assembly,
+	char *hostname, char *resource, char *state, char *reason)
 {
-	assembly_state_changed(NULL, INSTANCE_STATE_RECOVERING);
+	assembly_state_changed(assembly, INSTANCE_STATE_RECOVERING);
 }
 static void resource_failed(struct pe_operation *op)
 {
 	struct resource *resource = (struct resource *)op->resource;
-	service_state_changed(op->hostname, op->rtype, "failed", "monitor failed");
+	service_state_changed(resource->assembly, op->hostname, op->rtype,
+		"failed", "monitor failed");
 	qb_loop_timer_del(mainloop, resource->monitor_timer);
 }
 
@@ -1081,6 +1082,7 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	resource->type = strdup(type);
 	class = xmlGetProp(cur_node, "class");
 	resource->class = strdup(class);
+	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);
 }
 
