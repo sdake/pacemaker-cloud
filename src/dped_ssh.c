@@ -48,8 +48,6 @@ enum ssh_exec_state {
 	SSH_CHANNEL_FREE = 5
 };
 
-static qb_loop_t* mainloop;
-
 static qb_loop_timer_handle timer_handle;
 
 static qb_loop_timer_handle timer_processing;
@@ -329,20 +327,20 @@ error_close:
 		 */
 	} /* switch */
 
-	qb_loop_timer_del(mainloop, ssh_op->ssh_timer);
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, ssh_op->completion_func);
+	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
+	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, ssh_op->completion_func);
 	qb_list_del(&ssh_op->list);
 	return;
 
 job_repeat_schedule:
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 }
 
 static void assembly_state_changed(struct assembly *assembly, int state)
 {
 	if (state == INSTANCE_STATE_FAILED) {
-		qb_loop_timer_del(mainloop, assembly->keepalive_timer);
-		qb_loop_timer_del(mainloop, assembly->healthcheck_timer);
+		qb_loop_timer_del(NULL, assembly->keepalive_timer);
+		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
 		instance_create(assembly);
 	}
 	assembly->instance_state = state;
@@ -359,7 +357,7 @@ static void resource_failed(struct pe_operation *op)
 	struct resource *resource = (struct resource *)op->resource;
 	service_state_changed(resource->assembly, op->hostname, op->rtype,
 		"failed", "monitor failed");
-	qb_loop_timer_del(mainloop, resource->monitor_timer);
+	qb_loop_timer_del(NULL, resource->monitor_timer);
 }
 
 
@@ -379,7 +377,7 @@ static void resource_monitor_completion(void *data)
 	if (pe_exitcode != ssh_op->op->target_outcome) {
 		resource_failed(ssh_op->op);
 	}
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+	qb_loop_timer_add(NULL, QB_LOOP_LOW,
 		ssh_op->op->interval * QB_TIME_NS_IN_MSEC, ssh_op->op, monitor_timeout,
 		&ssh_op->resource->monitor_timer);
 	//free(ssh_op);
@@ -395,11 +393,11 @@ static void ssh_timeout(void *data)
 	qb_log(LOG_NOTICE, "ssh service timeout on assembly '%s'", ssh_op->assembly->name);
 	qb_list_for_each_safe(list, list_temp, &ssh_op->assembly->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
-		qb_loop_timer_del(mainloop, ssh_op_del->ssh_timer);
-		qb_loop_job_del(mainloop, QB_LOOP_LOW, ssh_op_del,
+		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
+		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
 			assembly_ssh_exec);
 		if (ssh_op_del->resource) {
-			qb_loop_timer_del(mainloop, ssh_op_del->resource->monitor_timer);
+			qb_loop_timer_del(NULL, ssh_op_del->resource->monitor_timer);
 		}
 		qb_list_del(list);
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
@@ -433,8 +431,8 @@ static void ssh_nonblocking_exec(struct assembly *assembly,
 	ssh_op->completion_func = completion_func;
 	qb_list_init(&ssh_op->list);
 	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+	qb_loop_timer_add(NULL, QB_LOOP_LOW,
 		 SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
 		ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 }
@@ -498,7 +496,7 @@ static void ssh_stop_completion(void *data)
 	qb_log(LOG_INFO,
 		"Stopping resource '%s' on assembly '%s' ocf code '%d'\n",
 		ssh_op->op->rname, ssh_op->op->hostname, pe_exitcode);
-		qb_loop_timer_del(mainloop, ssh_op->resource->monitor_timer);
+		qb_loop_timer_del(NULL, ssh_op->resource->monitor_timer);
 	pe_resource_completed(ssh_op->op, pe_exitcode);
 }
 
@@ -520,7 +518,7 @@ static void resource_execute_cb(struct pe_operation *op)
 			assert(op->resource);
 			if (op->interval > 0) {
 				op_history_delete(op);
-				qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+				qb_loop_timer_add(NULL, QB_LOOP_LOW,
 					op->interval * QB_TIME_NS_IN_MSEC, op,
 					monitor_timeout,
 					&resource->monitor_timer);
@@ -543,7 +541,7 @@ static void resource_execute_cb(struct pe_operation *op)
 			"systemctl stop %s.service", op->rtype);
 	} else
 	if (strcmp(op->method, "delete") == 0) {
-		qb_loop_timer_del(mainloop, resource->monitor_timer);
+		qb_loop_timer_del(NULL, resource->monitor_timer);
 		op_history_delete(op);
 	} else {
 		assert(0);
@@ -755,10 +753,10 @@ static void status_timeout(void *data)
 
 static void schedule_processing(void)
 {
-        if (qb_loop_timer_expire_time_get(mainloop, timer_processing) > 0) {
+        if (qb_loop_timer_expire_time_get(NULL, timer_processing) > 0) {
 		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
 	} else {
-		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+		qb_loop_timer_add(NULL, QB_LOOP_LOW,
 			SCHEDULE_PROCESS_TIMEOUT * QB_TIME_NS_IN_MSEC, NULL,
 			status_timeout, &timer_processing);
 	}
@@ -771,8 +769,8 @@ static void assembly_healthcheck_completion(void *data)
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		qb_loop_timer_del(mainloop, ssh_op->assembly->keepalive_timer);
-		qb_loop_job_del(mainloop, QB_LOOP_LOW, ssh_op,
+		qb_loop_timer_del(NULL, ssh_op->assembly->keepalive_timer);
+		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op,
 			assembly_ssh_exec);
 		assembly_state_changed(ssh_op->assembly, INSTANCE_STATE_FAILED);
 		//free(ssh_op);
@@ -784,7 +782,7 @@ static void assembly_healthcheck_completion(void *data)
 	 */
 	if (ssh_op->assembly->instance_state == INSTANCE_STATE_RUNNING) {
 		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
-		qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
+		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
 			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
 			assembly_healthcheck, &ssh_op->assembly->healthcheck_timer);
 	}
@@ -855,7 +853,7 @@ static void ssh_assembly_connect(void *data)
 
 	case SSH_KEEPALIVE_CONFIG:
 		libssh2_keepalive_config(assembly->session, 1, KEEPALIVE_TIMEOUT);
-		qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, ssh_keepalive_send);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_keepalive_send);
 
 		/*
                  * no break here is intentional
@@ -890,7 +888,7 @@ error:
 	return;
 
 job_repeat_schedule:
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, ssh_assembly_connect);
+	qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
 }
 
 static void connect_execute(void *data)
@@ -903,9 +901,9 @@ static void connect_execute(void *data)
 	if (rc == 0) {
 		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
 			assembly->name);
-		qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, ssh_assembly_connect);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
 	} else {
-		qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, connect_execute);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
 	}
 }
 
@@ -924,7 +922,7 @@ static void assembly_connect(struct assembly *assembly)
 	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
 		assembly->name);
 
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, connect_execute);
+	qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
 }
 
 static void instance_state_detect(void *data)
@@ -971,7 +969,7 @@ static void instance_state_detect(void *data)
 	if (strcmp(instance.state, "PENDING") == 0) {
 		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
 			assembly->name);
-		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+		qb_loop_timer_add(NULL, QB_LOOP_LOW,
 			PENDING_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);
 	}
@@ -1149,6 +1147,7 @@ int main (void)
 {
 	int daemonize = 0;
 	int rc;
+	qb_loop_t *loop;
 
 	int loglevel = LOG_INFO;
 
@@ -1165,7 +1164,7 @@ int main (void)
 
         g_log_set_default_handler(my_glib_handler, NULL);
 
-        mainloop = qb_loop_create();
+	loop = qb_loop_create();
 
 	rc = libssh2_init(0);
 	if (rc != 0) {
@@ -1178,6 +1177,6 @@ int main (void)
 
 	reload();
 
-	qb_loop_run(mainloop);
+	qb_loop_run(loop);
 	return 0;
 }
