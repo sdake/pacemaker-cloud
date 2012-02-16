@@ -482,35 +482,48 @@ static void ssh_timeout(void *data)
 	assembly_state_changed(ssh_op->assembly, INSTANCE_STATE_FAILED);
 }
 
-static void resource_monitor_execute(struct pe_operation *op)
+static void ssh_nonblocking_exec(struct assembly *assembly,
+	struct resource *resource, struct pe_operation *op,
+	void (*completion_func)(void *),
+	char *format, ...)
 {
-	struct assembly *assembly;
-	struct resource *resource;
+	va_list ap;
 	struct ssh_operation *ssh_op;
-	int rc;
-	int ssh_rc;
-	char buffer[4096];
- 
-	assembly = qb_map_get(assembly_map, op->hostname);
-	resource = qb_map_get(assembly->resource_map, op->rname);
-	assert (resource);
-
-	qb_log(LOG_NOTICE, "resource_monitor_execute for resource '%s'", resource->name);
 
 	ssh_op = calloc(1, sizeof(struct ssh_operation));
+
+	va_start(ap, format);
+	vsprintf(ssh_op->command, format, ap);
+	va_end(ap);
+
+	qb_log(LOG_NOTICE, "ssh_exec for assembly '%s' command '%s'",
+		assembly->name, ssh_op->command);
+
 	ssh_op->assembly = assembly;
 	ssh_op->ssh_rc = 0;
 	ssh_op->op = op;
 	ssh_op->ssh_exec_state = SSH_CHANNEL_OPEN;
 	ssh_op->resource = resource;
-	ssh_op->completion_func = resource_monitor_completion;
+	ssh_op->completion_func = completion_func;
 	qb_list_init(&ssh_op->list);
 	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
-
-	sprintf (ssh_op->command, "systemctl status %s.service", op->rtype);
-
 	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec_two);
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
+	qb_loop_timer_add(mainloop, QB_LOOP_LOW,
+		 SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
+		ssh_op, ssh_timeout, &ssh_op->ssh_timer);
+}
+
+static void resource_monitor_execute(struct pe_operation *op)
+{
+	struct assembly *assembly;
+	struct resource *resource;
+ 
+	assembly = qb_map_get(assembly_map, op->hostname);
+	resource = qb_map_get(assembly->resource_map, op->rname);
+
+	ssh_nonblocking_exec(assembly, resource, op,
+		resource_monitor_completion,
+		"systemctl status %s.service", op->rtype);
 }
 
 static void op_history_delete(struct pe_operation *op)
@@ -841,23 +854,10 @@ static void assembly_healthcheck_completion(void *data)
 static void assembly_healthcheck(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
-	struct ssh_operation *ssh_op;
-	int rc;
-	int ssh_rc;
 
-	qb_log(LOG_NOTICE, "assembly_healthcheck");
-	ssh_op = calloc(1, sizeof(struct ssh_operation));
-	ssh_op->assembly = assembly;
-	ssh_op->ssh_rc = 0;
-	ssh_op->op = NULL;
-	ssh_op->ssh_exec_state = SSH_CHANNEL_OPEN;
-	ssh_op->resource = NULL;
-	ssh_op->completion_func = assembly_healthcheck_completion;
-	qb_list_init(&ssh_op->list);
-	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
-	sprintf (ssh_op->command, "uptime");
-	qb_loop_job_add(mainloop, QB_LOOP_LOW, ssh_op, assembly_ssh_exec_two);
-	qb_loop_timer_add(NULL, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
+	ssh_nonblocking_exec(assembly, NULL, NULL,
+		assembly_healthcheck_completion,
+		"uptime");
 }
 
 
