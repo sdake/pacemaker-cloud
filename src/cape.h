@@ -15,14 +15,6 @@ enum instance_state {
 	INSTANCE_STATE_RECOVERING = 5
 };
 
-enum ssh_state {
-	SSH_SESSION_INIT = 0,
-	SSH_SESSION_STARTUP = 1,
-	SSH_KEEPALIVE_CONFIG = 2,
-	SSH_USERAUTH_PUBLICKEY_FROMFILE = 3,
-	SSH_CONNECTED = 4
-};
-
 enum ssh_exec_state {
 	SSH_CHANNEL_OPEN = 0,
 	SSH_CHANNEL_EXEC = 1,
@@ -38,15 +30,10 @@ struct assembly {
 	char *address;
 	char *instance_id;
 	enum instance_state instance_state;
-	struct qb_list_head ssh_op_head;
-	enum ssh_state ssh_state;
 	qb_map_t *resource_map;
 	int fd;
 	qb_loop_timer_handle healthcheck_timer;
-	qb_loop_timer_handle keepalive_timer;
-	LIBSSH2_SESSION *session;
-	LIBSSH2_CHANNEL *channel;
-	struct sockaddr_in sin;
+	void *transport_assembly;
 };
 
 struct resource {

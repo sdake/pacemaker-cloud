@@ -1,22 +1,19 @@
-#include "pcmk_pe.h"
-
 #include <sys/epoll.h>
-#include <glib.h>
-#include <uuid/uuid.h>
 #include <qb/qbdefs.h>
 #include <qb/qblist.h>
 #include <qb/qbloop.h>
 #include <qb/qblog.h>
 #include <qb/qbmap.h>
-#include <libxml/parser.h>
-#include <libxslt/transform.h>
-#include <libdeltacloud/libdeltacloud.h>
 #include <libssh2.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <assert.h>
-#include <cape.h>
+#include <arpa/inet.h>
+
+
+#include "cape.h"
+#include "trans.h"
 
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
@@ -24,20 +21,36 @@
 #define PENDING_TIMEOUT 1000		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
+enum ssh_state {
+	SSH_SESSION_INIT = 0,
+	SSH_SESSION_STARTUP = 1,
+	SSH_KEEPALIVE_CONFIG = 2,
+	SSH_USERAUTH_PUBLICKEY_FROMFILE = 3,
+	SSH_CONNECTED = 4
+};
+
+struct ta_ssh {
+	int fd;
+	enum ssh_state ssh_state;
+	qb_loop_timer_handle keepalive_timer;
+	LIBSSH2_SESSION *session;
+	struct sockaddr_in sin;
+	struct qb_list_head ssh_op_head;
+};
+
 static void assembly_ssh_exec(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)ssh_op->assembly->transport_assembly;
 	int rc;
 	int rc_close;
-	char *errmsg;
-	int size;
 	char buffer[4096];
 
 	switch (ssh_op->ssh_exec_state) {
 	case SSH_CHANNEL_OPEN:
-		ssh_op->channel = libssh2_channel_open_session(ssh_op->assembly->session);
+		ssh_op->channel = libssh2_channel_open_session(ta_ssh->session);
 		if (ssh_op->channel == NULL) {
-			rc = libssh2_session_last_errno(ssh_op->assembly->session);
+			rc = libssh2_session_last_errno(ta_ssh->session);
 			if (rc == LIBSSH2_ERROR_EAGAIN) {
 				goto job_repeat_schedule;
 			}
@@ -140,12 +153,13 @@ job_repeat_schedule:
 static void ssh_timeout(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)ssh_op->assembly->transport_assembly;
 	struct qb_list_head *list_temp;
 	struct qb_list_head *list;
 	struct ssh_operation *ssh_op_del;
 
 	qb_log(LOG_NOTICE, "ssh service timeout on assembly '%s'", ssh_op->assembly->name);
-	qb_list_for_each_safe(list, list_temp, &ssh_op->assembly->ssh_op_head) {
+	qb_list_for_each_safe(list, list_temp, &ta_ssh->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
 		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
@@ -162,28 +176,27 @@ static void ssh_timeout(void *data)
 
 static void ssh_keepalive_send(void *data)
 {
-	struct assembly *assembly = (struct assembly *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)data;
 	int seconds_to_next;
-	int rc;
 
-	rc = libssh2_keepalive_send(assembly->session, &seconds_to_next);
+	libssh2_keepalive_send(ta_ssh->session, &seconds_to_next);
 	qb_loop_timer_add(NULL, QB_LOOP_LOW, seconds_to_next * 1000 * QB_TIME_NS_IN_MSEC,
-		assembly, ssh_keepalive_send, &assembly->keepalive_timer);
+		ta_ssh, ssh_keepalive_send, &ta_ssh->keepalive_timer);
 }
 
 static void ssh_assembly_connect(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
 	char name[1024];
 	char name_pub[1024];
-	int i;
 	int rc;
 
-	switch (assembly->ssh_state) {
+	switch (ta_ssh->ssh_state) {
 	case SSH_SESSION_INIT:
-		assembly->session = libssh2_session_init();
-		if (assembly->session == NULL) {
-			rc = libssh2_session_last_errno(assembly->session);
+		ta_ssh->session = libssh2_session_init();
+		if (ta_ssh->session == NULL) {
+			rc = libssh2_session_last_errno(ta_ssh->session);
 			if (rc == LIBSSH2_ERROR_EAGAIN) {
 				goto job_repeat_schedule;
 			}
@@ -191,15 +204,15 @@ static void ssh_assembly_connect(void *data)
 				"session init failed %d\n", rc);
 		}
 
-		libssh2_session_set_blocking(assembly->session, 0);
-		assembly->ssh_state = SSH_SESSION_STARTUP;
+		libssh2_session_set_blocking(ta_ssh->session, 0);
+		ta_ssh->ssh_state = SSH_SESSION_STARTUP;
 
 		/*
                  * no break here is intentional
 		 */
 
 	case SSH_SESSION_STARTUP:
-		rc = libssh2_session_startup(assembly->session, assembly->fd);
+		rc = libssh2_session_startup(ta_ssh->session, ta_ssh->fd);
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
@@ -212,23 +225,23 @@ static void ssh_assembly_connect(void *data)
 		/*
                  * no break here is intentional
 		 */
-		assembly->ssh_state = SSH_KEEPALIVE_CONFIG;
+		ta_ssh->ssh_state = SSH_KEEPALIVE_CONFIG;
 
 	case SSH_KEEPALIVE_CONFIG:
-		libssh2_keepalive_config(assembly->session, 1, KEEPALIVE_TIMEOUT);
-		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_keepalive_send);
+		libssh2_keepalive_config(ta_ssh->session, 1, KEEPALIVE_TIMEOUT);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, ta_ssh, ssh_keepalive_send);
 
 		/*
                  * no break here is intentional
 		 */
-		assembly->ssh_state = SSH_USERAUTH_PUBLICKEY_FROMFILE;
+		ta_ssh->ssh_state = SSH_USERAUTH_PUBLICKEY_FROMFILE;
 
 	case SSH_USERAUTH_PUBLICKEY_FROMFILE:
 		sprintf (name, "/var/lib/pacemaker-cloud/keys/%s",
 			assembly->name);
 		sprintf (name_pub, "/var/lib/pacemaker-cloud/keys/%s.pub",
 			assembly->name);
-		rc = libssh2_userauth_publickey_fromfile(assembly->session,
+		rc = libssh2_userauth_publickey_fromfile(ta_ssh->session,
 			"root", name_pub, name, "");
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
@@ -245,7 +258,9 @@ static void ssh_assembly_connect(void *data)
 		assembly_healthcheck(assembly);
 
 		assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
-		assembly->ssh_state = SSH_CONNECTED;
+		ta_ssh->ssh_state = SSH_CONNECTED;
+	default:
+		assert(0);
 	}
 error:
 	return;
@@ -257,9 +272,10 @@ job_repeat_schedule:
 static void connect_execute(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
 	int rc;
 
-	rc = connect(assembly->fd, (struct sockaddr*)(&assembly->sin),
+	rc = connect(ta_ssh->fd, (struct sockaddr*)(&ta_ssh->sin),
 		sizeof (struct sockaddr_in));
 	if (rc == 0) {
 		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
@@ -272,15 +288,15 @@ static void connect_execute(void *data)
 
 void assembly_connect(struct assembly *assembly)
 {
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
 	unsigned long hostaddr;
-	int rc;
 
 	hostaddr = inet_addr(assembly->address);
-	assembly->fd = socket(AF_INET, SOCK_STREAM, 0);
-	assembly->sin.sin_family = AF_INET;
-	assembly->sin.sin_port = htons(22);
-	assembly->sin.sin_addr.s_addr = hostaddr;
-	assembly->ssh_state = SSH_SESSION_INIT;
+	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
+	ta_ssh->sin.sin_family = AF_INET;
+	ta_ssh->sin.sin_port = htons(22);
+	ta_ssh->sin.sin_addr.s_addr = hostaddr;
+	ta_ssh->ssh_state = SSH_SESSION_INIT;
 
 	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
 		assembly->name);
@@ -295,6 +311,7 @@ void ssh_nonblocking_exec(struct assembly *assembly,
 {
 	va_list ap;
 	struct ssh_operation *ssh_op;
+	struct ta_ssh *ta_ssh;
 
 	ssh_op = calloc(1, sizeof(struct ssh_operation));
 
@@ -312,7 +329,8 @@ void ssh_nonblocking_exec(struct assembly *assembly,
 	ssh_op->resource = resource;
 	ssh_op->completion_func = completion_func;
 	qb_list_init(&ssh_op->list);
-	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
+	ta_ssh = ssh_op->assembly->transport_assembly;
+	qb_list_add_tail(&ssh_op->list, &ta_ssh->ssh_op_head);
 	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	qb_loop_timer_add(NULL, QB_LOOP_LOW,
 		SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
@@ -320,8 +338,21 @@ void ssh_nonblocking_exec(struct assembly *assembly,
 }
 
 
-ssh_op_delete(struct ssh_operation *ssh_op)
+void ssh_op_delete(struct ssh_operation *ssh_op)
 {
 	qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+}
+
+void *ta_alloc_init(void) {
+        struct transport_assembly_ssh *ta_ssh;
+
+        ta_ssh = calloc(1, sizeof(struct ta_ssh));
+	return ta_ssh;
+}
+
+void ta_del(void *ta) 
+{
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)ta;
+	qb_loop_timer_del(NULL, ta_ssh->keepalive_timer);
 }
 

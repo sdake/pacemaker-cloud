@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "cape.h"
+#include "trans.h"
 
 static qb_loop_timer_handle timer_handle;
 
@@ -158,7 +159,7 @@ static void monitor_timeout(void *data)
 void assembly_state_changed(struct assembly *assembly, int state)
 {
 	if (state == INSTANCE_STATE_FAILED) {
-		qb_loop_timer_del(NULL, assembly->keepalive_timer);
+		ta_del(assembly->transport_assembly);		
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
 		instance_create(assembly);
 	}
@@ -534,7 +535,7 @@ static void assembly_healthcheck_completion(void *data)
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		qb_loop_timer_del(NULL, ssh_op->assembly->keepalive_timer);
+		ta_del(ssh_op->assembly->transport_assembly);
 		ssh_op_delete(ssh_op);
 		assembly_state_changed(ssh_op->assembly, INSTANCE_STATE_FAILED);
 		//free(ssh_op);
@@ -559,18 +560,6 @@ void assembly_healthcheck(void *data)
 	ssh_nonblocking_exec(assembly, NULL, NULL,
 		assembly_healthcheck_completion,
 		"uptime");
-}
-
-
-static void ssh_keepalive_send(void *data)
-{
-	struct assembly *assembly = (struct assembly *)data;
-	int seconds_to_next;
-	int rc;
-
-	rc = libssh2_keepalive_send(assembly->session, &seconds_to_next);
-	qb_loop_timer_add(NULL, QB_LOOP_LOW, seconds_to_next * 1000 * QB_TIME_NS_IN_MSEC,
-		assembly, ssh_keepalive_send, &assembly->keepalive_timer);
 }
 
 static void instance_state_detect(void *data)
@@ -705,7 +694,8 @@ static void assembly_create(xmlNode *cur_node)
 	assembly->uuid = strdup(uuid);
 	assembly->instance_state = INSTANCE_STATE_OFFLINE;
 	assembly->resource_map = qb_skiplist_create();
-	qb_list_init(&assembly->ssh_op_head);
+	assembly->transport_assembly = ta_alloc_init();
+
 	instance_create(assembly);
 	qb_map_put(assembly_map, name, assembly);
 
