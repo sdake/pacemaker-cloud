@@ -17,6 +17,12 @@
 #include <netinet/tcp.h>
 #include <assert.h>
 
+#define KEEPALIVE_TIMEOUT 15		/* seconds */
+#define SSH_TIMEOUT 5000		/* milliseconds */
+#define SCHEDULE_PROCESS_TIMEOUT 1000	/* milliseconds */
+#define PENDING_TIMEOUT 1000		/* milliseconds */
+#define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
+
 enum instance_state {
 	INSTANCE_STATE_OFFLINE = 1,
 	INSTANCE_STATE_PENDING = 2,
@@ -504,7 +510,7 @@ static void resource_monitor_execute(struct pe_operation *op)
 	sprintf (ssh_op->command, "systemctl status %s.service", op->rtype);
 
 	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 50 * QB_TIME_NS_IN_MSEC, ssh_op, assembly_ssh_exec_two, &ssh_op->job);
-	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 5000 * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
+	qb_loop_timer_add(mainloop, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 }
 
 static void op_history_delete(struct pe_operation *op)
@@ -801,7 +807,7 @@ static void schedule_processing(void)
 		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
 	} else {
 		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
-			1000 * QB_TIME_NS_IN_MSEC, NULL,
+			SCHEDULE_PROCESS_TIMEOUT * QB_TIME_NS_IN_MSEC, NULL,
 			status_timeout, &timer_processing);
 	}
 }
@@ -826,7 +832,7 @@ static void assembly_healthcheck_completion(void *data)
 	if (ssh_op->assembly->instance_state == INSTANCE_STATE_RUNNING) {
 		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
 		qb_loop_timer_add(mainloop, QB_LOOP_HIGH,
-			3000 * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
+			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
 			assembly_healthcheck, &ssh_op->assembly->healthcheck_timer);
 	}
 }
@@ -850,7 +856,7 @@ static void assembly_healthcheck(void *data)
 	qb_list_add_tail(&ssh_op->list, &ssh_op->assembly->ssh_op_head);
 	sprintf (ssh_op->command, "uptime");
 	qb_loop_timer_add(mainloop, QB_LOOP_LOW, 50 * QB_TIME_NS_IN_MSEC, ssh_op, assembly_ssh_exec_two, &ssh_op->job);
-	qb_loop_timer_add(NULL, QB_LOOP_LOW, 5000 * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
+	qb_loop_timer_add(NULL, QB_LOOP_LOW, SSH_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 }
 
 
@@ -908,7 +914,7 @@ static void ssh_assembly_connect(void *data)
 		assembly->ssh_state = SSH_KEEPALIVE_CONFIG;
 
 	case SSH_KEEPALIVE_CONFIG:
-		libssh2_keepalive_config(assembly->session, 1, 2);
+		libssh2_keepalive_config(assembly->session, 1, KEEPALIVE_TIMEOUT);
 		qb_loop_job_add(mainloop, QB_LOOP_LOW, assembly, ssh_keepalive_send);
 
 		/*
@@ -1026,7 +1032,7 @@ static void instance_state_detect(void *data)
 		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
 			assembly->name);
 		qb_loop_timer_add(mainloop, QB_LOOP_LOW,
-			1000 * QB_TIME_NS_IN_MSEC, assembly,
+			PENDING_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);
 	}
 }
