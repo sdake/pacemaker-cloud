@@ -180,6 +180,8 @@ static void resource_failed(struct pe_operation *op)
 void
 node_state_changed(struct assembly *assembly, enum node_state state)
 {
+	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d\n",
+		 assembly->name, assembly->instance_state, state);
 	if (state == NODE_STATE_FAILED) {
 		ta_del(assembly->transport_assembly);
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
@@ -324,7 +326,11 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
         xmlNewProp(node_state, BAD_CAST "crmd", BAD_CAST "online");
 
 	/* check state*/
-	xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
+	if (assembly->instance_state == NODE_STATE_RUNNING || assembly->instance_state == NODE_STATE_RECOVERING) {
+		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
+	} else {
+		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "pending");
+	}
 	lrm_xml = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
 	resources_xml = xmlNewChild(lrm_xml, NULL, BAD_CAST "lrm_resources", NULL);
 	iter = qb_map_iter_create(op_history_map);

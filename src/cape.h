@@ -51,16 +51,6 @@ enum node_state {
 };
 #define NODE_NUM_STATES 5
 
-enum ssh_exec_state {
-	SSH_CHANNEL_OPEN = 0,
-	SSH_CHANNEL_EXEC = 1,
-	SSH_CHANNEL_READ = 2,
-	SSH_CHANNEL_CLOSE = 3,
-	SSH_CHANNEL_WAIT_CLOSED = 4,
-	SSH_CHANNEL_FREE = 5
-};
-
-
 struct assembly {
 	char *name;
 	char *uuid;

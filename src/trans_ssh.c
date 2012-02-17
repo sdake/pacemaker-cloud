@@ -31,18 +31,30 @@
 #include <netinet/tcp.h>
 #include <assert.h>
 #include <arpa/inet.h>
-
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "cape.h"
 #include "trans.h"
 
-#define KEEPALIVE_TIMEOUT 15		/* seconds */
-#define SSH_TIMEOUT 5000		/* milliseconds */
-#define SCHEDULE_PROCESS_TIMEOUT 1000	/* milliseconds */
-#define PENDING_TIMEOUT 1000		/* milliseconds */
-#define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
-
 static void assembly_healthcheck(void *data);
+
+enum ssh_state {
+	SSH_SESSION_INIT = 0,
+	SSH_SESSION_STARTUP = 1,
+	SSH_KEEPALIVE_CONFIG = 2,
+	SSH_USERAUTH_PUBLICKEY_FROMFILE = 3,
+	SSH_CONNECTED = 4
+};
+
+enum ssh_exec_state {
+	SSH_CHANNEL_OPEN = 0,
+	SSH_CHANNEL_EXEC = 1,
+	SSH_CHANNEL_READ = 2,
+	SSH_CHANNEL_CLOSE = 3,
+	SSH_CHANNEL_WAIT_CLOSED = 4,
+	SSH_CHANNEL_FREE = 5
+};
 
 struct ssh_operation {
 	int ssh_rc;
@@ -55,14 +67,6 @@ struct ssh_operation {
 	qb_loop_job_dispatch_fn completion_func;
 	LIBSSH2_CHANNEL *channel;
 	char command[4096];
-};
-
-enum ssh_state {
-	SSH_SESSION_INIT = 0,
-	SSH_SESSION_STARTUP = 1,
-	SSH_KEEPALIVE_CONFIG = 2,
-	SSH_USERAUTH_PUBLICKEY_FROMFILE = 3,
-	SSH_CONNECTED = 4
 };
 
 struct ta_ssh {
@@ -84,6 +88,7 @@ static void assembly_ssh_exec(void *data)
 	int rc;
 	int rc_close;
 	char buffer[4096];
+	ssize_t rc_read;
 
 	switch (ssh_op->ssh_exec_state) {
 	case SSH_CHANNEL_OPEN:
@@ -120,11 +125,11 @@ static void assembly_ssh_exec(void *data)
 		 */
 
 	case SSH_CHANNEL_READ:
-		rc = libssh2_channel_read(ssh_op->channel, buffer, sizeof(buffer));
-		if (rc == LIBSSH2_ERROR_EAGAIN) {
+		rc_read = libssh2_channel_read(ssh_op->channel, buffer, sizeof(buffer));
+		if (rc_read == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
-		if (rc < 0) {
+		if (rc_read < 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_read failed %d\n", rc);
 			goto error_close;
@@ -136,11 +141,11 @@ static void assembly_ssh_exec(void *data)
 		 */
 
 	case SSH_CHANNEL_CLOSE:
-		rc_close = libssh2_channel_close(ssh_op->channel);
-		if (rc_close == LIBSSH2_ERROR_EAGAIN) {
+		rc = libssh2_channel_close(ssh_op->channel);
+		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
-		if (rc_close != 0) {
+		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel close failed %d\n", rc_close);
 			return;
@@ -152,8 +157,8 @@ static void assembly_ssh_exec(void *data)
 		 */
 
 	case SSH_CHANNEL_WAIT_CLOSED:
-		rc_close = libssh2_channel_wait_closed(ssh_op->channel);
-		if (rc_close == LIBSSH2_ERROR_EAGAIN) {
+		rc = libssh2_channel_wait_closed(ssh_op->channel);
+		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
 		if (rc_close != 0) {
@@ -235,13 +240,9 @@ static void ssh_assembly_connect(void *data)
 	case SSH_SESSION_INIT:
 		ta_ssh->session = libssh2_session_init();
 		if (ta_ssh->session == NULL) {
-			rc = libssh2_session_last_errno(ta_ssh->session);
-			if (rc == LIBSSH2_ERROR_EAGAIN) {
-				goto job_repeat_schedule;
-			}
-			qb_log(LOG_NOTICE,
-				"session init failed %d\n", rc);
+			goto job_repeat_schedule;
 		}
+printf ("setting ta_ssh->session %p\n", ta_ssh);
 
 		libssh2_session_set_blocking(ta_ssh->session, 0);
 		ta_ssh->ssh_state = SSH_SESSION_STARTUP;
@@ -420,10 +421,17 @@ ta_resource_action(struct assembly * a,
 		   struct resource *r,
 		   struct pe_operation *op)
 {
-	ssh_nonblocking_exec(a, r, op,
-			     resource_action_completion_cb,
-			     "systemctl %s %s.service",
-			     op->method, op->rtype);
+	if (strcmp(op->method, "monitor") == 0) {
+		ssh_nonblocking_exec(a, r, op,
+			resource_action_completion_cb,
+			"systemctl status %s.service",
+			op->rtype);
+	} else {
+		ssh_nonblocking_exec(a, r, op,
+			resource_action_completion_cb,
+			"systemctl %s %s.service",
+			op->method, op->rtype);
+	}
 }
 
 void*
@@ -437,13 +445,12 @@ ta_connect(struct assembly * a)
 	}
 	assert(ssh_init_rc == 0);
 
-	if (a->transport_assembly == NULL) {
-		ta_ssh = calloc(1, sizeof(struct ta_ssh));
-		a->transport_assembly = ta_ssh;
-	}
+	ta_ssh = calloc(1, sizeof(struct ta_ssh));
+	a->transport_assembly = ta_ssh;
 
 	hostaddr = inet_addr(a->address);
 	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
+	fcntl(ta_ssh->fd, F_SETFL, O_NONBLOCK);
 	ta_ssh->sin.sin_family = AF_INET;
 	ta_ssh->sin.sin_port = htons(22);
 	ta_ssh->sin.sin_addr.s_addr = hostaddr;
