@@ -298,57 +298,6 @@ static void resource_execute_cb(struct pe_operation *op)
 static void transition_completed_cb(void* user_data, int32_t result) {
 }
 
-static const char *my_tags_stringify(uint32_t tags)
-{
-        if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT)) {
-                return "QB   ";
-        } else if (tags == 1) {
-                return "QPID ";
-        } else if (tags == 2) {
-                return "GLIB ";
-        } else if (tags == 3) {
-                return "PCMK ";
-        } else {
-                return "MAIN ";
-        }
-}
-
-static void
-my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *message, gpointer user_data)
-{
-	uint32_t log_level = LOG_WARNING;
-	GLogLevelFlags msg_level = (GLogLevelFlags)(flags & G_LOG_LEVEL_MASK);
-
-	switch (msg_level) {
-	case G_LOG_LEVEL_CRITICAL:
-	case G_LOG_FLAG_FATAL:
-		log_level = LOG_CRIT;
-		break;
-	case G_LOG_LEVEL_ERROR:
-		log_level = LOG_ERR;
-		break;
-	case G_LOG_LEVEL_MESSAGE:
-		log_level = LOG_NOTICE;
-		break;
-	case G_LOG_LEVEL_INFO:
-		log_level = LOG_INFO;
-		break;
-	case G_LOG_LEVEL_DEBUG:
-		log_level = LOG_DEBUG;
-		break;
-
-	case G_LOG_LEVEL_WARNING:
-	case G_LOG_FLAG_RECURSION:
-	case G_LOG_LEVEL_MASK:
-		log_level = LOG_WARNING;
-		break;
-	}
-
-	qb_log_from_external_source(__FUNCTION__, __FILE__, "%s",
-				    log_level, __LINE__,
-				    2, message);
-}
-
 static int instance_stop(char *image_name)
 {
 	static struct deltacloud_api api;
@@ -664,7 +613,8 @@ static void assemblies_create(xmlNode *xml)
 	}
 }
 
-void reload(void)
+void
+cape_load(void)
 {
 	xmlNode *cur_node;
 	xmlNode *dep_node;
@@ -704,34 +654,9 @@ void reload(void)
         }
 }
 
-
-int
-main(int argc, char * argv[])
+void
+cape_init(void)
 {
-	int daemonize = 0;
-	qb_loop_t *loop;
-	int loglevel = LOG_INFO;
-
-	qb_log_init(argv[0], LOG_DAEMON, loglevel);
-	qb_log_format_set(QB_LOG_SYSLOG, "%g[%p] %b");
-	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - loglevel);
-	if (!daemonize) {
-		qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-		QB_LOG_FILTER_FILE, "*", loglevel);
-		qb_log_format_set(QB_LOG_STDERR, "%g[%p] %b");
-		qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
-	}
-	qb_log_tags_stringify_fn_set(my_tags_stringify);
-
-        g_log_set_default_handler(my_glib_handler, NULL);
-
-	loop = qb_loop_create();
-
 	assembly_map = qb_skiplist_create();
 	op_history_map = qb_skiplist_create();
-
-	reload();
-
-	qb_loop_run(loop);
-	return 0;
 }

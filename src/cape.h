@@ -85,6 +85,11 @@ void resource_action_completed(struct pe_operation *op, int rc);
 
 void node_state_changed(struct assembly *assembly, enum node_state state);
 
+void cape_load(void);
+
+void cape_init(void);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -63,7 +63,7 @@ dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 		$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
-cape_sshd_SOURCES = cape.c trans_ssh.c pcmk_pe.c
+cape_sshd_SOURCES = caped.c cape.c trans_ssh.c pcmk_pe.c
 
 cape_sshd_CFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
 	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
@@ -73,7 +73,7 @@ cape_sshd_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
 	$(libssh2_LIBS)
 
-cape_mh_SOURCES  = pcmk_pe.c $(qmfauto_c) cape.c matahari.cpp \
+cape_mh_SOURCES  = caped.c pcmk_pe.c $(qmfauto_c) cape.c matahari.cpp \
 		   config_loader.cpp qmf_multiplexer.cpp qmf_object.cpp qmf_agent.cpp
 
 cape_mh_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
