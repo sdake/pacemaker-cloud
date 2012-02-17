@@ -24,7 +24,6 @@
 
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
-#include "mainloop.h"
 #include "qmf_job.h"
 #include "qmf_object.h"
 #include "qmf_agent.h"
@@ -83,8 +82,8 @@ QmfObject::run_pending_calls(void)
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
-		mainloop_timer_add(ar->timeout, ar,
-				   method_call_tmo, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED, ar->timeout, ar,
+				  method_call_tmo, &th);
 	}
 }
 
@@ -112,7 +111,7 @@ QmfObject::method_call_async(std::string method,
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
-		mainloop_timer_add(timeout_ms, ar,
+		qb_loop_timer_add(NULL, QB_LOOP_MED, timeout_ms, ar,
 				   method_call_tmo, &th);
 	} else {
 		ar->state = QmfAsyncRequest::JOB_SCHEDULED;
@@ -185,7 +184,7 @@ QmfObject::connect(Agent &a)
 		if (_connected) {
 			_agent_name = ce.getAgent().getName();
 			_qmf_data = ce.getData(q);
-			mainloop_job_add(QB_LOOP_LOW, this,
+			qb_loop_job_add(NULL, QB_LOOP_LOW, this,
 					 run_pending_calls_fn);
 
 			if (_connection_event_fn) {

@@ -3,6 +3,8 @@
 org/
 dped
 cped
+cape-mh
+cape-sshd
 cpe-tool2
 pe_test
 rpc/netdb.h

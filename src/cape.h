@@ -1,4 +1,39 @@
+/*
+ * Copyright (C) 2012 Red Hat, Inc.
+ *
+ * Authors: Steven Dake <sdake@redhat.com>
+ *          Angus Salkeld <asalkeld@redhat.com>
+ *
+ * This file is part of pacemaker-cloud.
+ *
+ * pacemaker-cloud is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * pacemaker-cloud is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef CAPE_H_DEFINED
+#define CAPE_H_DEFINED
+
 #include <libssh2.h>
+
+#include <qb/qblist.h>
+#include <qb/qbmap.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "pcmk_pe.h"
 
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
@@ -7,13 +42,14 @@
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
 
-enum instance_state {
-	INSTANCE_STATE_OFFLINE = 1,
-	INSTANCE_STATE_PENDING = 2,
-	INSTANCE_STATE_RUNNING = 3,
-	INSTANCE_STATE_FAILED = 4,
-	INSTANCE_STATE_RECOVERING = 5
+enum node_state {
+	NODE_STATE_OFFLINE = 1,
+	NODE_STATE_PENDING = 2,
+	NODE_STATE_RUNNING = 3,
+	NODE_STATE_FAILED = 4,
+	NODE_STATE_RECOVERING = 5
 };
+#define NODE_NUM_STATES 5
 
 enum ssh_exec_state {
 	SSH_CHANNEL_OPEN = 0,
@@ -24,12 +60,13 @@ enum ssh_exec_state {
 	SSH_CHANNEL_FREE = 5
 };
 
+
 struct assembly {
 	char *name;
 	char *uuid;
 	char *address;
 	char *instance_id;
-	enum instance_state instance_state;
+	enum node_state instance_state;
 	qb_map_t *resource_map;
 	int fd;
 	qb_loop_timer_handle healthcheck_timer;
@@ -39,20 +76,16 @@ struct assembly {
 struct resource {
 	char *name;
 	char *type;
-	char *class;
+	char *rclass;
 	struct assembly *assembly;
 	qb_loop_timer_handle monitor_timer;
 };
 
-struct ssh_operation {
-	int ssh_rc;
-	struct assembly *assembly;
-	struct resource *resource;
-	struct qb_list_head list;
-	struct pe_operation *op;
-	qb_loop_timer_handle ssh_timer;
-	enum ssh_exec_state ssh_exec_state;
-	qb_loop_job_dispatch_fn completion_func;
-	LIBSSH2_CHANNEL *channel;
-	char command[4096];
-};
+void resource_action_completed(struct pe_operation *op, int rc);
+
+void node_state_changed(struct assembly *assembly, enum node_state state);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* CAPE_H_DEFINED */

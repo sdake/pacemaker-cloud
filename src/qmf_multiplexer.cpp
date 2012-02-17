@@ -21,7 +21,8 @@
 #include "config.h"
 
 #include <qb/qblog.h>
-#include <sys/epoll.h>
+#include <qb/qbloop.h>
+#include <sys/poll.h>
 #include <uuid/uuid.h>
 
 #include <string>
@@ -30,7 +31,6 @@
 #include <qmf/DataAddr.h>
 #include <qmf/posix/EventNotifier.h>
 
-#include "mainloop.h"
 #include "qmf_agent.h"
 #include "qmf_multiplexer.h"
 
@@ -86,7 +86,7 @@ _poll_for_qmf_events(int32_t fd, int32_t revents, void *data)
 	QmfMultiplexer *m = (QmfMultiplexer *)data;
 	qb_loop_timer_handle timer_handle;
 
-	if (revents | EPOLLIN) {
+	if (revents | POLLIN) {
 		m->process_events();
 	}
 }
@@ -116,7 +116,7 @@ QmfMultiplexer::start(void)
 	qb_log(LOG_DEBUG, "session to %s open [filter:%s",
 	       _url.c_str(), _filter.c_str());
 
-	mainloop_fd_add(event_notifier->getHandle(), EPOLLIN, this,
-		_poll_for_qmf_events);
+	qb_loop_poll_add(NULL, QB_LOOP_MED, event_notifier->getHandle(),
+			 POLLIN, this, _poll_for_qmf_events);
 }
 

@@ -1,3 +1,24 @@
+/*
+ * Copyright (C) 2012 Red Hat, Inc.
+ *
+ * Authors: Steven Dake <sdake@redhat.com>
+ *          Angus Salkeld <asalkeld@redhat.com>
+ *
+ * This file is part of pacemaker-cloud.
+ *
+ * pacemaker-cloud is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * pacemaker-cloud is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <sys/epoll.h>
 #include <qb/qbdefs.h>
 #include <qb/qblist.h>
@@ -21,6 +42,21 @@
 #define PENDING_TIMEOUT 1000		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
+static void assembly_healthcheck(void *data);
+
+struct ssh_operation {
+	int ssh_rc;
+	struct assembly *assembly;
+	struct resource *resource;
+	struct qb_list_head list;
+	struct pe_operation *op;
+	qb_loop_timer_handle ssh_timer;
+	enum ssh_exec_state ssh_exec_state;
+	qb_loop_job_dispatch_fn completion_func;
+	LIBSSH2_CHANNEL *channel;
+	char command[4096];
+};
+
 enum ssh_state {
 	SSH_SESSION_INIT = 0,
 	SSH_SESSION_STARTUP = 1,
@@ -37,6 +73,9 @@ struct ta_ssh {
 	struct sockaddr_in sin;
 	struct qb_list_head ssh_op_head;
 };
+
+
+int ssh_init_rc = -1;
 
 static void assembly_ssh_exec(void *data)
 {
@@ -171,7 +210,7 @@ static void ssh_timeout(void *data)
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
 
-	assembly_state_changed(ssh_op->assembly, INSTANCE_STATE_FAILED);
+	node_state_changed(ssh_op->assembly, NODE_STATE_FAILED);
 }
 
 static void ssh_keepalive_send(void *data)
@@ -257,7 +296,7 @@ static void ssh_assembly_connect(void *data)
 		}
 		assembly_healthcheck(assembly);
 
-		assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
+		node_state_changed(assembly, NODE_STATE_RUNNING);
 		ta_ssh->ssh_state = SSH_CONNECTED;
 
 	case SSH_CONNECTED:
@@ -270,42 +309,14 @@ job_repeat_schedule:
 	qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
 }
 
-static void connect_execute(void *data)
+static void
+ssh_op_delete(struct ssh_operation *ssh_op)
 {
-	struct assembly *assembly = (struct assembly *)data;
-	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
-	int rc;
-
-	rc = connect(ta_ssh->fd, (struct sockaddr*)(&ta_ssh->sin),
-		sizeof (struct sockaddr_in));
-	if (rc == 0) {
-		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
-			assembly->name);
-		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
-	} else {
-		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
-	}
+	qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 }
 
-void assembly_connect(struct assembly *assembly)
-{
-	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
-	unsigned long hostaddr;
-
-	hostaddr = inet_addr(assembly->address);
-	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
-	ta_ssh->sin.sin_family = AF_INET;
-	ta_ssh->sin.sin_port = htons(22);
-	ta_ssh->sin.sin_addr.s_addr = hostaddr;
-	ta_ssh->ssh_state = SSH_SESSION_INIT;
-
-	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
-		assembly->name);
-
-	qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
-}
-
-void ssh_nonblocking_exec(struct assembly *assembly,
+static void
+ssh_nonblocking_exec(struct assembly *assembly,
 	struct resource *resource, struct pe_operation *op,
 	void (*completion_func)(void *),
 	char *format, ...)
@@ -339,24 +350,107 @@ void ssh_nonblocking_exec(struct assembly *assembly,
 }
 
 
-void ssh_op_delete(struct ssh_operation *ssh_op)
+static void assembly_healthcheck_completion(void *data)
 {
-	qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+
+	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
+	if (ssh_op->ssh_rc != 0) {
+		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
+		ta_del(ssh_op->assembly->transport_assembly);
+		ssh_op_delete(ssh_op);
+		node_state_changed(ssh_op->assembly, NODE_STATE_FAILED);
+		//free(ssh_op);
+		return;
+	}
+
+	/*
+	 * Add a healthcheck if asssembly is still running
+	 */
+	if (ssh_op->assembly->instance_state == NODE_STATE_RUNNING) {
+		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
+		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
+			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
+			assembly_healthcheck, &ssh_op->assembly->healthcheck_timer);
+	}
 }
 
-void *ta_alloc_init(void) {
-        struct ta_ssh *ta_ssh;
+static void assembly_healthcheck(void *data)
+{
+	struct assembly *assembly = (struct assembly *)data;
 
-        ta_ssh = calloc(1, sizeof(struct ta_ssh));
-	qb_list_init(&ta_ssh->ssh_op_head);
-	ta_ssh->ssh_state = SSH_SESSION_INIT;
-
-	return ta_ssh;
+	ssh_nonblocking_exec(assembly, NULL, NULL,
+		assembly_healthcheck_completion,
+		"uptime");
 }
 
-void ta_del(void *ta) 
+static void connect_execute(void *data)
+{
+	struct assembly *assembly = (struct assembly *)data;
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
+	int rc;
+
+	rc = connect(ta_ssh->fd, (struct sockaddr*)(&ta_ssh->sin),
+		sizeof (struct sockaddr_in));
+	if (rc == 0) {
+		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
+			assembly->name);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
+	} else {
+		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
+	}
+}
+
+void ta_del(void *ta)
 {
 	struct ta_ssh *ta_ssh = (struct ta_ssh *)ta;
 	qb_loop_timer_del(NULL, ta_ssh->keepalive_timer);
+}
+
+static void resource_action_completion_cb(void *data)
+{
+	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+
+	resource_action_completed(ssh_op->op, ssh_op->ssh_rc);
+	ssh_op_delete(ssh_op);
+}
+
+void
+ta_resource_action(struct assembly * a,
+		   struct resource *r,
+		   struct pe_operation *op)
+{
+	ssh_nonblocking_exec(a, r, op,
+			     resource_action_completion_cb,
+			     "systemctl %s %s.service",
+			     op->method, op->rtype);
+}
+
+void*
+ta_connect(struct assembly * a)
+{
+	unsigned long hostaddr;
+        struct ta_ssh *ta_ssh;
+
+	if (ssh_init_rc != 0) {
+		ssh_init_rc = libssh2_init(0);
+	}
+	assert(ssh_init_rc == 0);
+
+        ta_ssh = calloc(1, sizeof(struct ta_ssh));
+	a->transport_assembly = ta_ssh;
+
+	hostaddr = inet_addr(a->address);
+	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
+	ta_ssh->sin.sin_family = AF_INET;
+	ta_ssh->sin.sin_port = htons(22);
+	ta_ssh->sin.sin_addr.s_addr = hostaddr;
+	ta_ssh->ssh_state = SSH_SESSION_INIT;
+	qb_list_init(&ta_ssh->ssh_op_head);
+
+	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
+		a->name);
+
+	qb_loop_job_add(NULL, QB_LOOP_LOW, a, connect_execute);
 }
 
