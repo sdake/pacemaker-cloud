@@ -89,6 +89,11 @@ void cape_load(void);
 
 void cape_init(void);
 
+int32_t instance_create(struct assembly *assembly);
+
+void instance_state_detect(void *data);
+
+int instance_stop(char *image_name);
 
 #ifdef __cplusplus
 }
