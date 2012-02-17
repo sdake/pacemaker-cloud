@@ -259,8 +259,9 @@ static void ssh_assembly_connect(void *data)
 
 		assembly_state_changed(assembly, INSTANCE_STATE_RUNNING);
 		ta_ssh->ssh_state = SSH_CONNECTED;
-	default:
-		assert(0);
+
+	case SSH_CONNECTED:
+		break;
 	}
 error:
 	return;
@@ -344,9 +345,12 @@ void ssh_op_delete(struct ssh_operation *ssh_op)
 }
 
 void *ta_alloc_init(void) {
-        struct transport_assembly_ssh *ta_ssh;
+        struct ta_ssh *ta_ssh;
 
         ta_ssh = calloc(1, sizeof(struct ta_ssh));
+	qb_list_init(&ta_ssh->ssh_op_head);
+	ta_ssh->ssh_state = SSH_SESSION_INIT;
+
 	return ta_ssh;
 }
 
