@@ -27,6 +27,7 @@ BuildRequires: systemd-units
 BuildRequires: libcurl-devel
 BuildRequires: python-nova
 BuildRequires: python-glance
+BuildRequires: libssh2-devel
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
