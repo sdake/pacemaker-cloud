@@ -42,9 +42,9 @@ CpeImpl::~CpeImpl()
 }
 
 uint32_t
-CpeImpl::dep_start(string& dep_uuid)
+CpeImpl::dep_start(string& dep_uuid, string& dep_monitor)
 {
-	int32_t rc = init_job_start("pcloud-dped", dep_uuid.c_str());
+	int32_t rc = init_job_start(dep_monitor.c_str(), dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "started dped instance=%s", dep_uuid.c_str());
@@ -57,9 +57,9 @@ CpeImpl::dep_start(string& dep_uuid)
 }
 
 uint32_t
-CpeImpl::dep_reload(string& dep_uuid)
+CpeImpl::dep_reload(string& dep_uuid, string& dep_monitor)
 {
-	int32_t rc = init_job_reload("pcloud-dped", dep_uuid.c_str());
+	int32_t rc = init_job_reload(dep_monitor.c_str(), dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "reloaded dped instance=%s", dep_uuid.c_str());
@@ -72,9 +72,9 @@ CpeImpl::dep_reload(string& dep_uuid)
 }
 
 uint32_t
-CpeImpl::dep_stop(string& dep_uuid)
+CpeImpl::dep_stop(string& dep_uuid, string& dep_monitor)
 {
-	int32_t rc = init_job_stop("pcloud-dped", dep_uuid.c_str());
+	int32_t rc = init_job_stop(dep_monitor.c_str(), dep_uuid.c_str());
 
 	if (rc == 0) {
 		qb_log(LOG_INFO, "stopped dped instance=%s", dep_uuid.c_str());

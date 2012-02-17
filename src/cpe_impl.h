@@ -33,9 +33,9 @@ public:
 	CpeImpl();
 	virtual ~CpeImpl();
 
-	uint32_t dep_start(std::string& uuid);
-	uint32_t dep_stop(std::string& uuid);
-	uint32_t dep_reload(std::string& uuid);
+	uint32_t dep_start(std::string& uuid, std::string& monitor);
+	uint32_t dep_stop(std::string& uuid, std::string& monitor);
+	uint32_t dep_reload(std::string& uuid, std::string& monitor);
 	uint32_t dep_list(std::list<std::string> * list);
 };
 

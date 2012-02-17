@@ -56,11 +56,11 @@ class Cpe(object):
         self.session.close()
         self.conn.close()
 
-    def deployable_start(self, name, uuid):
+    def deployable_start(self, name, uuid, monitor):
         result = None
         if self.cpe_obj:
             try:
-                result = self.cpe_obj.deployable_start(name, uuid)
+                result = self.cpe_obj.deployable_start(name, uuid, monitor)
             except:
                 return 1
 
@@ -69,11 +69,11 @@ class Cpe(object):
         else:
             return 1
 
-    def deployable_reload(self, name, uuid):
+    def deployable_reload(self, name, uuid, monitor):
         result = None
         if self.cpe_obj:
             try:
-                result = self.cpe_obj.deployable_reload(name, uuid)
+                result = self.cpe_obj.deployable_reload(name, uuid, monitor)
             except:
                 return 1
 
@@ -82,11 +82,11 @@ class Cpe(object):
         else:
             return 1
 
-    def deployable_stop(self, name, uuid):
+    def deployable_stop(self, name, uuid, monitor):
         result = None
         if self.cpe_obj:
             try:
-                result = self.cpe_obj.deployable_stop(name, uuid)
+                result = self.cpe_obj.deployable_stop(name, uuid, monitor)
             except:
                 return 1
 

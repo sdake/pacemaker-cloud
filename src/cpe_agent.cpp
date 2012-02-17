@@ -109,26 +109,30 @@ CpeAgent::event_dispatch(AgentEvent *event)
 	const string& methodName(event->getMethodName());
 	uint32_t rc = 0;
 	string uuid;
+	string monitor;
 
 	switch (event->getType()) {
 	case qmf::AGENT_METHOD:
 		if (methodName == "deployable_start") {
 			uuid = event->getArguments()["uuid"].asString();
+			monitor = event->getArguments()["monitor"].asString();
 
-			rc = impl->dep_start(uuid);
+			rc = impl->dep_start(uuid, monitor);
 
 			event->addReturnArgument("rc", rc);
 
 		} else if (methodName == "deployable_stop") {
 			uuid = event->getArguments()["uuid"].asString();
+			monitor = event->getArguments()["monitor"].asString();
 
-			rc = impl->dep_stop(uuid);
+			rc = impl->dep_stop(uuid, monitor);
 
 			event->addReturnArgument("rc", rc);
 		} else if (methodName == "deployable_reload") {
 			uuid = event->getArguments()["uuid"].asString();
+			monitor = event->getArguments()["monitor"].asString();
 
-			rc = impl->dep_reload(uuid);
+			rc = impl->dep_reload(uuid, monitor);
 
 			event->addReturnArgument("rc", rc);
 		}

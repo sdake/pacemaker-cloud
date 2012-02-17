@@ -184,15 +184,15 @@ class Deployable(DeployableDb):
     def start(self):
         print "Starting Deployable %s" % self.name
         self.generate_config()
-        if self.cpe.deployable_start(self.name, self.name) != 0:
+        if self.cpe.deployable_start(self.name, self.name, "pcloud-cape-sshd") != 0:
             print "*** deployable_start FAILED!!"
 
     def stop(self):
-        if self.cpe.deployable_stop(self.name, self.name) != 0:
+        if self.cpe.deployable_stop(self.name, self.name, "pcloud-cape-sshd") != 0:
             print "*** deployable_stop FAILED!!"
 
     def reload(self):
-        if self.cpe.deployable_reload(self.name, self.name) != 0:
+        if self.cpe.deployable_reload(self.name, self.name, "pcloud-cape-sshd") != 0:
             print "*** deployable_reload FAILED!!"
 
     def status(self):
