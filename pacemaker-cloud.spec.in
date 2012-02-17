@@ -114,7 +114,7 @@ fi
 %doc COPYING
 %{_sbindir}/cped
 %{_sbindir}/dped
-%{_sbindir}/dped-ssh
+%{_sbindir}/cape-sshd
 %{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_sysconfdir}/init/pcloud-dped.conf
 %{_unitdir}/pcloud-dped@.service

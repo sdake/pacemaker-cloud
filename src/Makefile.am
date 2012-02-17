@@ -28,7 +28,7 @@ EXTRA_DIST = $(xsl_DATA)
 
 SUBDIRS = pcloudsh
 
-sbin_PROGRAMS = cped dped cape-ssh
+sbin_PROGRAMS = cped dped cape-sshd
 noinst_PROGRAMS = cpe-tool2 pe_test
 noinst_HEADERS = assembly.h assembly_am.h assembly_pm.h config.h cpe_agent.h \
 	dpe_agent.h cpe_httpd.h mainloop.h vmlauncher.h \
@@ -63,13 +63,13 @@ dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
 dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 		$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
-cape_ssh_SOURCES = cape.c trans_ssh.c pcmk_pe.c
+cape_sshd_SOURCES = cape.c trans_ssh.c pcmk_pe.c
 
-cape_ssh_CFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+cape_sshd_CFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
 	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
 	$(libssh2_CFLAGS)
 
-cape_ssh_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+cape_sshd_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
 	$(libssh2_LIBS)
 
