@@ -118,6 +118,7 @@ fi
 %{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_sysconfdir}/init/pcloud-dped.conf
 %{_unitdir}/pcloud-dped@.service
+%{_unitdir}/pcloud-cape-sshd@.service
 %{_unitdir}/pcloud-cped.service
 %{_unitdir}/pcloud-vmlauncher.service
 %{_unitdir}/pcloud-qpidd.service

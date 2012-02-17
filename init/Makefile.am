@@ -27,7 +27,8 @@ upstartconf_DATA = pcloud-dped.conf
 
 systemdconfdir = /lib/systemd/system
 systemdconf_DATA = pcloud-dped@.service pcloud-cped.service \
-		   pcloud-vmlauncher.service pcloud-qpidd.service
+		   pcloud-vmlauncher.service pcloud-qpidd.service \
+		   pcloud-cape-sshd@.service
 
 EXTRA_DIST = $(upstartconf_DATA) $(systemdconf_DATA) $(sysconfsysconf_DATA)
 
