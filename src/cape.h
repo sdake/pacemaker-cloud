@@ -85,9 +85,11 @@ void resource_action_completed(struct pe_operation *op, int rc);
 
 void node_state_changed(struct assembly *assembly, enum node_state state);
 
+void cape_init(void);
+
 void cape_load(void);
 
-void cape_init(void);
+void cape_load_from_buffer(const char *buffer);
 
 int32_t instance_create(struct assembly *assembly);
 

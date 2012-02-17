@@ -367,7 +367,9 @@ ta_connect(struct assembly * a)
 		mux->filter_set("[or, [eq, _vendor, [quote, 'matahariproject.org']], [eq, _vendor, [quote, 'pacemakercloud.org']]]");
 		mux->start();
 	}
-	a->transport_assembly = new Matahari(a, mux, name, u);
+	if (a->transport_assembly == NULL) {
+		a->transport_assembly = new Matahari(a, mux, name, u);
+	}
 	return a->transport_assembly;
 }
 

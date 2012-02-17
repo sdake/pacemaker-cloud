@@ -475,28 +475,13 @@ static void assemblies_create(xmlNode *xml)
 	}
 }
 
-void
-cape_load(void)
+static void
+parse_and_load(void)
 {
 	xmlNode *cur_node;
 	xmlNode *dep_node;
-	uuid_t uuid_temp_id;
         xsltStylesheetPtr ss;
 	const char *params[1];
-
-	uuid_generate(uuid_temp_id);
-	uuid_unparse(uuid_temp_id, crmd_uuid);
-
-	if (_config != NULL) {
-		xmlFreeDoc(_config);
-		_config = NULL;
-	}
-	if (_pe != NULL) {
-		xmlFreeDoc(_pe);
-		_pe = NULL;
-	}
-
-	_config = xmlParseFile("/var/run/dep-wp.xml");
 
 	ss = xsltParseStylesheetFile(BAD_CAST "/usr/share/pacemaker-cloud/cf2pe.xsl");
 	params[0] = NULL;
@@ -504,7 +489,6 @@ cape_load(void)
         _pe = xsltApplyStylesheet(ss, _config, params);
         xsltFreeStylesheet(ss);
         dep_node = xmlDocGetRootElement(_config);
-
 
         for (cur_node = dep_node->children; cur_node;
              cur_node = cur_node->next) {
@@ -517,8 +501,27 @@ cape_load(void)
 }
 
 void
+cape_load_from_buffer(const char *buffer)
+{
+	_config = xmlParseMemory(buffer, strlen(buffer));
+	parse_and_load();
+}
+
+void
+cape_load(void)
+{
+	_config = xmlParseFile("/var/run/dep-wp.xml");
+	parse_and_load();
+}
+
+void
 cape_init(void)
 {
+	uuid_t uuid_temp_id;
+
+	uuid_generate(uuid_temp_id);
+	uuid_unparse(uuid_temp_id, crmd_uuid);
+
 	assembly_map = qb_skiplist_create();
 	op_history_map = qb_skiplist_create();
 }

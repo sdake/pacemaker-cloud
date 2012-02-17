@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.66])
 AC_INIT([pacemaker-cloud], [0.6.0], [pcmk-cloud@oss.clusterlabs.org])
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wno-portability color-tests parallel-tests])
 AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 
@@ -46,6 +46,8 @@ PKG_CHECK_MODULES(libmicrohttpd, libmicrohttpd)
 PKG_CHECK_MODULES(libcurl, libcurl)
 PKG_CHECK_MODULES(libdeltacloud, libdeltacloud)
 PKG_CHECK_MODULES(libssh2, libssh2)
+PKG_CHECK_MODULES([CHECK], [check >= 0.9.4],[with_check=yes],[with_check=no])
+AM_CONDITIONAL(HAVE_CHECK, test "${with_check}" = "yes")
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -158,7 +160,13 @@ AC_LANG_PUSH(C++)
 AC_LANG_POP([C++])
 test $fail = 1 && AC_MSG_ERROR([missing libraries; see above])
 
-AC_CONFIG_FILES([Makefile init/Makefile man/Makefile src/Makefile src/pcloudsh/Makefile src/pcloudsh/pcmkconfig.py])
+AC_CONFIG_FILES([Makefile
+		 init/Makefile
+		 man/Makefile
+		 tests/Makefile
+		 src/Makefile
+		 src/pcloudsh/Makefile
+		 src/pcloudsh/pcmkconfig.py])
 
 AC_OUTPUT
 

@@ -437,8 +437,10 @@ ta_connect(struct assembly * a)
 	}
 	assert(ssh_init_rc == 0);
 
-        ta_ssh = calloc(1, sizeof(struct ta_ssh));
-	a->transport_assembly = ta_ssh;
+	if (a->transport_assembly == NULL) {
+		ta_ssh = calloc(1, sizeof(struct ta_ssh));
+		a->transport_assembly = ta_ssh;
+	}
 
 	hostaddr = inet_addr(a->address);
 	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
