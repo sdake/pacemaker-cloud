@@ -17,7 +17,7 @@ BuildRequires: automake
 BuildRequires: glib2-devel
 BuildRequires: dbus-glib-devel
 BuildRequires: libxml2-devel
-BuildRequires: libqb-devel
+BuildRequires: libqb-devel >= 0.10.1
 BuildRequires: pacemaker-libs-devel
 BuildRequires: libtool-ltdl-devel
 BuildRequires: qmf-devel
