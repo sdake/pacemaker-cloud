@@ -67,13 +67,17 @@ void instance_state_detect(void *data)
 		}
 
 		assembly->address = strdup (sptr);
-		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING.",
-			assembly->name);
+		qb_util_stopwatch_stop(assembly->sw_instance_create);
+		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING in (%lld ms).",
+			assembly->name, qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
 		ta_connect(assembly);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
-		qb_log(LOG_INFO, "Instance '%s' is PENDING.",
-			assembly->name);
+		if (assembly->instance_state != NODE_STATE_PENDING) {
+			assembly->instance_state = NODE_STATE_PENDING;
+			qb_log(LOG_INFO, "Instance '%s' is PENDING.",
+				assembly->name);
+		}
 		qb_loop_timer_add(NULL, QB_LOOP_LOW,
 			PENDING_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);
@@ -87,6 +91,7 @@ int32_t instance_create(struct assembly *assembly)
 	struct deltacloud_image *images;
 	int rc;
 
+	qb_util_stopwatch_start(assembly->sw_instance_create);
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());

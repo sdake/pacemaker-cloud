@@ -27,6 +27,7 @@
 
 #include <qb/qblist.h>
 #include <qb/qbmap.h>
+#include <qb/qbutil.h>
 
 
 #ifdef __cplusplus
@@ -38,7 +39,7 @@ extern "C" {
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
 #define SCHEDULE_PROCESS_TIMEOUT 1000	/* milliseconds */
-#define PENDING_TIMEOUT 1000		/* milliseconds */
+#define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
 
@@ -61,6 +62,7 @@ struct assembly {
 	int fd;
 	qb_loop_timer_handle healthcheck_timer;
 	void *transport_assembly;
+	qb_util_stopwatch_t *sw_instance_create;
 };
 
 struct resource {

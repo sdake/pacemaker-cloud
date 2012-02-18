@@ -24,6 +24,7 @@
 #include <glib.h>
 #include <uuid/uuid.h>
 #include <qb/qbdefs.h>
+#include <qb/qbutil.h>
 #include <qb/qblist.h>
 #include <qb/qbloop.h>
 #include <qb/qblog.h>
@@ -446,6 +447,7 @@ static void assembly_create(xmlNode *cur_node)
 	assembly->uuid = strdup(uuid);
 	assembly->instance_state = NODE_STATE_OFFLINE;
 	assembly->resource_map = qb_skiplist_create();
+	assembly->sw_instance_create = qb_util_stopwatch_create();
 
 	instance_create(assembly);
 	qb_map_put(assembly_map, name, assembly);
