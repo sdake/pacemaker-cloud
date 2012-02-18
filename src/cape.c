@@ -209,6 +209,7 @@ resource_action_completed(struct pe_operation *op, int rc)
 	    strcmp(op->method, "monitor") == 0) {
 		if (pe_exitcode != op->target_outcome) {
 			resource_failed(op);
+			return;
 		}
 		qb_loop_timer_add(NULL, QB_LOOP_LOW,
 				  op->interval * QB_TIME_NS_IN_MSEC, op, monitor_timeout,
