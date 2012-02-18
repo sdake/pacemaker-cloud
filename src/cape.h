@@ -63,6 +63,7 @@ struct assembly {
 	qb_loop_timer_handle healthcheck_timer;
 	void *transport_assembly;
 	qb_util_stopwatch_t *sw_instance_create;
+	qb_util_stopwatch_t *sw_instance_connected;
 };
 
 struct resource {

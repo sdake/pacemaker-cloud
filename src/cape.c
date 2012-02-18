@@ -185,6 +185,12 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
 		instance_create(assembly);
 	}
+	if (state == NODE_STATE_RUNNING) {
+		qb_util_stopwatch_stop(assembly->sw_instance_connected);
+		qb_log(LOG_INFO, "Assembly '%s' connected in (%lld ms).\n", 
+			assembly->name,
+			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / 1000);
+	}
 	assembly->instance_state = state;
 	schedule_processing();
 }
@@ -448,6 +454,7 @@ static void assembly_create(xmlNode *cur_node)
 	assembly->instance_state = NODE_STATE_OFFLINE;
 	assembly->resource_map = qb_skiplist_create();
 	assembly->sw_instance_create = qb_util_stopwatch_create();
+	assembly->sw_instance_connected = qb_util_stopwatch_create();
 
 	instance_create(assembly);
 	qb_map_put(assembly_map, name, assembly);

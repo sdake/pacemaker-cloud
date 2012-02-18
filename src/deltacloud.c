@@ -70,6 +70,7 @@ void instance_state_detect(void *data)
 		qb_util_stopwatch_stop(assembly->sw_instance_create);
 		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING in (%lld ms).",
 			assembly->name, qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
+		qb_util_stopwatch_start(assembly->sw_instance_connected);
 		ta_connect(assembly);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
