@@ -320,13 +320,9 @@ process_next_job(void* data)
 {
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
-	qb_loop_timer_handle th;
 
-printf ("process next job\n");
 	if (!graph_updated) {
-		qb_loop_timer_add(NULL, QB_LOOP_MED,
-			1000 * QB_TIME_NS_IN_MSEC,
-			transition, process_next_job, &th);
+		qb_loop_job_add(NULL, QB_LOOP_MED, transition, process_next_job);
 		return;
 	}
 	qb_enter();
@@ -337,9 +333,7 @@ printf ("process next job\n");
 	qb_log(LOG_DEBUG, "run_graph returned: %s", transition_status(graph_rc));
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
-		qb_loop_timer_add(NULL, QB_LOOP_MED,
-			1000 * QB_TIME_NS_IN_MSEC,
-			transition, process_next_job, &th);
+		qb_loop_job_add(NULL, QB_LOOP_MED, transition, process_next_job);
 		return;
 	}
 

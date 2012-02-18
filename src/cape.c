@@ -35,9 +35,6 @@
 #include "cape.h"
 #include "trans.h"
 
-
-static qb_loop_timer_handle timer_processing;
-
 static qb_map_t *assembly_map;
 
 static qb_map_t *op_history_map;
@@ -389,7 +386,7 @@ static void process(void)
 	}
 }
 
-static void status_timeout(void *data)
+static void process_job(void *data)
 {
 	if (pe_is_busy_processing()) {
 		schedule_processing();
@@ -400,13 +397,7 @@ static void status_timeout(void *data)
 
 static void schedule_processing(void)
 {
-        if (qb_loop_timer_expire_time_get(NULL, timer_processing) > 0) {
-		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
-	} else {
-		qb_loop_timer_add(NULL, QB_LOOP_LOW,
-			SCHEDULE_PROCESS_TIMEOUT * QB_TIME_NS_IN_MSEC, NULL,
-			status_timeout, &timer_processing);
-	}
+	qb_loop_job_add(NULL, QB_LOOP_LOW, NULL, process_job);
 }
 
 static void resource_create(xmlNode *cur_node, struct assembly *assembly)
