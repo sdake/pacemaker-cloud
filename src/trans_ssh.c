@@ -208,9 +208,6 @@ static void ssh_timeout(void *data)
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
 		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
 			assembly_ssh_exec);
-		if (ssh_op_del->resource) {
-			qb_loop_timer_del(NULL, ssh_op_del->resource->monitor_timer);
-		}
 		qb_list_del(list);
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
