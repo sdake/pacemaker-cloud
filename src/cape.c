@@ -193,6 +193,7 @@ static void node_all_resources_mark_failed(struct assembly *assembly)
 			qb_loop_timer_del(NULL, resource->monitor_timer);
 		}
 	}
+	qb_map_iter_free(iter);
 }
 
 void
@@ -276,6 +277,7 @@ static void op_history_delete(struct pe_operation *op)
 			free(oh);
 		}
 	}
+	qb_map_iter_free(iter);
 
 	pe_resource_completed(op, OCF_OK);
 }
@@ -376,6 +378,7 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 		resource_xml = insert_resource(resources_xml, oh->resource);
 		op_history_insert(resource_xml, oh);
 	}
+	qb_map_iter_free(iter);
 
 }
 
