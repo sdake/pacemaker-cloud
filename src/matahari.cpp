@@ -42,13 +42,13 @@ resource_method_response(QmfAsyncRequest* ar,
 			qpid::types::Variant::Map out_args,
 			enum QmfObject::rpc_result rpc_rc)
 {
-	enum ocf_exitcode rc;
+	int rc;
 	struct pe_operation *op;
 
 	if (rpc_rc == QmfObject::RPC_OK) {
 		op = (struct pe_operation *)ar->user_data;
 		if (out_args.count("rc") > 0) {
-			rc = pe_resource_ocf_exitcode_get(op, out_args["rc"].asUint32());
+			rc = (int)out_args["rc"].asUint32();
 		} else {
 			rc = OCF_UNKNOWN_ERROR;
 		}
