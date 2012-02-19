@@ -63,6 +63,7 @@ struct operation_history {
 	uint32_t action_id;
 	char *op_digest;
 	struct resource *resource;
+	struct pe_operation *pe_op;
 };
 
 
@@ -88,6 +89,7 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 		oh->interval = op->interval;
 		oh->rc = OCF_PENDING;
 		oh->op_digest = op->op_digest;
+		oh->pe_op = op;
 		qb_map_put(op_history_map, oh->rsc_id, oh);
 	} else
 	if (strcmp(oh->op_digest, op->op_digest) != 0) {
@@ -175,14 +177,35 @@ static void resource_failed(struct pe_operation *op)
 	qb_loop_timer_del(NULL, resource->monitor_timer);
 }
 
+static void node_all_resources_mark_failed(struct assembly *assembly)
+{
+	qb_map_iter_t *iter;
+	struct operation_history *oh;
+	const char *key;
+	struct resource *resource;
+
+	iter = qb_map_iter_create(op_history_map);
+	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
+		resource = oh->resource;
+
+		if (resource->assembly == assembly) {
+			resource_action_completed(oh->pe_op, OCF_NOT_RUNNING);
+			qb_loop_timer_del(NULL, resource->monitor_timer);
+		}
+	}
+}
+
 void
 node_state_changed(struct assembly *assembly, enum node_state state)
 {
 	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d\n",
 		 assembly->name, assembly->instance_state, state);
-	if (state == NODE_STATE_FAILED) {
+	if (assembly->instance_state != NODE_STATE_FAILED &&
+		state == NODE_STATE_FAILED) {
+
 		ta_del(assembly->transport_assembly);
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
+		node_all_resources_mark_failed(assembly);
 		instance_create(assembly);
 	}
 	if (state == NODE_STATE_RUNNING) {
@@ -333,8 +356,13 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	/* check state*/
 	if (assembly->instance_state == NODE_STATE_RUNNING || assembly->instance_state == NODE_STATE_RECOVERING) {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
+		qb_log(LOG_INFO, "Assembly '%s' marked as member",
+			assembly->name);
+
 	} else {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "pending");
+		qb_log(LOG_INFO, "Assembly '%s' marked as pending",
+			assembly->name);
 	}
 	lrm_xml = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
 	resources_xml = xmlNewChild(lrm_xml, NULL, BAD_CAST "lrm_resources", NULL);
@@ -404,7 +432,7 @@ static void process_job(void *data)
 
 static void schedule_processing(void)
 {
-	qb_loop_job_add(NULL, QB_LOOP_LOW, NULL, process_job);
+	qb_loop_job_add(NULL, QB_LOOP_HIGH, NULL, process_job);
 }
 
 static void resource_create(xmlNode *cur_node, struct assembly *assembly)
