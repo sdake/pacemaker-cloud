@@ -62,3 +62,8 @@ keysdir = $(localstatedir)/lib/pacemaker-cloud/keys
 keys_DATA = keys/README
 
 EXTRA_DIST = $(rscs_DATA) $(jeos_DATA) $(assy_DATA) $(keys_DATA) $(bin_SCRIPTS) $(pcloudsh_PYTHON)
+
+sloccount:
+	@echo -n "pcloudsh:              "
+	@sloccount $(pcloudsh_PYTHON) | grep Physical | cut --delimiter== --fields=2
+

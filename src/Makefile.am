@@ -82,6 +82,17 @@ cape_mh_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS
 cape_mh_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 		   $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS)
 
+sloccount:
+	@echo -n "cape SSH Monitor:      "
+	@sloccount $(cape_sshd_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@echo -n "cape Matahari Monitor: "
+	@@sloccount $(cape_mh_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@echo -n "old Matahari Monitor:  "
+	@sloccount $(dped_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@echo -n "cpe:                   "
+	@sloccount $(cped_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@cd pcloudsh; make -f Makefile sloccount
+
 cpe_tool2_SOURCES = cpe-tool2.c libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
 cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS) $(libqb_LIBS)
