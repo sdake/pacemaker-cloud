@@ -90,8 +90,8 @@ heartbeat_check_tmo(void *data)
 
 	a->check_state();
 	if (a->state_get() == NODE_STATE_RUNNING) {
-		qb_loop_timer_add(NULL, QB_LOOP_MED, 4000, a,
-				  heartbeat_check_tmo, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC,
+				  a, heartbeat_check_tmo, &th);
 	}
 }
 
@@ -150,6 +150,7 @@ Matahari::resource_action(struct pe_operation *op)
 		return;
 	}
 	in_args["timeout"] = op->timeout;
+	qb_log(LOG_DEBUG, "%s setting timeout to %d", op->method, op->timeout);
 
 	if (strcmp(op->rclass, "lsb") == 0) {
 		if (is_monitor_op) {
@@ -229,7 +230,7 @@ Matahari::state_offline_to_online(void)
 	       _name.c_str());
 	node_state_changed(_node_access, NODE_STATE_RUNNING);
 
-	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000, this,
+	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC, this,
 			  heartbeat_check_tmo, &th);
 }
 

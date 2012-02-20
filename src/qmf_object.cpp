@@ -82,8 +82,8 @@ QmfObject::run_pending_calls(void)
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
-		qb_loop_timer_add(NULL, QB_LOOP_MED, ar->timeout, ar,
-				  method_call_tmo, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED, ar->timeout * QB_TIME_NS_IN_MSEC,
+				  ar, method_call_tmo, &th);
 	}
 }
 
@@ -111,8 +111,9 @@ QmfObject::method_call_async(std::string method,
 		g_timer_start(ar->time_execed);
 		ar->state = QmfAsyncRequest::JOB_RUNNING;
 		ar->ref();
-		qb_loop_timer_add(NULL, QB_LOOP_MED, timeout_ms, ar,
-				   method_call_tmo, &th);
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
+				  timeout_ms * QB_TIME_NS_IN_MSEC, ar,
+				  method_call_tmo, &th);
 	} else {
 		ar->state = QmfAsyncRequest::JOB_SCHEDULED;
 		g_timer_start(ar->time_queued);
