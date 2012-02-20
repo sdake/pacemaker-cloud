@@ -26,14 +26,6 @@
 #include <qb/qbloop.h>
 #include "mainloop.h"
 
-static qb_loop_t* default_loop = NULL;
-
-void
-mainloop_default_set(qb_loop_t* l)
-{
-	default_loop = l;
-}
-
 static int
 _poll_for_qmf_events(int32_t fd, int32_t revents, void *user_data)
 {
@@ -68,7 +60,7 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	qmf_source->asession = asession;
 	event_notifier = new qmf::posix::EventNotifier(*asession);
 
-	qb_loop_poll_add(default_loop, QB_LOOP_MED,
+	qb_loop_poll_add(NULL, QB_LOOP_MED,
 			 event_notifier->getHandle(), EPOLLIN, qmf_source,
 			 _poll_for_qmf_events);
 
@@ -78,6 +70,6 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 bool
 mainloop_timer_is_running(qb_loop_timer_handle timer_handle)
 {
-	return (qb_loop_timer_expire_time_get(default_loop, timer_handle) > 0);
+	return (qb_loop_timer_expire_time_get(NULL, timer_handle) > 0);
 }
 

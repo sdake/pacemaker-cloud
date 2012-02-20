@@ -426,7 +426,6 @@ CommonAgent::init(int argc, char **argv, const char *proc_name)
 	agent_session.open();
 
 	mainloop = qb_loop_create();
-	mainloop_default_set(mainloop);
 
 	setup();
 
