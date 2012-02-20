@@ -173,7 +173,7 @@ QmfObject::connect(Agent &a)
 	for (int q = 0; q < ce.getDataCount(); q++) {
 		if (_prop_name.length() > 0) {
 			string prop_val = ce.getData(q).getProperty(_prop_name);
-			if (prop_val == _prop_value) {
+			if (strcasecmp(prop_val.c_str(), _prop_value.c_str()) == 0) {
 				_connected = true;
 			} else {
 				qb_log(LOG_TRACE, "[prop: %s] %s != %s",
