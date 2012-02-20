@@ -27,10 +27,10 @@ check_PROGRAMS = basic.test
 
 basic_test_SOURCES = check_basic.c ../src/pcmk_pe.c ../src/cape.c
 basic_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
-		    $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
-		    $(libxslt_CFLAGS) $(uuid_CFLAGS)
+			     $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
+			     $(libxslt_CFLAGS) $(uuid_CFLAGS)
 basic_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-		   $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
+			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
 endif
 
