@@ -226,8 +226,6 @@ Matahari::state_offline_to_online(void)
 {
 	qb_loop_timer_handle th;
 
-	qb_log(LOG_NOTICE, "Matahari (%s) STATE_ONLINE.",
-	       _name.c_str());
 	node_state_changed(_node_access, NODE_STATE_RUNNING);
 
 	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC, this,
@@ -245,8 +243,6 @@ Matahari::state_online_to_offline(void)
 	 */
 	_hb_state = Matahari::HEARTBEAT_INIT;
 
-	qb_log(LOG_NOTICE, "Matahari (%s) STATE_OFFLINE.",
-	       _name.c_str());
 	node_state_changed(_node_access, NODE_STATE_OFFLINE);
 }
 

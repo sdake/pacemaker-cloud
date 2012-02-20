@@ -21,6 +21,7 @@
  */
 #include "pcmk_pe.h"
 
+#include <inttypes.h>
 #include <glib.h>
 #include <uuid/uuid.h>
 #include <qb/qbdefs.h>
@@ -199,7 +200,7 @@ static void node_all_resources_mark_failed(struct assembly *assembly)
 void
 node_state_changed(struct assembly *assembly, enum node_state state)
 {
-	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d\n",
+	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d",
 		 assembly->name, assembly->instance_state, state);
 	if (assembly->instance_state != NODE_STATE_FAILED &&
 		state == NODE_STATE_FAILED) {
@@ -211,9 +212,9 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 	}
 	if (state == NODE_STATE_RUNNING) {
 		qb_util_stopwatch_stop(assembly->sw_instance_connected);
-		qb_log(LOG_INFO, "Assembly '%s' connected in (%lld ms).\n", 
+		qb_log(LOG_INFO, "Assembly '%s' connected in (%"PRIu64" ms).",
 			assembly->name,
-			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / 1000);
+			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / QB_TIME_US_IN_MSEC);
 	}
 	assembly->instance_state = state;
 	schedule_processing();
@@ -223,12 +224,17 @@ void
 resource_action_completed(struct pe_operation *op,
 			  enum ocf_exitcode pe_exitcode)
 {
+	uint64_t el;
 	struct assembly *a = qb_map_get(assembly_map, op->hostname);;
 	struct resource *r = qb_map_get(a->resource_map, op->rname);
 
-	qb_log(LOG_INFO,
-		"%s resource '%s' on assembly '%s' ocf code '%d'\n",
-		op->method, op->rname, op->hostname, pe_exitcode);
+	qb_util_stopwatch_stop(op->time_execed);
+	el = qb_util_stopwatch_us_elapsed_get(op->time_execed);
+
+	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:[%d/%d] time:[%"PRIu64"/%ums]",
+	       op->rname, op->method, op->interval, op->rclass, op->hostname,
+	       pe_exitcode, op->target_outcome,
+	       el / QB_TIME_US_IN_MSEC, op->timeout);
 	if (strstr(op->rname, op->hostname) != NULL) {
 		op_history_save(r, op, pe_exitcode);
 	}
@@ -253,6 +259,7 @@ static void resource_monitor_execute(struct pe_operation *op)
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
+	qb_util_stopwatch_start(op->time_execed);
 	ta_resource_action(assembly, resource, op);
 }
 
@@ -290,8 +297,12 @@ static void resource_execute_cb(struct pe_operation *op)
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
-	qb_log(LOG_NOTICE, "resource_execute_cb method '%s' name '%s' interval '%d'",
-		op->method, op->rname, op->interval);
+	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s target_rc:%d",
+	       op->rname, op->method, op->interval, op->rclass, op->hostname,
+	       op->target_outcome);
+
+	qb_util_stopwatch_start(op->time_execed);
+
 	if (strcmp(op->method, "monitor") == 0) {
 		if (strstr(op->rname, op->hostname) != NULL) {
 			op->resource = resource;
@@ -300,7 +311,7 @@ static void resource_execute_cb(struct pe_operation *op)
 				op_history_delete(op);
 				qb_loop_timer_add(NULL, QB_LOOP_LOW,
 					op->interval * QB_TIME_NS_IN_MSEC, op,
-					monitor_timeout,
+					resource_monitor_execute,
 					&resource->monitor_timer);
 			} else {
 				resource_monitor_execute(op);

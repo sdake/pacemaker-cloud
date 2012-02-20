@@ -28,6 +28,7 @@ extern "C" {
 #include <stdint.h>
 #include <glib.h>
 #include <libxml/parser.h>
+#include <qb/qbutil.h>
 
 #define PE_CRM_VERSION "3.0.5"
 #define PE_DEFAULT_TIMEOUT 10000
@@ -67,6 +68,7 @@ struct pe_operation {
 	uint32_t graph_id;
 	uint32_t action_id;
 	uint32_t refcount;
+	qb_util_stopwatch_t *time_execed;
 };
 
 typedef void (*pe_resource_execute_t)(struct pe_operation *op);

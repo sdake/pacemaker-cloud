@@ -142,6 +142,7 @@ void pe_resource_unref(struct pe_operation *op)
 		crm_free(op->rclass);
 		free(op->method);
 		free(op->rname);
+		qb_util_stopwatch_free(op->time_execed);
 		free(op);
 	}
 }
@@ -266,6 +267,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	pe_op->graph = graph;
 	pe_op->action_id = action->id;
 	pe_op->graph_id = graph->id;
+	pe_op->time_execed = qb_util_stopwatch_create();
 
 	free_lrm_op(op);
 	free_xml(params_all);
