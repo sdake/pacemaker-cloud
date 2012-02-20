@@ -45,9 +45,6 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 extern "C" {
 #endif
 void mainloop_default_set(qb_loop_t* l);
-void mainloop_job_add(enum qb_loop_priority p,
-		      void *userdata,
-		      qb_loop_job_dispatch_fn dispatch_fn);
 
 bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
 

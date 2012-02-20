@@ -66,7 +66,7 @@ DpeAgent::setup(void)
 	num_deps = 1;
 	update_stats(0, 0);
 
-	mainloop_job_add(QB_LOOP_LOW, this,
+	qb_loop_job_add(NULL, QB_LOOP_LOW, this,
 			 dpe_agent_check_args);
 
 	agent_session.addData(_dpe, "dpe");

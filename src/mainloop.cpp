@@ -74,17 +74,6 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	return qmf_source;
 }
 
-void
-mainloop_job_add(enum qb_loop_priority p,
-		 void *userdata,
-		 qb_loop_job_dispatch_fn dispatch_fn)
-{
-	qb_loop_job_add(default_loop,
-			p,
-			userdata,
-			dispatch_fn);
-}
-
 int32_t
 mainloop_fd_add(uint32_t fd,
 	int32_t events,
