@@ -68,20 +68,11 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	qmf_source->asession = asession;
 	event_notifier = new qmf::posix::EventNotifier(*asession);
 
-        mainloop_fd_add(event_notifier->getHandle(), EPOLLIN, qmf_source,
-                _poll_for_qmf_events);
+	qb_loop_poll_add(default_loop, QB_LOOP_MED,
+			 event_notifier->getHandle(), EPOLLIN, qmf_source,
+			 _poll_for_qmf_events);
 
 	return qmf_source;
-}
-
-int32_t
-mainloop_fd_add(uint32_t fd,
-	int32_t events,
-	void *data,
-	qb_loop_poll_dispatch_fn dispatch_fn)
-{
-	return qb_loop_poll_add(default_loop, QB_LOOP_MED,
-		fd, events, data, dispatch_fn);
 }
 
 bool

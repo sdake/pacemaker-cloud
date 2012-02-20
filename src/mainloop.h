@@ -48,11 +48,6 @@ void mainloop_default_set(qb_loop_t* l);
 
 bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
 
-int32_t mainloop_fd_add(uint32_t fd,
-        int32_t events,
-        void *data,
-        qb_loop_poll_dispatch_fn dispatch_fn);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
