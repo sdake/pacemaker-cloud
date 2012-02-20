@@ -80,11 +80,26 @@ QmfAgent::call_method_async(QmfAsyncRequest *ar,
 		break;
 	}
 	if (ar->args.size() != in_args.size()) {
-		qb_log(LOG_TRACE,
-		       "%s() args changed from %d to %d",
-		       ar->method.c_str(), ar->args.size(), in_args.size());
-	}
+		string removed;
+		bool first = true;
 
+		for (qpid::types::Variant::Map::iterator it = ar->args.begin();
+		     it != ar->args.end(); it++) {
+			string n = it->first;
+			if (in_args.find(n) == in_args.end()) {
+				if (!first) {
+					removed += ", ";
+				}
+				removed += n;
+				first = false;
+			}
+		}
+
+		qb_log(LOG_TRACE,
+		       "Schema requires we remove %d args (%s) from method %s",
+		       ar->args.size() - in_args.size(),
+		       removed.c_str(), ar->method.c_str());
+	}
 	cid = _agent.callMethodAsync(ar->method, in_args, data->getAddr());
 	_outstanding_calls[cid] = ar;
 }
