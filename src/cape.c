@@ -220,9 +220,9 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 }
 
 void
-resource_action_completed(struct pe_operation *op, int rc)
+resource_action_completed(struct pe_operation *op,
+			  enum ocf_exitcode pe_exitcode)
 {
-	int pe_exitcode = pe_resource_ocf_exitcode_get(op, rc);
 	struct assembly *a = qb_map_get(assembly_map, op->hostname);;
 	struct resource *r = qb_map_get(a->resource_map, op->rname);
 

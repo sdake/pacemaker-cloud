@@ -408,8 +408,10 @@ void ta_del(void *ta)
 static void resource_action_completion_cb(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+	enum ocf_exitcode pe_rc;
+	pe_rc = pe_resource_ocf_exitcode_get(ssh_op->op, ssh_op->ssh_rc);
 
-	resource_action_completed(ssh_op->op, ssh_op->ssh_rc);
+	resource_action_completed(ssh_op->op, pe_rc);
 	ssh_op_delete(ssh_op);
 }
 

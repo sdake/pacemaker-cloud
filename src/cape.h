@@ -74,7 +74,7 @@ struct resource {
 	qb_loop_timer_handle monitor_timer;
 };
 
-void resource_action_completed(struct pe_operation *op, int rc);
+void resource_action_completed(struct pe_operation *op, enum ocf_exitcode rc);
 
 void node_state_changed(struct assembly *assembly, enum node_state state);
 
