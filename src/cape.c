@@ -68,7 +68,7 @@ struct operation_history {
 };
 
 
-static void resource_monitor_execute(struct pe_operation *op);
+static void resource_monitor_execute(void * data);
 
 static void schedule_processing(void);
 
@@ -158,18 +158,12 @@ static void op_history_insert(xmlNode *resource_xml,
 }
 
 
-static void monitor_timeout(void *data)
-{
-	struct pe_operation *op = (struct pe_operation *)data;
-
-	resource_monitor_execute(op);
-}
-
 static void service_state_changed(struct assembly *assembly,
 	char *hostname, char *resource, char *state, char *reason)
 {
 	node_state_changed(assembly, NODE_STATE_RECOVERING);
 }
+
 static void resource_failed(struct pe_operation *op)
 {
 	struct resource *resource = (struct resource *)op->resource;
@@ -245,14 +239,19 @@ resource_action_completed(struct pe_operation *op,
 			resource_failed(op);
 			return;
 		}
-		qb_loop_timer_add(NULL, QB_LOOP_LOW,
-				  op->interval * QB_TIME_NS_IN_MSEC, op, monitor_timeout,
-				  &r->monitor_timer);
+		if (op->interval) {
+			qb_loop_timer_add(NULL, QB_LOOP_LOW,
+					  op->interval * QB_TIME_NS_IN_MSEC, op,
+					  resource_monitor_execute,
+					  &r->monitor_timer);
+		}
 	}
 }
 
-static void resource_monitor_execute(struct pe_operation *op)
+static void
+resource_monitor_execute(void *data)
 {
+	struct pe_operation *op = (struct pe_operation *)data;
 	struct assembly *assembly;
 	struct resource *resource;
 
