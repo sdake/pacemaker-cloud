@@ -85,20 +85,6 @@ mainloop_job_add(enum qb_loop_priority p,
 			dispatch_fn);
 }
 
-
-int32_t
-mainloop_timer_add(uint32_t msec_duration,
-		   void *data,
-		   qb_loop_timer_dispatch_fn dispatch_fn,
-		   qb_loop_timer_handle * timer_handle_out)
-{
-	return qb_loop_timer_add(default_loop, QB_LOOP_MED,
-				 msec_duration * QB_TIME_NS_IN_MSEC,
-				 data,
-				 dispatch_fn,
-				 timer_handle_out);
-}
-
 int32_t
 mainloop_fd_add(uint32_t fd,
 	int32_t events,
@@ -108,13 +94,6 @@ mainloop_fd_add(uint32_t fd,
 	return qb_loop_poll_add(default_loop, QB_LOOP_MED,
 		fd, events, data, dispatch_fn);
 }
-
-int32_t
-mainloop_timer_del(qb_loop_timer_handle th)
-{
-	return qb_loop_timer_del(default_loop, th);
-}
-
 
 bool
 mainloop_timer_is_running(qb_loop_timer_handle timer_handle)

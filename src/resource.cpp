@@ -51,9 +51,11 @@ resource_interval_timeout(gpointer data)
 
 	rsc->__execute(op);
 
-	mainloop_timer_add(op->interval, data,
-			   resource_interval_timeout,
-			   &rsc->_monitor_timer);
+	qb_loop_timer_add(NULL, QB_LOOP_MED,
+			  op->interval * QB_TIME_NS_IN_MSEC,
+			  data,
+			  resource_interval_timeout,
+			  &rsc->_monitor_timer);
 }
 
 void
@@ -108,7 +110,7 @@ Resource::stop(struct pe_operation *op)
 {
 	if (mainloop_timer_is_running(_monitor_timer)) {
 		pe_resource_unref(_monitor_op);
-		mainloop_timer_del(_monitor_timer);
+		qb_loop_timer_del(NULL, _monitor_timer);
 	}
 	op->resource = this;
 	__execute(op);
@@ -126,9 +128,10 @@ Resource::start_recurring(struct pe_operation *op)
 		op->user_data = this;
 		_monitor_op = op;
 		pe_resource_ref(op);
-		mainloop_timer_add(op->interval,
-				   op, resource_interval_timeout,
-				   &_monitor_timer);
+		qb_loop_timer_add(NULL, QB_LOOP_MED,
+				  op->interval * QB_TIME_NS_IN_MSEC,
+				  op, resource_interval_timeout,
+				  &_monitor_timer);
 	} else {
 		pe_resource_completed(op, OCF_OK);
 		pe_resource_unref(op); // delete
@@ -240,7 +243,7 @@ Resource::delete_op_history(struct pe_operation *op)
 	 */
 	if (mainloop_timer_is_running(_monitor_timer)) {
 		pe_resource_unref(_monitor_op);
-		mainloop_timer_del(_monitor_timer);
+		qb_loop_timer_del(NULL, _monitor_timer);
 	}
 	qb_log(LOG_DEBUG, "%s_%s_%d [%s] on %s rc:0 target_rc:%d",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,

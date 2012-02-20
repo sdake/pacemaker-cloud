@@ -49,13 +49,6 @@ void mainloop_job_add(enum qb_loop_priority p,
 		      void *userdata,
 		      qb_loop_job_dispatch_fn dispatch_fn);
 
-int32_t mainloop_timer_add(uint32_t msec_duration,
-			  void *data,
-			  qb_loop_timer_dispatch_fn dispatch_fn,
-			  qb_loop_timer_handle * timer_handle_out);
-
-int32_t mainloop_timer_del(qb_loop_timer_handle th);
-
 bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
 
 int32_t mainloop_fd_add(uint32_t fd,

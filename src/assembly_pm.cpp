@@ -58,7 +58,7 @@ AssemblyPm::stop(void)
 {
 	qb_enter();
 	_vml->stop(this);
-	mainloop_timer_del(state_check_th);
+	qb_loop_timer_del(NULL, state_check_th);
 }
 
 void
@@ -66,18 +66,18 @@ AssemblyPm::start(void)
 {
 	qb_enter();
 	_vml->start(this);
-	mainloop_timer_add(5000, this,
-			   check_state_tmo, &state_check_th);
+	qb_loop_timer_add(NULL, QB_LOOP_MED, 5000 * QB_TIME_NS_IN_MSEC,
+			  this, check_state_tmo, &state_check_th);
 }
 
 void
 AssemblyPm::restart(void)
 {
 	qb_enter();
-	mainloop_timer_del(state_check_th);
+	qb_loop_timer_del(NULL, state_check_th);
 	_vml->restart(this);
-	mainloop_timer_add(5000, this,
-			   check_state_tmo, &state_check_th);
+	qb_loop_timer_add(NULL, QB_LOOP_MED, 5000 * QB_TIME_NS_IN_MSEC,
+			  this, check_state_tmo, &state_check_th);
 }
 
 uint32_t
@@ -90,8 +90,8 @@ void
 AssemblyPm::check_state(void)
 {
 	_vml->status(this);
-	mainloop_timer_add(5000, this,
-			   check_state_tmo, &state_check_th);
+	qb_loop_timer_add(NULL, QB_LOOP_MED, 5000 * QB_TIME_NS_IN_MSEC,
+			  this, check_state_tmo, &state_check_th);
 }
 
 void
@@ -115,7 +115,7 @@ AssemblyPm::status_response(std::string& status)
 		} else {
 			we_are_going_down();
 
-			mainloop_timer_del(state_check_th);
+			qb_loop_timer_del(NULL, state_check_th);
 			qb_log(LOG_NOTICE, "AssemblyPm (%s) STATE_OFFLINE.",
 			       _name.c_str());
 			_dep->assembly_state_changed(this, "failed", "Not reachable");

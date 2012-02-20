@@ -96,7 +96,7 @@ heartbeat_check_tmo(void *data)
 	a->check_state();
 	if (a->state_get() == AssemblyAm::STATE_ONLINE ||
 	    a->state_get() == AssemblyAm::STATE_PENDING_ESCALATION) {
-		mainloop_timer_add(4000, a,
+		qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC, a,
 				   heartbeat_check_tmo, &th);
 	}
 }
@@ -371,8 +371,8 @@ AssemblyAm::state_offline_to_online(void)
 	       _name.c_str());
 	_dep->assembly_state_changed(this, "running", "All good");
 
-	mainloop_timer_add(4000, this,
-			   heartbeat_check_tmo, &th);
+	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC,
+			  this, heartbeat_check_tmo, &th);
 }
 
 void
