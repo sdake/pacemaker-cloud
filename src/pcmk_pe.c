@@ -394,7 +394,7 @@ pe_process_state(xmlNode *xml_input,
 		return -EEXIST;
 	}
 
-	set_crm_log_level(LOG_INFO);
+//	set_crm_log_level(LOG_DEBUG);
 
 //	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 

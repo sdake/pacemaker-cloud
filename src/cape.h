@@ -80,7 +80,7 @@ void node_state_changed(struct assembly *assembly, enum node_state state);
 
 void cape_init(void);
 
-void cape_load(void);
+int cape_load(const char * name);
 
 void cape_load_from_buffer(const char *buffer);
 

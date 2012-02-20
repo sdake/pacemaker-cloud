@@ -555,11 +555,18 @@ cape_load_from_buffer(const char *buffer)
 	parse_and_load();
 }
 
-void
-cape_load(void)
+int
+cape_load(const char * name)
 {
-	_config = xmlParseFile("/var/run/dep-wp.xml");
+	char cfg[PATH_MAX];
+
+	snprintf(cfg, PATH_MAX, "/var/run/%s.xml", name);
+	if (access(cfg, R_OK) != 0) {
+		return -errno;
+	}
+	_config = xmlParseFile(cfg);
 	parse_and_load();
+	return 0;
 }
 
 void
