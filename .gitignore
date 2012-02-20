@@ -14,5 +14,7 @@ depcomp
 install-sh
 missing
 stamp-h1
+*.o
+.deps
 *.pyc
 py-compile
