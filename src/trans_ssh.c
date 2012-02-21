@@ -247,8 +247,8 @@ static void ssh_assembly_connect(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
 	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
-	char name[1024];
-	char name_pub[1024];
+	char name[PATH_MAX];
+	char name_pub[1PATH_MAX];
 	int rc;
 
 	qb_enter();
@@ -293,9 +293,9 @@ printf ("setting ta_ssh->session %p\n", ta_ssh);
 		ta_ssh->ssh_state = SSH_USERAUTH_PUBLICKEY_FROMFILE;
 
 	case SSH_USERAUTH_PUBLICKEY_FROMFILE:
-		sprintf (name, "/var/lib/pacemaker-cloud/keys/%s",
+		snprintf (name, PATH_MAX, "/var/lib/pacemaker-cloud/keys/%s",
 			assembly->name);
-		sprintf (name_pub, "/var/lib/pacemaker-cloud/keys/%s.pub",
+		snprintf (name_pub, PATH_MAX, "/var/lib/pacemaker-cloud/keys/%s.pub",
 			assembly->name);
 		rc = libssh2_userauth_publickey_fromfile(ta_ssh->session,
 			"root", name_pub, name, "");
