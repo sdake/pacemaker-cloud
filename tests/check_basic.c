@@ -245,8 +245,6 @@ int32_t main(void)
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, "*", LOG_INFO);
-	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, __FILE__, LOG_DEBUG);
 	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 	qb_log_format_set(QB_LOG_STDERR, "[%6p] %f:%l %b");
 

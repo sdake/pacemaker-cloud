@@ -65,6 +65,7 @@ static pe_transition_completed_t completed_fn = NULL;
 static void * run_user_data = NULL;
 static pe_working_set_t *working_set = NULL;
 static int graph_updated = FALSE;
+static int pe_log_tag = 0;
 
 enum ocf_exitcode
 pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
@@ -419,7 +420,25 @@ pe_is_busy_processing(void)
 	return FALSE;
 }
 
+static int
+pacemaker_uses_qb_logging(void)
+{
+	int major;
+	int inter;
+	int minor;
+	if (sscanf(PACEMAKER_VERSION, "%d.%d.%d-%*s",
+		   &major, &inter, &minor) != 3) {
+		return QB_FALSE;
+	}
+	if (major <= 1 && inter <= 1 && minor <= 6) {
+		return QB_FALSE;
+	}
+	return QB_TRUE;
+}
 
+/*
+ * with the newer logging this just won't get used.
+ */
 void
 cl_log(int priority, const char * fmt, ...)
 {
@@ -433,7 +452,28 @@ cl_log(int priority, const char * fmt, ...)
 	va_end(ap);
 
 	qb_log_from_external_source(__func__, __FILE__,
-				    "%s", priority, __LINE__, 3, buf);
+				    "%s", priority, __LINE__,
+				    pe_log_tag, buf);
+}
+
+void
+pe_log_init(int log_tag, int loglevel)
+{
+	pe_log_tag = log_tag;
+	if (!pacemaker_uses_qb_logging()) {
+		set_crm_log_level(loglevel);
+		return;
+	}
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "pengine.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "allocate.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "utils.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "unpack.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "constraints.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "native.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "group.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "clone.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "master.c", loglevel);
+	qb_log_filter_ctl(log_tag, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "graph.c", loglevel);
 }
 
 int32_t
@@ -451,8 +491,6 @@ pe_process_state(xmlNode *xml_input,
 		qb_leave();
 		return -EEXIST;
 	}
-
-//	set_crm_log_level(LOG_DEBUG);
 
 //	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 

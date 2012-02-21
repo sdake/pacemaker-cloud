@@ -23,19 +23,23 @@
 #include <qb/qbloop.h>
 #include <qb/qblog.h>
 #include <assert.h>
+#include <pacemaker/crm_config.h>
 
 #include "cape.h"
 
+#define LOG_TAG_QPID 1
+#define LOG_TAG_GLIB 2
+#define LOG_TAG_PCMK 3
 
 static const char *my_tags_stringify(uint32_t tags)
 {
 	if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT)) {
 		return "QB   ";
-	} else if (tags == 1) {
+	} else if (tags == LOG_TAG_QPID) {
 		return "QPID ";
-	} else if (tags == 2) {
+	} else if (tags == LOG_TAG_GLIB) {
 		return "GLIB ";
-	} else if (tags == 3) {
+	} else if (tags == LOG_TAG_PCMK) {
 		return "PCMK ";
 	} else {
 		return "MAIN ";
@@ -75,7 +79,7 @@ my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *mess
 
 	qb_log_from_external_source(__FUNCTION__, __FILE__, "%s",
 				    log_level, __LINE__,
-				    2, message);
+				    LOG_TAG_GLIB, message);
 }
 
 static void
@@ -139,22 +143,11 @@ main(int argc, char * argv[])
 		qb_log_format_set(QB_LOG_STDOUT, "%g[%6p] %b");
 		qb_log_ctl(QB_LOG_STDOUT, QB_LOG_CONF_ENABLED, QB_TRUE);
 	}
-	qb_enter();
-
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "pengine.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "allocate.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "utils.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "unpack.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "constraints.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "native.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "group.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "clone.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "master.c", loglevel);
-	qb_log_filter_ctl(3, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE, "graph.c", loglevel);
-
+	pe_log_init(LOG_TAG_PCMK, loglevel);
 	qb_log_tags_stringify_fn_set(my_tags_stringify);
 	g_log_set_default_handler(my_glib_handler, NULL);
 
+	qb_enter();
 	loop = qb_loop_create();
 
 	cape_init();

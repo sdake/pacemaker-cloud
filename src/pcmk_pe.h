@@ -90,6 +90,8 @@ int32_t pe_process_state(xmlNode *xml_input,
 
 int32_t pe_is_busy_processing(void);
 
+void pe_log_init(int log_tag, int loglevel);
+
 #ifdef __cplusplus
 }
 #endif
