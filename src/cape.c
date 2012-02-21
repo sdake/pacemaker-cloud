@@ -532,7 +532,8 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	char *name;
 	char *type;
 	char *rclass;
-	char resource_name[4096];
+	/* 6 = rsc__ and terminator */
+	char resource_name[ASSEMBLY_NAME_MAX + RESOURCE_NAME_MAX + 6];
 	char *escalation_failures;
 	char *escalation_period;
 
@@ -540,7 +541,8 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 
 	resource = calloc(1, sizeof (struct resource));
 	name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
-	sprintf(resource_name, "rsc_%s_%s", assembly->name, name);
+	snprintf(resource_name, ASSEMBLY_NAME_MAX + RESOURCE_NAME_MAX + 6,
+		"rsc_%s_%s", assembly->name, name);
 	resource->name = strdup(resource_name);
 	type = (char*)xmlGetProp(cur_node, BAD_CAST "type");
 	resource->type = strdup(type);
