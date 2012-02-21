@@ -280,14 +280,12 @@ resource_action_completed(struct pe_operation *op,
 	if (strstr(op->rname, op->hostname) != NULL) {
 		op_history_save(r, op, pe_exitcode);
 	}
+
 	pe_resource_completed(op, pe_exitcode);
-	if (strcmp(op->method, "status") == 0 ||
-	    strcmp(op->method, "monitor") == 0) {
+	if (op->interval > 0) {
 		if (pe_exitcode != op->target_outcome) {
 			repair(&r->repair);
-			return;
-		}
-		if (op->interval) {
+		} else {
 			qb_loop_timer_add(NULL, QB_LOOP_LOW,
 					  op->interval * QB_TIME_NS_IN_MSEC, op,
 					  resource_monitor_execute,
