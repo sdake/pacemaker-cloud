@@ -41,9 +41,13 @@ void instance_state_detect(void *data)
 	char *sptr;
 	char *sptr_end;
 
+	qb_enter();
+
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return;
 	}
 
@@ -51,6 +55,8 @@ void instance_state_detect(void *data)
 	if (rc < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return;
 	}
 
@@ -83,6 +89,8 @@ void instance_state_detect(void *data)
 			PENDING_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);
 	}
+
+	qb_leave();
 }
 
 int32_t instance_create(struct assembly *assembly)
@@ -92,16 +100,22 @@ int32_t instance_create(struct assembly *assembly)
 	struct deltacloud_image *images;
 	int rc;
 
+	qb_enter();
+
 	qb_util_stopwatch_start(assembly->sw_instance_create);
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return -1;
 	}
 	rc = deltacloud_get_images(&api, &images);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return -1;
 	}
 
@@ -118,6 +132,8 @@ int32_t instance_create(struct assembly *assembly)
 	}
 	deltacloud_free_image_list(&images_head);
 	deltacloud_free(&api);
+
+	qb_leave();
 	return 0;
 }
 
@@ -131,14 +147,20 @@ int instance_stop(struct assembly *a)
 	int rc;
 	char *image_name = a->name;
 
+	qb_enter();
+
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return -1;
 	}
 	if (deltacloud_get_instances(&api, &instances) < 0) {
 	fprintf(stderr, "Failed to get deltacloud instances: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return -1;
 	}
 
@@ -147,6 +169,8 @@ int instance_stop(struct assembly *a)
 	if (rc < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
 		deltacloud_get_last_error_string());
+
+		qb_leave();
 		return -1;
 	}
 
@@ -165,6 +189,9 @@ int instance_stop(struct assembly *a)
 	deltacloud_free_image_list(&images_head);
 	deltacloud_free_instance_list(&instances_head);
 	deltacloud_free(&api);
+
+	qb_leave();
+
 	return 0;
 }
 
