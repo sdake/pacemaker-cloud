@@ -41,7 +41,8 @@ extern "C" {
  */
 #define ASSEMBLY_NAME_MAX 1024		/* Maximum assembly length in bytes */
 #define RESOURCE_NAME_MAX 1024		/* Maximum resource length in bytes */
-#define METHOD_NAME_MAX 20		/* Maximum method name */
+#define METHOD_NAME_MAX 20		/* Maximum method name in bytes */
+#define OP_NAME_MAX 15			/* Maximum interval length in bytes */
 
 /*
  * Timers of the system

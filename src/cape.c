@@ -76,11 +76,16 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 	enum ocf_exitcode ec)
 {
 	struct operation_history *oh;
-	char buffer[4096];
+	/*
+	 * +3 = _ _ and null terminator
+	 */
+	char buffer[RESOURCE_NAME_MAX + METHOD_NAME_MAX + OP_NAME_MAX + 3];
 
 	qb_enter();
 
-	sprintf(buffer, "%s_%s_%d", op->rname, op->method, op->interval);
+	snprintf(buffer,
+		RESOURCE_NAME_MAX + METHOD_NAME_MAX + OP_NAME_MAX + 3,
+		"%s_%s_%d", op->rname, op->method, op->interval);
 
 	oh = qb_map_get(op_history_map, buffer);
 	if (oh == NULL) {
