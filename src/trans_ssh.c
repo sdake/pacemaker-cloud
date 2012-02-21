@@ -66,7 +66,10 @@ struct ssh_operation {
 	enum ssh_exec_state ssh_exec_state;
 	qb_loop_job_dispatch_fn completion_func;
 	LIBSSH2_CHANNEL *channel;
-	char command[4096];
+	/*
+	 * 26 = "systemctl [start|stop|status] .service null-terminator
+	 */
+	char command[RESOURCE_NAME_MAX + 26];
 };
 
 struct ta_ssh {
@@ -349,8 +352,11 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	qb_enter();
 	ssh_op = calloc(1, sizeof(struct ssh_operation));
 
+	/*
+	 * 26 = "systemctl [start|stop|status] .service null-terminator
+	 */
 	va_start(ap, format);
-	vsprintf(ssh_op->command, format, ap);
+	vsnprintf(ssh_op->command, RESOURCE_NAME_MAX + 26, format, ap);
 	va_end(ap);
 
 	qb_log(LOG_NOTICE, "ssh_exec for assembly '%s' command '%s'",
