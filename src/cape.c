@@ -293,7 +293,9 @@ resource_action_completed(struct pe_operation *op,
 		op_history_save(r, op, pe_exitcode);
 	}
 
-	pe_resource_completed(op, pe_exitcode);
+	if (op->times_executed <= 1) {
+		pe_resource_completed(op, pe_exitcode);
+	}
 	if (op->interval > 0) {
 		if (pe_exitcode != op->target_outcome) {
 			recover(&r->recover);
