@@ -559,7 +559,7 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	repair_init(&resource->repair,
 		    escalation_failures, escalation_period,
 		    resource_repair_restart, resource_repair_escalate);
-	resource->repair.instance = &resource;
+	resource->repair.instance = resource;
 
 	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);
