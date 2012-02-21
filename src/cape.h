@@ -36,12 +36,21 @@ extern "C" {
 
 #include "pcmk_pe.h"
 
+/*
+ * Limits of the system
+ */
+#define ASSEMBLY_NAME_MAX 1024		/* Maximum assembly length in bytes */
+#define RESOURCE_NAME_MAX 1024		/* Maximum resource length in bytes */
+#define METHOD_NAME_MAX 20		/* Maximum method name */
+
+/*
+ * Timers of the system
+ */
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
 #define SCHEDULE_PROCESS_TIMEOUT 1000	/* milliseconds */
 #define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
-
 
 enum node_state {
 	NODE_STATE_OFFLINE = 1,
