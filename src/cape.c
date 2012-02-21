@@ -78,6 +78,8 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 	struct operation_history *oh;
 	char buffer[4096];
 
+	qb_enter();
+
 	sprintf(buffer, "%s_%s_%d", op->rname, op->method, op->interval);
 
 	oh = qb_map_get(op_history_map, buffer);
@@ -106,20 +108,32 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
         oh->call_id = call_order++;
         oh->graph_id = op->graph_id;
         oh->action_id = op->action_id;
+
+	qb_leave();
 }
 
 static void xml_new_int_prop(xmlNode *n, const char *name, int32_t val)
 {
 	char int_str[36];
+
+	qb_enter();
+
 	snprintf(int_str, 36, "%d", val);
 	xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+
+	qb_leave();
 }
 
 static void xml_new_time_prop(xmlNode *n, const char *name, time_t val)
 {
         char int_str[36];
+
+	qb_enter();
+
         snprintf(int_str, 36, "%d", (int)val);
         xmlNewProp(n, BAD_CAST name, BAD_CAST int_str);
+
+	qb_leave();
 }
 
 
@@ -130,6 +144,8 @@ static void op_history_insert(xmlNode *resource_xml,
 	xmlNode *op;
 	char key[255];
 	char magic[255];
+
+	qb_enter();
 
 	op = xmlNewChild(resource_xml, NULL, BAD_CAST "lrm_rsc_op", NULL);
 
@@ -155,18 +171,27 @@ static void op_history_insert(xmlNode *resource_xml,
 	xmlNewProp(op, BAD_CAST "op-status", BAD_CAST "0");
 	xmlNewProp(op, BAD_CAST "exec-time", BAD_CAST "0");
 	xmlNewProp(op, BAD_CAST "queue-time", BAD_CAST "0");
+
+	qb_leave();
 }
 
 static void resource_repair_restart(void * inst)
 {
 	struct resource *resource = (struct resource *)inst;
+
+	qb_enter();
+
 	node_state_changed(resource->assembly, NODE_STATE_RECOVERING);
 	qb_loop_timer_del(NULL, resource->monitor_timer);
+
+	qb_leave();
 }
 
 static void resource_repair_escalate(void * inst)
 {
 	struct resource *r = (struct resource *)inst;
+
+	qb_enter();
 
 	r->assembly->instance_state = NODE_STATE_ESCALATING;
 
@@ -176,6 +201,8 @@ static void resource_repair_escalate(void * inst)
 	qb_loop_timer_del(NULL, r->monitor_timer);
 
 	instance_stop(r->assembly);
+
+	qb_leave();
 }
 
 static void node_all_resources_mark_failed(struct assembly *assembly)
@@ -184,6 +211,8 @@ static void node_all_resources_mark_failed(struct assembly *assembly)
 	struct operation_history *oh;
 	const char *key;
 	struct resource *resource;
+
+	qb_enter();
 
 	iter = qb_map_iter_create(op_history_map);
 	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
@@ -195,11 +224,15 @@ static void node_all_resources_mark_failed(struct assembly *assembly)
 		}
 	}
 	qb_map_iter_free(iter);
+
+	qb_leave();
 }
 
 void
 node_state_changed(struct assembly *assembly, enum node_state state)
 {
+	qb_enter();
+
 	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d",
 		 assembly->name, assembly->instance_state, state);
 	if (assembly->instance_state != NODE_STATE_FAILED &&
@@ -221,6 +254,8 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 	}
 	assembly->instance_state = state;
 	schedule_processing();
+
+	qb_leave();
 }
 
 void
@@ -230,6 +265,8 @@ resource_action_completed(struct pe_operation *op,
 	uint64_t el;
 	struct assembly *a = qb_map_get(assembly_map, op->hostname);;
 	struct resource *r = qb_map_get(a->resource_map, op->rname);
+
+	qb_enter();
 
 	op->times_executed++;
 	qb_util_stopwatch_stop(op->time_execed);
@@ -257,6 +294,8 @@ resource_action_completed(struct pe_operation *op,
 					  &r->monitor_timer);
 		}
 	}
+
+	qb_leave();
 }
 
 static void
@@ -266,11 +305,15 @@ resource_monitor_execute(void *data)
 	struct assembly *assembly;
 	struct resource *resource;
 
+	qb_enter();
+
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
 	qb_util_stopwatch_start(op->time_execed);
 	ta_resource_action(assembly, resource, op);
+
+	qb_leave();
 }
 
 static void op_history_delete(struct pe_operation *op)
@@ -279,6 +322,8 @@ static void op_history_delete(struct pe_operation *op)
 	qb_map_iter_t *iter;
 	const char *key;
 	struct operation_history *oh;
+
+	qb_enter();
 
 	/*
 	 * Delete this resource from any operational histories
@@ -297,12 +342,16 @@ static void op_history_delete(struct pe_operation *op)
 	qb_map_iter_free(iter);
 
 	pe_resource_completed(op, OCF_OK);
+
+	qb_leave();
 }
 
 static void resource_execute_cb(struct pe_operation *op)
 {
 	struct resource *resource;
 	struct assembly *assembly;
+
+	qb_enter();
 
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
@@ -339,6 +388,8 @@ static void resource_execute_cb(struct pe_operation *op)
 	} else {
 		assert(0);
 	}
+
+	qb_leave();
 }
 
 static void transition_completed_cb(void* user_data, int32_t result) {
@@ -348,10 +399,14 @@ static xmlNode *insert_resource(xmlNode *status, struct resource *resource)
 {
 	xmlNode *resource_xml;
 
+	qb_enter();
+
 	resource_xml = xmlNewChild (status, NULL, BAD_CAST "lrm_resource", NULL);
 	xmlNewProp(resource_xml, BAD_CAST "id", BAD_CAST resource->name);
 	xmlNewProp(resource_xml, BAD_CAST "type", BAD_CAST resource->type);
 	xmlNewProp(resource_xml, BAD_CAST "class", BAD_CAST resource->rclass);
+
+	qb_leave();
 
 	return resource_xml;
 }
@@ -365,6 +420,8 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	struct resource *resource;
 	qb_map_iter_t *iter;
 	const char *key;
+
+	qb_enter();
 
 	qb_log(LOG_INFO, "Inserting assembly %s", assembly->name);
 
@@ -401,6 +458,7 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	}
 	qb_map_iter_free(iter);
 
+	qb_leave();
 }
 
 static void process(void)
@@ -414,6 +472,7 @@ static void process(void)
 	static xmlNode *pe_root;
 	char filename[1024];
 
+	qb_enter();
 
 	/*
 	 * Remove status descriptor
@@ -443,20 +502,30 @@ static void process(void)
 	if (rc != 0) {
 		schedule_processing();
 	}
+
+	qb_leave();
 }
 
 static void process_job(void *data)
 {
+	qb_enter();
+
 	if (pe_is_busy_processing()) {
 		schedule_processing();
 	} else {
 		process();
 	}
+
+	qb_leave();
 }
 
 static void schedule_processing(void)
 {
+	qb_enter();
+
 	qb_loop_job_add(NULL, QB_LOOP_HIGH, NULL, process_job);
+
+	qb_leave();
 }
 
 static void resource_create(xmlNode *cur_node, struct assembly *assembly)
@@ -468,6 +537,8 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	char resource_name[4096];
 	char *escalation_failures;
 	char *escalation_period;
+
+	qb_enter();
 
 	resource = calloc(1, sizeof (struct resource));
 	name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
@@ -487,11 +558,13 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 
 	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);
+
+	qb_leave();
 }
 
 static void resources_create(xmlNode *cur_node, struct assembly *assembly)
 {
-
+	qb_enter();
 
 	for (; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
@@ -499,6 +572,8 @@ static void resources_create(xmlNode *cur_node, struct assembly *assembly)
 		}
 		resource_create(cur_node, assembly);
 	}
+
+	qb_leave();
 }
 
 static void assembly_create(xmlNode *cur_node)
@@ -507,6 +582,8 @@ static void assembly_create(xmlNode *cur_node)
 	char *name;
 	char *uuid;
 	xmlNode *child_node;
+
+	qb_enter();
 
 	assembly = calloc(1, sizeof (struct assembly));
 	name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
@@ -530,11 +607,15 @@ static void assembly_create(xmlNode *cur_node)
 			resources_create(child_node->children, assembly);
 		}
 	}
+
+	qb_leave();
 }
 
 static void assemblies_create(xmlNode *xml)
 {
 	xmlNode *cur_node;
+
+	qb_enter();
 
         for (cur_node = xml; cur_node; cur_node = cur_node->next) {
                 if (cur_node->type != XML_ELEMENT_NODE) {
@@ -542,6 +623,8 @@ static void assemblies_create(xmlNode *xml)
                 }
 		assembly_create(cur_node);
 	}
+
+	qb_leave();
 }
 
 static void
@@ -551,6 +634,8 @@ parse_and_load(void)
 	xmlNode *dep_node;
         xsltStylesheetPtr ss;
 	const char *params[1];
+
+	qb_enter();
 
 	ss = xsltParseStylesheetFile(BAD_CAST "/usr/share/pacemaker-cloud/cf2pe.xsl");
 	params[0] = NULL;
@@ -567,13 +652,19 @@ parse_and_load(void)
                         }
                 }
         }
+
+	qb_leave();
 }
 
 void
 cape_load_from_buffer(const char *buffer)
 {
+	qb_enter();
+
 	_config = xmlParseMemory(buffer, strlen(buffer));
 	parse_and_load();
+
+	qb_leave();
 }
 
 int
@@ -581,12 +672,17 @@ cape_load(const char * name)
 {
 	char cfg[PATH_MAX];
 
+	qb_enter();
+
 	snprintf(cfg, PATH_MAX, "/var/run/%s.xml", name);
 	if (access(cfg, R_OK) != 0) {
 		return -errno;
 	}
 	_config = xmlParseFile(cfg);
 	parse_and_load();
+
+	qb_leave();
+
 	return 0;
 }
 
@@ -595,9 +691,13 @@ cape_init(void)
 {
 	uuid_t uuid_temp_id;
 
+	qb_enter();
+
 	uuid_generate(uuid_temp_id);
 	uuid_unparse(uuid_temp_id, crmd_uuid);
 
 	assembly_map = qb_skiplist_create();
 	op_history_map = qb_skiplist_create();
+
+	qb_leave();
 }
