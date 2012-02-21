@@ -90,6 +90,8 @@ void instance_state_detect(void *data)
 			instance_state_detect, &timer_handle);
 	}
 
+	deltacloud_free_instance(&instance);
+	deltacloud_free(&api);
 	qb_leave();
 }
 
