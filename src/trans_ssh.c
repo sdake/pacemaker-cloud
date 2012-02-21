@@ -248,7 +248,7 @@ static void ssh_assembly_connect(void *data)
 	struct assembly *assembly = (struct assembly *)data;
 	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
 	char name[PATH_MAX];
-	char name_pub[1PATH_MAX];
+	char name_pub[PATH_MAX];
 	int rc;
 
 	qb_enter();
