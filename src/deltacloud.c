@@ -121,7 +121,7 @@ int32_t instance_create(struct assembly *assembly)
 	return 0;
 }
 
-int instance_stop(char *image_name)
+int instance_stop(struct assembly *a)
 {
 	static struct deltacloud_api api;
 	struct deltacloud_instance *instances = NULL;
@@ -129,6 +129,7 @@ int instance_stop(char *image_name)
 	struct deltacloud_image *images_head;
 	struct deltacloud_image *images;
 	int rc;
+	char *image_name = a->name;
 
 	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
 		fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",

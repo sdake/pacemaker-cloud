@@ -82,7 +82,32 @@ repair_init(struct repair* r,
 void
 repair(struct repair* r)
 {
+	qb_enter();
 	r->escalating = QB_FALSE;
-	r->restart(r->instance);
+	if (r->num_failures > 0 && r->failure_period > 0) {
+		uint64_t diff;
+		float p;
+		int last;
+		qb_util_stopwatch_split(r->sw);
+
+		last = qb_util_stopwatch_split_last(r->sw);
+		qb_log(LOG_TRACE, "split number %d/%d", last+1, r->num_failures);
+		if (last >= r->num_failures - 1) {
+			diff = qb_util_stopwatch_time_split_get(r->sw, last,
+								last - (r->num_failures - 1));
+			p = diff;
+			p /= QB_TIME_US_IN_SEC;
+			qb_log(LOG_TRACE, "split time %f/%d", p, r->failure_period);
+			if (p <= r->failure_period) {
+				r->escalating = QB_TRUE;
+				qb_util_stopwatch_start(r->sw);
+			}
+		}
+	}
+	if (r->escalating) {
+		r->escalate(r->instance);
+	} else {
+		r->restart(r->instance);
+	}
 }
 

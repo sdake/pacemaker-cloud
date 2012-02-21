@@ -49,7 +49,7 @@ static const char * test1_conf = "\
   <assemblies>\
     <assembly name=\"bar\" uuid=\"7891011\" escalation_failures=\"3\" escalation_period=\"10\">\
       <services>\
-        <service name=\"angus\" provider=\"me\" class=\"lsb\" type=\"httpd\" monitor_interval=\"1\" escalation_period=\"-1\" escalation_failures=\"-1\">\
+        <service name=\"angus\" provider=\"me\" class=\"lsb\" type=\"httpd\" monitor_interval=\"1\" escalation_period=\"10\" escalation_failures=\"2\">\
           <paramaters>\
 	    <paramater name=\"not\" value=\"this\"/>\
           </paramaters>\
@@ -68,13 +68,21 @@ enum resource_test_seq {
 	RSEQ_START_1,
 	RSEQ_MON_REPEAT_1,
 	RSEQ_MON_REPEAT_2,
-	RSEQ_MON_REPEAT_3,
-	RSEQ_MON_REPEAT_4,
-	RSEQ_MON_REPEAT_FAIL,
+	RSEQ_MON_REPEAT_FAIL_1,
 	RSEQ_STOP_1,
 	RSEQ_START_2,
+	RSEQ_MON_REPEAT_3,
+	RSEQ_MON_REPEAT_4,
+	RSEQ_MON_REPEAT_FAIL_2,
+	RSEQ_STOP_2,
+	RSEQ_START_3,
 	RSEQ_MON_REPEAT_5,
 	RSEQ_MON_REPEAT_6,
+	RSEQ_MON_REPEAT_FAIL_3,
+	RSEQ_STOP_3,
+	RSEQ_START_4,
+	RSEQ_MON_REPEAT_7,
+	RSEQ_MON_REPEAT_8,
 };
 static int inst_up = 0;
 static int test_seq = RSEQ_INIT;
@@ -84,7 +92,7 @@ int32_t instance_create(struct assembly *a)
 {
 	qb_log(LOG_INFO, "starting instance (seq %d)", test_seq);
 
-	if (is_node_test && test_seq >= RSEQ_MON_REPEAT_FAIL) {
+	if (is_node_test && test_seq >= RSEQ_MON_REPEAT_FAIL_1) {
 		qb_loop_timer_add(NULL, QB_LOOP_LOW, 1 * QB_TIME_NS_IN_SEC, a,
 				  instance_state_detect, NULL);
 	} else {
@@ -103,9 +111,19 @@ void instance_state_detect(void *data)
 	}
 }
 
+static void instance_notify_down(void *data)
+{
+	struct assembly * a = (struct assembly *)data;
+	node_state_changed(a, NODE_STATE_FAILED);
+}
+
+
 int instance_stop(struct assembly *a)
 {
 	qb_log(LOG_INFO, "stopping instance");
+	ck_assert_int_eq(test_seq, RSEQ_MON_REPEAT_FAIL_2);
+	inst_up = 0;
+	qb_loop_job_add(NULL, QB_LOOP_LOW, a, instance_notify_down);
 	return 0;
 }
 
@@ -143,11 +161,15 @@ static void resource_action_completion_cb(void *data)
 	case RSEQ_MON_REPEAT_4:
 	case RSEQ_MON_REPEAT_5:
 	case RSEQ_MON_REPEAT_6:
+	case RSEQ_MON_REPEAT_7:
+	case RSEQ_MON_REPEAT_8:
 		ck_assert_int_eq(j->op->interval, 1000);
 		ck_assert_str_eq(j->op->method, "monitor");
 		resource_action_completed(j->op, OCF_OK);
 		break;
-	case RSEQ_MON_REPEAT_FAIL:
+	case RSEQ_MON_REPEAT_FAIL_1:
+	case RSEQ_MON_REPEAT_FAIL_2:
+	case RSEQ_MON_REPEAT_FAIL_3:
 		ck_assert_int_eq(j->op->interval, 1000);
 		ck_assert_str_eq(j->op->method, "monitor");
 		if (is_node_test) {
@@ -158,10 +180,14 @@ static void resource_action_completion_cb(void *data)
 		}
 		break;
 	case RSEQ_STOP_1:
+	case RSEQ_STOP_2:
+	case RSEQ_STOP_3:
 		ck_assert_str_eq(j->op->method, "stop");
 		resource_action_completed(j->op, OCF_OK);
 		break;
 	case RSEQ_START_2:
+	case RSEQ_START_3:
+	case RSEQ_START_4:
 		ck_assert_str_eq(j->op->method, "start");
 		resource_action_completed(j->op, OCF_OK);
 		break;
@@ -191,7 +217,7 @@ ta_connect(struct assembly * a)
 	return NULL;
 }
 
-START_TEST(test_restart_resource)
+START_TEST(test_escalation_resource)
 {
 	qb_loop_t *loop = qb_loop_create();
 
@@ -204,32 +230,14 @@ START_TEST(test_restart_resource)
 }
 END_TEST
 
-START_TEST(test_restart_node)
-{
-	qb_loop_t *loop = qb_loop_create();
-
-	is_node_test = 1;
-	cape_init();
-
-	cape_load_from_buffer(test1_conf);
-
-	qb_loop_run(loop);
-}
-END_TEST
-
 static Suite *
 basic_suite(void)
 {
 	TCase *tc;
-	Suite *s = suite_create("basic");
+	Suite *s = suite_create("escalation");
 
-	tc = tcase_create("restart_resource");
-	tcase_add_test(tc, test_restart_resource);
-	tcase_set_timeout(tc, 20);
-	suite_add_tcase(s, tc);
-
-	tc = tcase_create("restart_node");
-	tcase_add_test(tc, test_restart_node);
+	tc = tcase_create("escalation_resource");
+	tcase_add_test(tc, test_escalation_resource);
 	tcase_set_timeout(tc, 30);
 	suite_add_tcase(s, tc);
 
@@ -249,6 +257,8 @@ int32_t main(void)
 			  QB_LOG_FILTER_FILE, "*", LOG_INFO);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, __FILE__, LOG_TRACE);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "repair.c", LOG_TRACE);
 	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 	qb_log_format_set(QB_LOG_STDERR, "[%6p] %f:%l %b");
 

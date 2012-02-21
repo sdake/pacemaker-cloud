@@ -166,6 +166,16 @@ static void resource_repair_restart(void * inst)
 
 static void resource_repair_escalate(void * inst)
 {
+	struct resource *r = (struct resource *)inst;
+
+	r->assembly->instance_state = NODE_STATE_ESCALATING;
+
+	qb_log(LOG_NOTICE, "Escalating failure of service %s to node %s:%s",
+	       r, r->assembly->uuid, r->assembly->name);
+
+	qb_loop_timer_del(NULL, r->monitor_timer);
+
+	instance_stop(r->assembly);
 }
 
 static void node_all_resources_mark_failed(struct assembly *assembly)
@@ -197,7 +207,10 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 
 		ta_del(assembly->transport_assembly);
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
-		node_all_resources_mark_failed(assembly);
+
+		if (assembly->instance_state != NODE_STATE_ESCALATING) {
+			node_all_resources_mark_failed(assembly);
+		}
 		instance_create(assembly);
 	}
 	if (state == NODE_STATE_RUNNING) {

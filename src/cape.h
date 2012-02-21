@@ -48,7 +48,8 @@ enum node_state {
 	NODE_STATE_PENDING = 2,
 	NODE_STATE_RUNNING = 3,
 	NODE_STATE_FAILED = 4,
-	NODE_STATE_RECOVERING = 5
+	NODE_STATE_RECOVERING = 5,
+	NODE_STATE_ESCALATING = 6
 };
 #define NODE_NUM_STATES 5
 
@@ -109,7 +110,7 @@ int32_t instance_create(struct assembly *assembly);
 
 void instance_state_detect(void *data);
 
-int instance_stop(char *image_name);
+int instance_stop(struct assembly *a);
 
 #ifdef __cplusplus
 }
