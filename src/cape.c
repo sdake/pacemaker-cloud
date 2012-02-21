@@ -468,7 +468,7 @@ static void process(void)
 	qb_map_iter_t *iter;
 	const char *key;
 	static xmlNode *pe_root;
-	char filename[1024];
+	char filename[PATH_MAX];
 
 	qb_enter();
 
@@ -495,7 +495,7 @@ static void process(void)
 
 	rc = pe_process_state(pe_root, resource_execute_cb,
 		transition_completed_cb,  NULL);
-	sprintf (filename, "/tmp/z%d.xml", counter++);
+	snprintf (filename, PATH_MAX, "/tmp/z%d.xml", counter++);
 	xmlSaveFormatFileEnc(filename, _pe, "UTF-8", 1);
 	if (rc != 0) {
 		schedule_processing();
