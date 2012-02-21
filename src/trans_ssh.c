@@ -84,6 +84,14 @@ struct ta_ssh {
 
 int ssh_init_rc = -1;
 
+static void ssh_op_complete(struct ssh_operation *ssh_op)
+{
+	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
+	qb_list_del(&ssh_op->list);
+	ssh_op->completion_func(ssh_op);
+	free(ssh_op);
+}
+
 static void assembly_ssh_exec(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
@@ -193,9 +201,7 @@ error_close:
 		 */
 	} /* switch */
 
-	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
-	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, ssh_op->completion_func);
-	qb_list_del(&ssh_op->list);
+	ssh_op_complete(ssh_op);
 
 	qb_leave();
 
