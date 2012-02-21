@@ -69,6 +69,8 @@ static int graph_updated = FALSE;
 enum ocf_exitcode
 pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 {
+	qb_enter();
+
 	if (strcmp(op->rclass, "lsb") == 0 && strcmp("monitor", op->method) == 0) {
 		switch(lsb_exitcode) {
 		case LSB_STATUS_OK:		return OCF_OK;
@@ -81,12 +83,14 @@ pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 		}
 
 	} else if (lsb_exitcode > LSB_NOT_RUNNING) {
+		qb_leave();
 		return OCF_UNKNOWN_ERROR;
 	}
 
 	/* For non-status operations, the LSB and OCF share error code meaning
 	 * for rc <= 7
 	 */
+	qb_leave();
 	return (enum ocf_exitcode)lsb_exitcode;
 }
 
@@ -106,6 +110,8 @@ static char * ocf_reasons[10] = {
 int
 pe_resource_is_hard_error(enum ocf_exitcode ec)
 {
+	qb_enter();
+	qb_leave();
 	return (ec == OCF_INVALID_PARAM ||
 		ec == OCF_UNIMPLEMENT_FEATURE ||
 		ec == OCF_INSUFFICIENT_PRIV ||
@@ -116,23 +122,33 @@ pe_resource_is_hard_error(enum ocf_exitcode ec)
 const char*
 pe_resource_reason_get(enum ocf_exitcode exitcode)
 {
+	qb_enter();
 	if (exitcode == OCF_PENDING) {
+		qb_leave();
 		return "Operation pending";
 	}
 	if (exitcode < OCF_OK || exitcode > OCF_FAILED_MASTER) {
+		qb_leave();
 		return "Unknown Error";
 	} else {
+		qb_leave();
 		return ocf_reasons[exitcode];
 	}
 }
 
 void pe_resource_ref(struct pe_operation *op)
 {
+	qb_enter();
+
 	op->refcount++;
+
+	qb_leave();
 }
 
 void pe_resource_unref(struct pe_operation *op)
 {
+	qb_enter();
+	
 	op->refcount--;
 
 	if (op->refcount == 0) {
@@ -145,6 +161,8 @@ void pe_resource_unref(struct pe_operation *op)
 		qb_util_stopwatch_free(op->time_execed);
 		free(op);
 	}
+
+	qb_leave();
 }
 
 void
@@ -156,6 +174,7 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 	qb_enter();
 
 	if (working_set == NULL) {
+		qb_leave();
 		return;
 	}
 
@@ -167,6 +186,7 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 	update_graph(graph, action);
 	graph_updated = TRUE;
 
+	qb_leave();
 }
 
 static guint
@@ -175,16 +195,22 @@ g_str_hash_traditional_copy(gconstpointer v)
 	const signed char *p;
 	guint32 h = 0;
 
+	qb_enter();
 	for (p = v; *p != '\0'; p++) {
 		h = (h << 5) - h + *p;
 	}
+	qb_leave();
 	return h;
 }
 
 static void
 dup_attr(gpointer key, gpointer value, gpointer user_data)
 {
+	qb_enter();
+
 	g_hash_table_replace(user_data, crm_strdup(key), crm_strdup(value));
+
+	qb_leave();
 }
 
 static gboolean
@@ -206,12 +232,14 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 		action->confirmed = TRUE;
 		update_graph(graph, action);
 		graph_updated = TRUE;
+		qb_leave();
 		return TRUE;
 	}
 
 	if (action_rsc == NULL) {
 		crm_log_xml_err(action->xml, "Bad");
 		crm_free(node);
+		qb_leave();
 		return FALSE;
 	}
 	uuid = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET_UUID);
@@ -273,24 +301,37 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 	free_xml(params_all);
 
 	run_fn(pe_op);
+
+	qb_leave();
+
 	return TRUE;
 }
 
 static gboolean
 exec_pseudo_action(crm_graph_t *graph, crm_action_t *action)
 {
+	qb_enter();
+
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
+
+	qb_leave();
+
 	return TRUE;
 }
 
 static gboolean
 exec_crmd_action(crm_graph_t *graph, crm_action_t *action)
 {
+	qb_enter();
+
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
+
+	qb_leave();
+
 	return TRUE;
 }
 
@@ -299,6 +340,8 @@ exec_stonith_action(crm_graph_t *graph, crm_action_t *action)
 {
 	char *target = crm_element_value_copy(action->xml, XML_LRM_ATTR_TARGET);
 
+	qb_enter();
+
 	qb_log(LOG_WARNING, "Skipping STONITH %s op (not fencing %s)\n",
 	       crm_element_value(action->xml, "operation"), target);
 	crm_free(target);
@@ -306,6 +349,8 @@ exec_stonith_action(crm_graph_t *graph, crm_action_t *action)
 	action->confirmed = TRUE;
 	update_graph(graph, action);
 	graph_updated = TRUE;
+
+	qb_leave();
 	return TRUE;
 }
 
@@ -323,11 +368,13 @@ process_next_job(void* data)
 	crm_graph_t *transition = (crm_graph_t *)data;
 	enum transition_status graph_rc;
 
+	qb_enter();
+
 	if (!graph_updated) {
 		qb_loop_job_add(NULL, QB_LOOP_MED, transition, process_next_job);
+		qb_leave();
 		return;
 	}
-	qb_enter();
 
 	graph_updated = FALSE;
 	graph_rc = run_graph(transition);
@@ -336,6 +383,7 @@ process_next_job(void* data)
 
 	if (graph_rc == transition_active || graph_rc == transition_pending) {
 		qb_loop_job_add(NULL, QB_LOOP_MED, transition, process_next_job);
+		qb_leave();
 		return;
 	}
 
@@ -353,15 +401,21 @@ process_next_job(void* data)
 
 	completed_fn(run_user_data, graph_rc);
 
+	qb_leave();
 	return;
 }
 
 int32_t
 pe_is_busy_processing(void)
 {
+	qb_enter();
+
 	if (working_set != NULL) {
+		qb_leave();
 		return TRUE;
 	}
+
+	qb_leave();
 	return FALSE;
 }
 
@@ -372,13 +426,18 @@ cl_log(int priority, const char * fmt, ...)
 	va_list		ap;
 	char		buf[512];
 
+	qb_enter();
+
 	buf[512-1] = '\0';
+
 	va_start(ap, fmt);
 	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
 	qb_log_from_external_source(__func__, __FILE__,
 				    "%s", priority, __LINE__, 3, buf);
+
+	qb_leave();
 }
 
 int32_t
@@ -389,8 +448,11 @@ pe_process_state(xmlNode *xml_input,
 {
 	crm_graph_t *transition = NULL;
 
+	qb_enter();
+
 	if (working_set) {
 		qb_log(LOG_ERR, "Transition already in progress");
+		qb_leave();
 		return -EEXIST;
 	}
 
