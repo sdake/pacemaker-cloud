@@ -135,7 +135,7 @@ main(int argc, char * argv[])
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - loglevel);
 	if (!daemonize || do_stdout) {
 		qb_log_filter_ctl(QB_LOG_STDOUT, QB_LOG_FILTER_ADD,
-				  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
+				  QB_LOG_FILTER_FILE, "*", loglevel);
 		qb_log_format_set(QB_LOG_STDOUT, "%g[%6p] %b");
 		qb_log_ctl(QB_LOG_STDOUT, QB_LOG_CONF_ENABLED, QB_TRUE);
 	}

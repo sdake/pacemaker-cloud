@@ -125,8 +125,6 @@ static void resource_action_completion_cb(void *data)
 	struct job_holder *j = (struct job_holder*)data;
 
 	test_seq++;
-	qb_log(LOG_TRACE, "TEST: %s %s %d (%d)",
-	       j->op->rtype, j->op->method, j->op->interval, test_seq);
 	switch (test_seq) {
 	case RSEQ_MON_0:
 		ck_assert_int_eq(j->op->interval, 0);
@@ -248,7 +246,7 @@ int32_t main(void)
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, "*", LOG_INFO);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, __FILE__, LOG_TRACE);
+			  QB_LOG_FILTER_FILE, __FILE__, LOG_DEBUG);
 	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 	qb_log_format_set(QB_LOG_STDERR, "[%6p] %f:%l %b");
 

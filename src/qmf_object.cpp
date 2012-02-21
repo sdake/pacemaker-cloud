@@ -176,7 +176,7 @@ QmfObject::connect(Agent &a)
 			if (strcasecmp(prop_val.c_str(), _prop_value.c_str()) == 0) {
 				_connected = true;
 			} else {
-				qb_log(LOG_TRACE, "[prop: %s] %s != %s",
+				qb_log(LOG_DEBUG, "[prop: %s] %s != %s",
 				       _prop_name.c_str(), _prop_value.c_str(), prop_val.c_str());
 			}
 		} else {
