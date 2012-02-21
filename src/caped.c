@@ -29,6 +29,8 @@
 
 static const char *my_tags_stringify(uint32_t tags)
 {
+	qb_enter();
+
 	if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT)) {
 		return "QB   ";
 	} else if (tags == 1) {
@@ -40,6 +42,8 @@ static const char *my_tags_stringify(uint32_t tags)
 	} else {
 		return "MAIN ";
 	}
+
+	qb_leave();
 }
 
 static void
@@ -47,6 +51,8 @@ my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *mess
 {
 	uint32_t log_level = LOG_WARNING;
 	GLogLevelFlags msg_level = (GLogLevelFlags)(flags & G_LOG_LEVEL_MASK);
+
+	qb_enter();
 
 	switch (msg_level) {
 	case G_LOG_LEVEL_CRITICAL:
@@ -76,11 +82,15 @@ my_glib_handler(const gchar *log_domain, GLogLevelFlags flags, const gchar *mess
 	qb_log_from_external_source(__FUNCTION__, __FILE__, "%s",
 				    log_level, __LINE__,
 				    2, message);
+
+	qb_leave();
 }
 
 static void
 show_usage(const char *name)
 {
+	qb_enter();
+
 	printf("usage: \n");
 	printf("%s <options> [cloud app name]\n", name);
 	printf("\n");
@@ -90,6 +100,8 @@ show_usage(const char *name)
 	printf("  -o             log to stdout\n");
 	printf("  -h             show this help text\n");
 	printf("\n");
+
+	qb_leave();
 }
 
 int
@@ -102,6 +114,8 @@ main(int argc, char * argv[])
 	int loglevel = LOG_INFO;
 	qb_loop_t *loop;
 	char *cloud_app = NULL;
+
+	qb_enter();
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
@@ -126,6 +140,7 @@ main(int argc, char * argv[])
 		cloud_app =  argv[optind];
 	} else {
 		show_usage(argv[0]);
+		qb_leave();
 		exit(EXIT_FAILURE);
 	}
 
@@ -163,5 +178,8 @@ main(int argc, char * argv[])
 	}
 
 	qb_loop_run(loop);
+
+	qb_leave();
+
 	return 0;
 }
