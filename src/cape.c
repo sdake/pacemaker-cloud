@@ -222,6 +222,7 @@ resource_action_completed(struct pe_operation *op,
 	struct assembly *a = qb_map_get(assembly_map, op->hostname);;
 	struct resource *r = qb_map_get(a->resource_map, op->rname);
 
+	op->times_executed++;
 	qb_util_stopwatch_stop(op->time_execed);
 	el = qb_util_stopwatch_us_elapsed_get(op->time_execed);
 
@@ -229,6 +230,7 @@ resource_action_completed(struct pe_operation *op,
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       pe_exitcode, op->target_outcome,
 	       el / QB_TIME_US_IN_MSEC, op->timeout);
+
 	if (strstr(op->rname, op->hostname) != NULL) {
 		op_history_save(r, op, pe_exitcode);
 	}

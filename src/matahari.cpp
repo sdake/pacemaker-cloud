@@ -52,7 +52,6 @@ resource_method_response(QmfAsyncRequest* ar,
 		} else {
 			rc = OCF_UNKNOWN_ERROR;
 		}
-		op->times_executed++;
 
 		resource_action_completed(op, rc);
 		// remove the ref for putting the op in the map
