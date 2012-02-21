@@ -148,7 +148,7 @@ void pe_resource_ref(struct pe_operation *op)
 void pe_resource_unref(struct pe_operation *op)
 {
 	qb_enter();
-	
+
 	op->refcount--;
 
 	if (op->refcount == 0) {
@@ -426,8 +426,6 @@ cl_log(int priority, const char * fmt, ...)
 	va_list		ap;
 	char		buf[512];
 
-	qb_enter();
-
 	buf[512-1] = '\0';
 
 	va_start(ap, fmt);
@@ -436,8 +434,6 @@ cl_log(int priority, const char * fmt, ...)
 
 	qb_log_from_external_source(__func__, __FILE__,
 				    "%s", priority, __LINE__, 3, buf);
-
-	qb_leave();
 }
 
 int32_t
@@ -477,7 +473,7 @@ pe_process_state(xmlNode *xml_input,
 	//print_graph(LOG_INFO, transition);
 
 	graph_updated = TRUE;
-	
+
 	qb_loop_job_add(NULL, QB_LOOP_HIGH, transition, process_next_job);
 
 	qb_leave();
