@@ -180,7 +180,7 @@ static void op_history_insert(xmlNode *resource_xml,
 	qb_leave();
 }
 
-static void resource_repair_restart(void * inst)
+static void resource_recover_restart(void * inst)
 {
 	struct resource *resource = (struct resource *)inst;
 
@@ -192,7 +192,7 @@ static void resource_repair_restart(void * inst)
 	qb_leave();
 }
 
-static void resource_repair_escalate(void * inst)
+static void resource_recover_escalate(void * inst)
 {
 	struct resource *r = (struct resource *)inst;
 
@@ -289,7 +289,7 @@ resource_action_completed(struct pe_operation *op,
 	pe_resource_completed(op, pe_exitcode);
 	if (op->interval > 0) {
 		if (pe_exitcode != op->target_outcome) {
-			repair(&r->repair);
+			recover(&r->recover);
 		} else {
 			qb_loop_timer_add(NULL, QB_LOOP_LOW,
 					  op->interval * QB_TIME_NS_IN_MSEC, op,
@@ -556,10 +556,10 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
 	escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
 
-	repair_init(&resource->repair,
+	recover_init(&resource->recover,
 		    escalation_failures, escalation_period,
-		    resource_repair_restart, resource_repair_escalate);
-	resource->repair.instance = resource;
+		    resource_recover_restart, resource_recover_escalate);
+	resource->recover.instance = resource;
 
 	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);

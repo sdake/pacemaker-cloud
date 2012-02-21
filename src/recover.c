@@ -32,11 +32,11 @@
 #include "trans.h"
 
 void
-repair_init(struct repair* r,
+recover_init(struct recover* r,
 	    const char * escalation_failures,
 	    const char * escalation_period,
-	    repair_restart_fn_t resource_repair_restart,
-	    repair_escalate_fn_t resource_repair_escalate)
+	    recover_restart_fn_t resource_recover_restart,
+	    recover_escalate_fn_t resource_recover_escalate)
 {
 	long val;
 	char *endptr;
@@ -69,8 +69,8 @@ repair_init(struct repair* r,
 		}
 	}
 
-	r->restart = resource_repair_restart;
-	r->escalate = resource_repair_escalate;
+	r->restart = resource_recover_restart;
+	r->escalate = resource_recover_escalate;
 
 	r->sw = NULL;
 	if (r->failure_period > 0 && r->num_failures > 0) {
@@ -84,7 +84,7 @@ repair_init(struct repair* r,
 }
 
 void
-repair(struct repair* r)
+recover(struct recover* r)
 {
 	qb_enter();
 

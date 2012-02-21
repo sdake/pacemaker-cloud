@@ -25,14 +25,14 @@ if HAVE_CHECK
 TESTS = basic.test escalation.test
 check_PROGRAMS = basic.test escalation.test
 
-basic_test_SOURCES = check_basic.c ../src/pcmk_pe.c ../src/repair.c ../src/cape.c
+basic_test_SOURCES = check_basic.c ../src/pcmk_pe.c ../src/recover.c ../src/cape.c
 basic_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
 			     $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
 			     $(libxslt_CFLAGS) $(uuid_CFLAGS)
 basic_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
-escalation_test_SOURCES = check_escalation.c ../src/pcmk_pe.c ../src/repair.c ../src/cape.c
+escalation_test_SOURCES = check_escalation.c ../src/pcmk_pe.c ../src/recover.c ../src/cape.c
 escalation_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
 			     $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
 			     $(libxslt_CFLAGS) $(uuid_CFLAGS)
