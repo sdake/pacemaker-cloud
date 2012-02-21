@@ -52,6 +52,26 @@ enum node_state {
 };
 #define NODE_NUM_STATES 5
 
+typedef void (*repair_restart_fn_t)(void* inst);
+typedef void (*repair_escalate_fn_t)(void* inst);
+
+struct repair {
+	void * instance;
+	int escalating;
+	int num_failures;
+	int failure_period;
+	qb_util_stopwatch_t *sw;
+	repair_restart_fn_t restart;
+	repair_escalate_fn_t escalate;
+};
+void repair_init(struct repair* r,
+		 const char * escalation_failures,
+		 const char * escalation_period,
+		 repair_restart_fn_t repair_restart_fn,
+		 repair_escalate_fn_t repair_escalate_fn);
+void repair(struct repair* r);
+
+
 struct assembly {
 	char *name;
 	char *uuid;
@@ -72,6 +92,7 @@ struct resource {
 	char *rclass;
 	struct assembly *assembly;
 	qb_loop_timer_handle monitor_timer;
+	struct repair repair;
 };
 
 void resource_action_completed(struct pe_operation *op, enum ocf_exitcode rc);

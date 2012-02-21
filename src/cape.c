@@ -157,19 +157,15 @@ static void op_history_insert(xmlNode *resource_xml,
 	xmlNewProp(op, BAD_CAST "queue-time", BAD_CAST "0");
 }
 
-
-static void service_state_changed(struct assembly *assembly,
-	char *hostname, char *resource, char *state, char *reason)
+static void resource_repair_restart(void * inst)
 {
-	node_state_changed(assembly, NODE_STATE_RECOVERING);
+	struct resource *resource = (struct resource *)inst;
+	node_state_changed(resource->assembly, NODE_STATE_RECOVERING);
+	qb_loop_timer_del(NULL, resource->monitor_timer);
 }
 
-static void resource_failed(struct pe_operation *op)
+static void resource_repair_escalate(void * inst)
 {
-	struct resource *resource = (struct resource *)op->resource;
-	service_state_changed(resource->assembly, op->hostname, op->rtype,
-		"failed", "monitor failed");
-	qb_loop_timer_del(NULL, resource->monitor_timer);
 }
 
 static void node_all_resources_mark_failed(struct assembly *assembly)
@@ -238,7 +234,7 @@ resource_action_completed(struct pe_operation *op,
 	if (strcmp(op->method, "status") == 0 ||
 	    strcmp(op->method, "monitor") == 0) {
 		if (pe_exitcode != op->target_outcome) {
-			resource_failed(op);
+			repair(&r->repair);
 			return;
 		}
 		if (op->interval) {
@@ -457,6 +453,8 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	char *type;
 	char *rclass;
 	char resource_name[4096];
+	char *escalation_failures;
+	char *escalation_period;
 
 	resource = calloc(1, sizeof (struct resource));
 	name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
@@ -466,6 +464,14 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	resource->type = strdup(type);
 	rclass = (char*)xmlGetProp(cur_node, BAD_CAST "class");
 	resource->rclass = strdup(rclass);
+	escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
+	escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
+
+	repair_init(&resource->repair,
+		    escalation_failures, escalation_period,
+		    resource_repair_restart, resource_repair_escalate);
+	resource->repair.instance = &resource;
+
 	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);
 }

@@ -49,7 +49,7 @@ static const char * test1_conf = "\
   <assemblies>\
     <assembly name=\"bar\" uuid=\"7891011\" escalation_failures=\"3\" escalation_period=\"10\">\
       <services>\
-        <service name=\"angus\" provider=\"me\" class=\"lsb\" type=\"httpd\" monitor_interval=\"1\" escalation_period=\"1\" escalation_failures=\"2\">\
+        <service name=\"angus\" provider=\"me\" class=\"lsb\" type=\"httpd\" monitor_interval=\"1\" escalation_period=\"-1\" escalation_failures=\"-1\">\
           <paramaters>\
 	    <paramater name=\"not\" value=\"this\"/>\
           </paramaters>\
