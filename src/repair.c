@@ -41,6 +41,8 @@ repair_init(struct repair* r,
 	long val;
 	char *endptr;
 
+	qb_enter();
+
 	if (escalation_failures == NULL) {
 		r->num_failures = -1;
 	} else {
@@ -77,12 +79,15 @@ repair_init(struct repair* r,
 					    r->num_failures,
 					    QB_UTIL_SW_OVERWRITE);
 	}
+
+	qb_leave();
 }
 
 void
 repair(struct repair* r)
 {
 	qb_enter();
+
 	r->escalating = QB_FALSE;
 	if (r->num_failures > 0 && r->failure_period > 0) {
 		uint64_t diff;
@@ -109,5 +114,7 @@ repair(struct repair* r)
 	} else {
 		r->restart(r->instance);
 	}
+
+	qb_leave();
 }
 
