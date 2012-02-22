@@ -20,6 +20,17 @@
 MAINTAINERCLEANFILES	= Makefile.in
 AM_CFLAGS = -Wall
 
+noinst_PROGRAMS = cpe-tool2 pe_test
+
+cpe_tool2_SOURCES = cpe-tool2.c ../src/libinit.c
+cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
+cpe_tool2_LDFLAGS = $(dbus_glib_1_LIBS) $(libqb_LIBS)
+
+pe_test_SOURCES = pe_test.c
+pe_test_CPPFLAGS = -Wall $(glib_CFLAGS) $(libxml2_CFLAGS) $(pcmk_CFLAGS)
+pe_test_LDADD = $(pcmk_LIBS) $(glib_LIBS) $(libxml2_LIBS)
+
+
 if HAVE_CHECK
 
 TESTS = basic.test escalation.test

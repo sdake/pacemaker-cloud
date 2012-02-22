@@ -1,3 +1,5 @@
 *.log
 *.test
 f14-cpe-test
+cpe-tool2
+pe_test
