@@ -238,10 +238,16 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 {
 	qb_enter();
 
+	/*
+	 * Ignore state changes we are already in
+	 */
+	if (state == assembly->instance_state) {
+		return;
+	}
+
 	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d",
 		 assembly->name, assembly->instance_state, state);
-	if (assembly->instance_state != NODE_STATE_FAILED &&
-		state == NODE_STATE_FAILED) {
+	if (state == NODE_STATE_FAILED) {
 
 		ta_del(assembly->transport_assembly);
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
@@ -257,6 +263,7 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 			assembly->name,
 			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / QB_TIME_US_IN_MSEC);
 	}
+
 	assembly->instance_state = state;
 	schedule_processing();
 
@@ -277,10 +284,10 @@ resource_action_completed(struct pe_operation *op,
 	qb_util_stopwatch_stop(op->time_execed);
 	el = qb_util_stopwatch_us_elapsed_get(op->time_execed);
 
-	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:[%d/%d] time:[%"PRIu64"/%ums]",
+	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:[%d/%d] time:[%"PRIu64"/%ums] interval %d",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       pe_exitcode, op->target_outcome,
-	       el / QB_TIME_US_IN_MSEC, op->timeout);
+	       el / QB_TIME_US_IN_MSEC, op->timeout, op->interval);
 
 	if (strstr(op->rname, op->hostname) != NULL) {
 		op_history_save(r, op, pe_exitcode);
@@ -296,6 +303,13 @@ resource_action_completed(struct pe_operation *op,
 					  resource_monitor_execute,
 					  &r->monitor_timer);
 		}
+	}
+	/*
+	 * TODO
+	 * Should iterate through the assemblies resources and see if it is done recovering
+	 */
+	if (pe_exitcode == OCF_OK) {
+		node_state_changed(r->assembly, NODE_STATE_RUNNING);
 	}
 
 	qb_leave();
