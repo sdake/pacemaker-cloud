@@ -64,11 +64,12 @@ struct operation_history {
 	uint32_t action_id;
 	char *op_digest;
 	struct resource *resource;
-	struct pe_operation *pe_op;
 };
 
 
 static void resource_monitor_execute(void * data);
+
+static void recurring_monitor_stop(struct pe_operation *op);
 
 static void schedule_processing(void);
 
@@ -97,7 +98,6 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 		oh->interval = op->interval;
 		oh->rc = OCF_PENDING;
 		oh->op_digest = op->op_digest;
-		oh->pe_op = op;
 		qb_map_put(op_history_map, oh->rsc_id, oh);
 	} else
 	if (strcmp(oh->op_digest, op->op_digest) != 0) {
@@ -210,22 +210,31 @@ static void resource_recover_escalate(void * inst)
 	qb_leave();
 }
 
-static void node_all_resources_mark_failed(struct assembly *assembly)
+static void node_op_history_clear(struct assembly *assembly)
 {
 	qb_map_iter_t *iter;
 	struct operation_history *oh;
 	const char *key;
-	struct resource *resource;
+	struct resource *r;
 
 	qb_enter();
 
 	iter = qb_map_iter_create(op_history_map);
 	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
-		resource = oh->resource;
+		r = oh->resource;
 
-		if (resource->assembly == assembly) {
-			resource_action_completed(oh->pe_op, OCF_NOT_RUNNING);
-			qb_loop_timer_del(NULL, resource->monitor_timer);
+		if (r->assembly == assembly) {
+			/* stop the recurring monitor.
+			 */
+			if (qb_loop_timer_is_running(NULL, r->monitor_timer) &&
+			    r->monitor_op) {
+				recurring_monitor_stop(r->monitor_op);
+			}
+
+			qb_map_rm(op_history_map, key);
+			free(oh->rsc_id);
+			free(oh->operation);
+			free(oh);
 		}
 	}
 	qb_map_iter_free(iter);
@@ -253,7 +262,7 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
 
 		if (assembly->instance_state != NODE_STATE_ESCALATING) {
-			node_all_resources_mark_failed(assembly);
+			node_op_history_clear(assembly);
 		}
 		instance_create(assembly);
 	}
@@ -284,10 +293,10 @@ resource_action_completed(struct pe_operation *op,
 	qb_util_stopwatch_stop(op->time_execed);
 	el = qb_util_stopwatch_us_elapsed_get(op->time_execed);
 
-	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:[%d/%d] time:[%"PRIu64"/%ums] interval %d",
+	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s rc:[%d/%d] time:[%"PRIu64"/%ums]",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       pe_exitcode, op->target_outcome,
-	       el / QB_TIME_US_IN_MSEC, op->timeout, op->interval);
+	       el / QB_TIME_US_IN_MSEC, op->timeout);
 
 	if (strstr(op->rname, op->hostname) != NULL) {
 		op_history_save(r, op, pe_exitcode);
@@ -298,6 +307,9 @@ resource_action_completed(struct pe_operation *op,
 	}
 	if (op->interval > 0) {
 		if (pe_exitcode != op->target_outcome) {
+			/* unreference as not used by the timer anymore.
+			 */
+			pe_resource_unref(op);
 			recover(&r->recover);
 		} else {
 			qb_loop_timer_add(NULL, QB_LOOP_LOW,
@@ -305,6 +317,8 @@ resource_action_completed(struct pe_operation *op,
 					  resource_monitor_execute,
 					  &r->monitor_timer);
 		}
+	} else {
+		pe_resource_unref(op);
 	}
 	/*
 	 * TODO
@@ -335,9 +349,40 @@ resource_monitor_execute(void *data)
 	qb_leave();
 }
 
+static void recurring_monitor_start(struct pe_operation *op)
+{
+	struct resource * r = (struct resource *)op->resource;
+
+	if (!qb_loop_timer_is_running(NULL, r->monitor_timer)) {
+		resource_monitor_execute(op);
+		pe_resource_ref(op);
+		r->monitor_op = op;
+		qb_loop_timer_add(NULL, QB_LOOP_LOW,
+				  op->interval * QB_TIME_NS_IN_MSEC, op,
+				  resource_monitor_execute,
+				  &r->monitor_timer);
+	} else {
+		qb_util_stopwatch_stop(op->time_execed);
+		pe_resource_completed(op, OCF_OK);
+		pe_resource_unref(op);
+	}
+}
+
+static void recurring_monitor_stop(struct pe_operation *op)
+{
+	struct resource * r = (struct resource *)op->resource;
+
+	if (qb_loop_timer_is_running(NULL, r->monitor_timer)) {
+		qb_loop_timer_del(NULL, r->monitor_timer);
+		pe_resource_unref(op);
+	}
+	r->monitor_op = NULL;
+	pe_resource_unref(op);
+}
+
 static void op_history_delete(struct pe_operation *op)
 {
-	struct resource *resource;
+	struct resource *r;
 	qb_map_iter_t *iter;
 	const char *key;
 	struct operation_history *oh;
@@ -349,9 +394,16 @@ static void op_history_delete(struct pe_operation *op)
 	 */
 	iter = qb_map_iter_create(op_history_map);
 	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
-		resource = (struct resource *)oh->resource;
+		r = (struct resource *)oh->resource;
 
-		if (resource == op->resource) {
+		if (r == op->resource) {
+			/* stop the recurring monitor.
+			 */
+			if (qb_loop_timer_is_running(NULL, r->monitor_timer) &&
+			    r->monitor_op) {
+				recurring_monitor_stop(r->monitor_op);
+			}
+
 			qb_map_rm(op_history_map, key);
 			free(oh->rsc_id);
 			free(oh->operation);
@@ -360,7 +412,9 @@ static void op_history_delete(struct pe_operation *op)
 	}
 	qb_map_iter_free(iter);
 
+	qb_util_stopwatch_stop(op->time_execed);
 	pe_resource_completed(op, OCF_OK);
+	pe_resource_unref(op);
 
 	qb_leave();
 }
@@ -386,24 +440,25 @@ static void resource_execute_cb(struct pe_operation *op)
 			op->resource = resource;
 			assert(op->resource);
 			if (op->interval > 0) {
-				op_history_delete(op);
-				qb_loop_timer_add(NULL, QB_LOOP_LOW,
-					op->interval * QB_TIME_NS_IN_MSEC, op,
-					resource_monitor_execute,
-					&resource->monitor_timer);
+				recurring_monitor_start(op);
 			} else {
 				resource_monitor_execute(op);
 			}
 		} else {
+			qb_util_stopwatch_stop(op->time_execed);
 			pe_resource_completed(op, OCF_NOT_RUNNING);
+			pe_resource_unref(op);
 		}
 	} else if (strcmp (op->method, "start") == 0) {
 		ta_resource_action(assembly, resource, op);
 	} else if (strcmp(op->method, "stop") == 0) {
 		ta_resource_action(assembly, resource, op);
+		if (resource->monitor_op) {
+			recurring_monitor_stop(resource->monitor_op);
+		}
 	} else if (strcmp(op->method, "delete") == 0) {
-		qb_loop_timer_del(NULL, resource->monitor_timer);
 		op_history_delete(op);
+		recurring_monitor_stop(op);
 	} else {
 		assert(0);
 	}

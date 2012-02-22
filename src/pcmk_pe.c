@@ -152,6 +152,9 @@ void pe_resource_unref(struct pe_operation *op)
 
 	op->refcount--;
 
+	qb_log(LOG_TRACE, "unref %s_%s_%d refcount:%d",
+	       op->rname, op->method, op->interval,
+	       op->refcount);
 	if (op->refcount == 0) {
 		crm_free(op->hostname);
 		crm_free(op->rprovider);

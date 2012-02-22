@@ -71,6 +71,7 @@ enum resource_test_seq {
 	RSEQ_MON_REPEAT_3,
 	RSEQ_MON_REPEAT_4,
 	RSEQ_MON_REPEAT_FAIL,
+	RSEQ_MON_1,
 	RSEQ_STOP_1,
 	RSEQ_START_2,
 	RSEQ_MON_REPEAT_5,
@@ -124,9 +125,27 @@ static void resource_action_completion_cb(void *data)
 {
 	struct job_holder *j = (struct job_holder*)data;
 
-	test_seq++;
+	/*
+	 * node failure causes an op history flush
+	 * RSEQ_MON_REPEAT_FAIL
+	 * RSEQ_MON_1
+	 * RSEQ_START_2
+	 * resource test will look like:
+	 * RSEQ_MON_REPEAT_FAIL
+	 * RSEQ_STOP_1
+	 * RSEQ_START_2
+	 */
+	if (is_node_test && test_seq == RSEQ_MON_1) {
+		test_seq = RSEQ_START_2;
+	} else if (!is_node_test && test_seq == RSEQ_MON_REPEAT_FAIL) {
+		test_seq = RSEQ_STOP_1;
+	} else {
+		test_seq++;
+	}
+
 	switch (test_seq) {
 	case RSEQ_MON_0:
+	case RSEQ_MON_1:
 		ck_assert_int_eq(j->op->interval, 0);
 		ck_assert_str_eq(j->op->method, "monitor");
 		resource_action_completed(j->op, OCF_NOT_RUNNING);

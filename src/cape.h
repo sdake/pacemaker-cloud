@@ -102,6 +102,7 @@ struct resource {
 	char *type;
 	char *rclass;
 	struct assembly *assembly;
+	struct pe_operation *monitor_op;
 	qb_loop_timer_handle monitor_timer;
 	struct recover recover;
 };
