@@ -194,7 +194,10 @@ static void assembly_ssh_exec(void *data)
 error_close:
 	case SSH_CHANNEL_FREE:
 		rc = libssh2_channel_free(ssh_op->channel);
-		if (rc < 0) {
+		if (rc == LIBSSH2_ERROR_EAGAIN) {
+			goto job_repeat_schedule;
+		}
+		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_free failed %d\n", rc);
 		}
