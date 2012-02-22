@@ -67,9 +67,3 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 	return qmf_source;
 }
 
-bool
-mainloop_timer_is_running(qb_loop_timer_handle timer_handle)
-{
-	return (qb_loop_timer_expire_time_get(NULL, timer_handle) > 0);
-}
-

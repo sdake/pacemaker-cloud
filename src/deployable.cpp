@@ -396,7 +396,7 @@ Deployable::schedule_processing(void)
 		return;
 	}
 
-	if (mainloop_timer_is_running(_processing_timer)) {
+	if (qb_loop_timer_is_running(NULL, _processing_timer)) {
 		qb_log(LOG_DEBUG, "not scheduling - already scheduled");
 	} else {
 		qb_loop_timer_add(NULL, QB_LOOP_MED, 1000 * QB_TIME_NS_IN_MSEC,

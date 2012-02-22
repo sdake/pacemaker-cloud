@@ -108,7 +108,7 @@ Resource::execute(struct pe_operation *op)
 void
 Resource::stop(struct pe_operation *op)
 {
-	if (mainloop_timer_is_running(_monitor_timer)) {
+	if (qb_loop_timer_is_running(NULL, _monitor_timer)) {
 		pe_resource_unref(_monitor_op);
 		qb_loop_timer_del(NULL, _monitor_timer);
 	}
@@ -122,7 +122,7 @@ Resource::start_recurring(struct pe_operation *op)
 	qb_enter();
 
 	op->resource = this;
-	if (!mainloop_timer_is_running(_monitor_timer)) {
+	if (!qb_loop_timer_is_running(NULL, _monitor_timer)) {
 		__execute(op);
 
 		op->user_data = this;
@@ -241,7 +241,7 @@ Resource::delete_op_history(struct pe_operation *op)
 
 	/* stop the recurring monitor.
 	 */
-	if (mainloop_timer_is_running(_monitor_timer)) {
+	if (qb_loop_timer_is_running(NULL, _monitor_timer)) {
 		pe_resource_unref(_monitor_op);
 		qb_loop_timer_del(NULL, _monitor_timer);
 	}

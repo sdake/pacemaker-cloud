@@ -45,8 +45,6 @@ mainloop_add_qmf_session(qmf::AgentSession *asession,
 extern "C" {
 #endif
 
-bool mainloop_timer_is_running(qb_loop_timer_handle timer_handle);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
