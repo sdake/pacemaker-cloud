@@ -100,7 +100,6 @@ static void assembly_ssh_exec(void *data)
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
 	struct ta_ssh *ta_ssh = (struct ta_ssh *)ssh_op->assembly->transport_assembly;
 	int rc;
-	int rc_close;
 	char buffer[4096];
 	ssize_t rc_read;
 
@@ -164,7 +163,7 @@ static void assembly_ssh_exec(void *data)
 		}
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
-				"libssh2_channel close failed %d\n", rc_close);
+				"libssh2_channel close failed %d\n", rc);
 			qb_leave();
 			return;
 		}
@@ -179,9 +178,9 @@ static void assembly_ssh_exec(void *data)
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
-		if (rc_close != 0) {
+		if (rc != 0) {
 			qb_log(LOG_NOTICE,
-				"libssh2_channel_wait_closed failed %d\n", rc_close);
+				"libssh2_channel_wait_closed failed %d\n", rc);
 			qb_leave();
 			return;
 		}
