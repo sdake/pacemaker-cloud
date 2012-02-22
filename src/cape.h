@@ -28,6 +28,7 @@
 #include <qb/qblist.h>
 #include <qb/qbmap.h>
 #include <qb/qbutil.h>
+#include <qb/qbloop.h>
 
 
 #ifdef __cplusplus

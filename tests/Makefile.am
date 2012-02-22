@@ -33,8 +33,13 @@ pe_test_LDADD = $(pcmk_LIBS) $(glib_LIBS) $(libxml2_LIBS)
 
 if HAVE_CHECK
 
-TESTS = basic.test escalation.test
-check_PROGRAMS = basic.test escalation.test
+TESTS = recover.test basic.test escalation.test
+check_PROGRAMS = recover.test basic.test escalation.test
+
+recover_test_SOURCES = check_recover.c ../src/recover.c
+recover_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
+			$(glib_CFLAGS) $(libxml2_CFLAGS)
+recover_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS)
 
 basic_test_SOURCES = check_basic.c ../src/pcmk_pe.c ../src/recover.c ../src/cape.c
 basic_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
