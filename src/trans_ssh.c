@@ -405,8 +405,7 @@ static void assembly_healthcheck_completion(void *data)
 	/*
 	 * Add a healthcheck if asssembly is still running
 	 */
-	if (ssh_op->assembly->instance_state == NODE_STATE_RUNNING ||
-		ssh_op->assembly->instance_state == NODE_STATE_RECOVERING) {
+	if (ssh_op->assembly->instance_state == NODE_STATE_RUNNING) {
 		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
 		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
 			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,

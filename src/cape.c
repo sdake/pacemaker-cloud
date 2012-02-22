@@ -247,16 +247,10 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 {
 	qb_enter();
 
-	/*
-	 * Ignore state changes we are already in
-	 */
-	if (state == assembly->instance_state) {
-		return;
-	}
-
 	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d",
 		 assembly->name, assembly->instance_state, state);
-	if (state == NODE_STATE_FAILED) {
+	if (assembly->instance_state != NODE_STATE_FAILED &&
+		state == NODE_STATE_FAILED) {
 
 		ta_del(assembly->transport_assembly);
 		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
@@ -272,7 +266,6 @@ node_state_changed(struct assembly *assembly, enum node_state state)
 			assembly->name,
 			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / QB_TIME_US_IN_MSEC);
 	}
-
 	assembly->instance_state = state;
 	schedule_processing();
 
@@ -319,13 +312,6 @@ resource_action_completed(struct pe_operation *op,
 		}
 	} else {
 		pe_resource_unref(op);
-	}
-	/*
-	 * TODO
-	 * Should iterate through the assemblies resources and see if it is done recovering
-	 */
-	if (pe_exitcode == OCF_OK) {
-		node_state_changed(r->assembly, NODE_STATE_RUNNING);
 	}
 
 	qb_leave();
