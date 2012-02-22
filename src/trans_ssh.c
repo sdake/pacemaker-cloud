@@ -89,6 +89,9 @@ static void ssh_op_complete(struct ssh_operation *ssh_op)
 	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
 	qb_list_del(&ssh_op->list);
 	ssh_op->completion_func(ssh_op);
+	if (ssh_op->op) {
+		pe_resource_unref(ssh_op->op);
+	}
 	free(ssh_op);
 }
 
@@ -377,6 +380,11 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	qb_list_init(&ssh_op->list);
 	ta_ssh = ssh_op->assembly->transport_assembly;
 	qb_list_add_tail(&ssh_op->list, &ta_ssh->ssh_op_head);
+
+	if (op) {
+		pe_resource_ref(ssh_op->op);
+	}
+
 	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	qb_loop_timer_add(NULL, QB_LOOP_LOW,
 		SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
