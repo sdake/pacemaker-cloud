@@ -51,9 +51,11 @@ enum ssh_exec_state {
 	SSH_CHANNEL_OPEN = 0,
 	SSH_CHANNEL_EXEC = 1,
 	SSH_CHANNEL_READ = 2,
-	SSH_CHANNEL_CLOSE = 3,
-	SSH_CHANNEL_WAIT_CLOSED = 4,
-	SSH_CHANNEL_FREE = 5
+	SSH_CHANNEL_SEND_EOF = 3,
+	SSH_CHANNEL_WAIT_EOF = 4,
+	SSH_CHANNEL_CLOSE = 5,
+	SSH_CHANNEL_WAIT_CLOSED = 6,
+	SSH_CHANNEL_FREE = 7
 };
 
 struct ssh_operation {
@@ -66,6 +68,7 @@ struct ssh_operation {
 	enum ssh_exec_state ssh_exec_state;
 	qb_loop_job_dispatch_fn completion_func;
 	LIBSSH2_CHANNEL *channel;
+	int failed;
 	/*
 	 * 26 = "systemctl [start|stop|status] .service null-terminator
 	 */
@@ -88,7 +91,9 @@ static void ssh_op_complete(struct ssh_operation *ssh_op)
 {
 	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
 	qb_list_del(&ssh_op->list);
-	ssh_op->completion_func(ssh_op);
+	if (ssh_op->failed == 0) {
+		ssh_op->completion_func(ssh_op);
+	}
 	if (ssh_op->op) {
 		pe_resource_unref(ssh_op->op);
 	}
@@ -132,7 +137,8 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_exec failed %d\n", rc);
-			goto error_close;
+			ssh_op->failed = 1;
+			goto channel_free;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
 
@@ -148,7 +154,43 @@ static void assembly_ssh_exec(void *data)
 		if (rc_read < 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_read failed %d\n", rc);
-			goto error_close;
+			ssh_op->failed = 1;
+			goto channel_free;
+		}
+		ssh_op->ssh_exec_state = SSH_CHANNEL_SEND_EOF;
+
+		/*
+                 * no break here is intentional
+		 */
+
+	case SSH_CHANNEL_SEND_EOF:
+		rc = libssh2_channel_send_eof(ssh_op->channel);
+		if (rc == LIBSSH2_ERROR_EAGAIN) {
+			goto job_repeat_schedule;
+		}
+		if (rc != 0) {
+			qb_log(LOG_NOTICE,
+				"libssh2_channel_send_eof failed %d\n", rc);
+			ssh_op->failed = 1;
+			goto channel_free;
+		}
+		ssh_op->ssh_exec_state = SSH_CHANNEL_WAIT_EOF;
+
+		/*
+                 * no break here is intentional
+		 */
+
+	case SSH_CHANNEL_WAIT_EOF:
+		rc = libssh2_channel_wait_eof(ssh_op->channel);
+		if (rc == LIBSSH2_ERROR_EAGAIN) {
+			goto job_repeat_schedule;
+		}
+		if (rc != 0) {
+			qb_log(LOG_NOTICE,
+				"libssh2_channel_wait_eof failed %d\n", rc);
+			ssh_op->failed = 1;
+			goto channel_free;
+			return;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_CLOSE;
 
@@ -164,14 +206,15 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel close failed %d\n", rc);
-			qb_leave();
-			return;
+			ssh_op->failed = 1;
+			goto channel_free;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_WAIT_CLOSED;
 
 		/*
                  * no break here is intentional
 		 */
+
 
 	case SSH_CHANNEL_WAIT_CLOSED:
 		rc = libssh2_channel_wait_closed(ssh_op->channel);
@@ -181,17 +224,21 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_wait_closed failed %d\n", rc);
-			qb_leave();
-			return;
+			ssh_op->failed = 1;
+			goto channel_free;
 		}
+		/*
+		 * No ERROR_EAGAIN returned by following call
+		 */
 		ssh_op->ssh_rc = libssh2_channel_get_exit_status(ssh_op->channel);
-		ssh_op->ssh_exec_state = SSH_CHANNEL_FREE;
 
 		/*
                  * no break here is intentional
 		 */
 
-error_close:
+channel_free:
+		ssh_op->ssh_exec_state = SSH_CHANNEL_FREE;
+
 	case SSH_CHANNEL_FREE:
 		rc = libssh2_channel_free(ssh_op->channel);
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
@@ -201,9 +248,10 @@ error_close:
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_free failed %d\n", rc);
 		}
-		/*
-                 * no break here is intentional
-		 */
+		break;
+
+	default:
+		assert(0);
 	} /* switch */
 
 	ssh_op_complete(ssh_op);
@@ -375,6 +423,7 @@ ssh_nonblocking_exec(struct assembly *assembly,
 
 	ssh_op->assembly = assembly;
 	ssh_op->ssh_rc = 0;
+	ssh_op->failed = 0;
 	ssh_op->op = op;
 	ssh_op->ssh_exec_state = SSH_CHANNEL_OPEN;
 	ssh_op->resource = resource;
