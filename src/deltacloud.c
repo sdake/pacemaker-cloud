@@ -35,11 +35,7 @@ void instance_state_detect(void *data)
 	static struct deltacloud_api api;
 	struct assembly *assembly = (struct assembly *)data;
 	struct deltacloud_instance instance;
-	struct deltacloud_instance *instance_p;
 	int rc;
-	int i;
-	char *sptr;
-	char *sptr_end;
 
 	qb_enter();
 
@@ -62,17 +58,8 @@ void instance_state_detect(void *data)
 
 
 	if (strcmp(instance.state, "RUNNING") == 0) {
-		for (i = 0, instance_p = &instance; instance_p; instance_p = instance_p->next, i++) {
-			/*
-			 * Eliminate the garbage output of this DC api
-			 */
-			sptr = instance_p->private_addresses->address +
-				strspn (instance_p->private_addresses->address, " \t\n");
-			sptr_end = sptr + strcspn (sptr, " \t\n");
-			*sptr_end = '\0';
-		}
-
-		assembly->address = strdup (sptr);
+		assembly->address = strdup (instance.private_addresses->address);
+printf ("addrss = '%s'\n", assembly->address);
 		qb_util_stopwatch_stop(assembly->sw_instance_create);
 		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING in (%lld ms).",
 			assembly->name, qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
