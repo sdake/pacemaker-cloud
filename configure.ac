@@ -61,7 +61,8 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_CHECK_FUNCS([select strdup strerror])
 
-AC_CHECK_HEADERS(rpc/netdb.h tirpc/netconfig.h)
+AC_CHECK_HEADERS(rpc/netdb.h tirpc/netconfig.h sys/un.h sys/stat.h fcntl.h \
+		 sys/socket.h)
 if test "x${ac_cv_header_rpc_netdb_h}" != "xyes" ; then
 	if test "x${ac_cv_header_tirpc_netconfig_h}" != "xyes" ; then
 		AC_MSG_FAILURE(Please install libtirpc-devel)

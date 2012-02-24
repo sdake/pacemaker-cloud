@@ -99,7 +99,7 @@ void instance_state_detect(void *data)
 {
 	struct assembly * a = (struct assembly *)data;
 	if (!inst_up) {
-		node_state_changed(a, NODE_STATE_RUNNING);
+		recover_state_set(&a->recover, RECOVER_STATE_RUNNING);
 		inst_up = 1;
 	}
 }
@@ -169,7 +169,7 @@ static void resource_action_completion_cb(void *data)
 		ck_assert_str_eq(j->op->method, "monitor");
 		if (is_node_test) {
 			inst_up = 0;
-			node_state_changed(j->a, NODE_STATE_FAILED);
+			recover_state_set(&j->a->recover, RECOVER_STATE_FAILED);
 		} else {
 			resource_action_completed(j->op, OCF_NOT_RUNNING);
 		}

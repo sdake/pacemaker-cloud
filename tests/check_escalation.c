@@ -74,12 +74,12 @@ enum resource_test_seq {
 	RSEQ_MON_REPEAT_3,
 	RSEQ_MON_REPEAT_4,
 	RSEQ_MON_REPEAT_FAIL_2,
-	RSEQ_STOP_2,
+	RSEQ_MON_1,
 	RSEQ_START_3,
 	RSEQ_MON_REPEAT_5,
 	RSEQ_MON_REPEAT_6,
 	RSEQ_MON_REPEAT_FAIL_3,
-	RSEQ_STOP_3,
+	RSEQ_STOP_2,
 	RSEQ_START_4,
 	RSEQ_MON_REPEAT_7,
 	RSEQ_MON_REPEAT_8,
@@ -106,7 +106,7 @@ void instance_state_detect(void *data)
 {
 	struct assembly * a = (struct assembly *)data;
 	if (!inst_up) {
-		node_state_changed(a, NODE_STATE_RUNNING);
+		recover_state_set(&a->recover, RECOVER_STATE_RUNNING);
 		inst_up = 1;
 	}
 }
@@ -114,7 +114,7 @@ void instance_state_detect(void *data)
 static void instance_notify_down(void *data)
 {
 	struct assembly * a = (struct assembly *)data;
-	node_state_changed(a, NODE_STATE_FAILED);
+	recover_state_set(&a->recover, RECOVER_STATE_FAILED);
 }
 
 
@@ -143,8 +143,6 @@ static void resource_action_completion_cb(void *data)
 	struct job_holder *j = (struct job_holder*)data;
 
 	test_seq++;
-	qb_log(LOG_TRACE, "TEST: %s %s %d (%d)",
-	       j->op->rtype, j->op->method, j->op->interval, test_seq);
 	switch (test_seq) {
 	case RSEQ_MON_0:
 		ck_assert_int_eq(j->op->interval, 0);
@@ -174,14 +172,13 @@ static void resource_action_completion_cb(void *data)
 		ck_assert_str_eq(j->op->method, "monitor");
 		if (is_node_test) {
 			inst_up = 0;
-			node_state_changed(j->a, NODE_STATE_FAILED);
+			recover_state_set(&j->a->recover, RECOVER_STATE_FAILED);
 		} else {
 			resource_action_completed(j->op, OCF_NOT_RUNNING);
 		}
 		break;
 	case RSEQ_STOP_1:
 	case RSEQ_STOP_2:
-	case RSEQ_STOP_3:
 		ck_assert_str_eq(j->op->method, "stop");
 		resource_action_completed(j->op, OCF_OK);
 		break;

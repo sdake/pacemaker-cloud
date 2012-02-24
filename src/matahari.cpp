@@ -88,7 +88,7 @@ heartbeat_check_tmo(void *data)
 	qb_loop_timer_handle th;
 
 	a->check_state();
-	if (a->state_get() == NODE_STATE_RUNNING) {
+	if (a->state_get() == RECOVER_STATE_RUNNING) {
 		qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC,
 				  a, heartbeat_check_tmo, &th);
 	}
@@ -130,7 +130,7 @@ Matahari::resource_action(struct pe_operation *op)
 
 	qb_enter();
 
-	if (_state != NODE_STATE_RUNNING) {
+	if (_state != RECOVER_STATE_RUNNING) {
 		qb_log(LOG_DEBUG, "can't execute resource in offline state");
 		resource_action_completed(op, OCF_UNKNOWN_ERROR);
 		return;
@@ -202,7 +202,7 @@ Matahari::check_state_online(void)
 		}
 	}
 	if (_hb_state != HEARTBEAT_OK) {
-		new_state = NODE_STATE_OFFLINE;
+		new_state = RECOVER_STATE_FAILED;
 	}
 	return new_state;
 }
@@ -215,7 +215,7 @@ Matahari::check_state_offline(void)
 	    _mh_rsc.is_connected() &&
 	    _mh_serv.is_connected() &&
 	    _mh_host.is_connected()) {
-		new_state = NODE_STATE_RUNNING;
+		new_state = RECOVER_STATE_RUNNING;
 	}
 	return new_state;
 }
@@ -225,7 +225,7 @@ Matahari::state_offline_to_online(void)
 {
 	qb_loop_timer_handle th;
 
-	node_state_changed(_node_access, NODE_STATE_RUNNING);
+	recover_state_set(&_node_access->recover, RECOVER_STATE_RUNNING);
 
 	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC, this,
 			  heartbeat_check_tmo, &th);
@@ -242,7 +242,7 @@ Matahari::state_online_to_offline(void)
 	 */
 	_hb_state = Matahari::HEARTBEAT_INIT;
 
-	node_state_changed(_node_access, NODE_STATE_OFFLINE);
+	recover_state_set(&_node_access->recover, RECOVER_STATE_FAILED);
 }
 
 void
@@ -305,17 +305,17 @@ Matahari::~Matahari()
 Matahari::Matahari(struct assembly* na, QmfMultiplexer *m,
 		   std::string& name, std::string& uuid) :
 	_node_access(na), _name(name), _uuid(uuid), _mux(m),
-	_state(NODE_STATE_OFFLINE), _hb_state(HEARTBEAT_INIT)
+	_state(RECOVER_STATE_FAILED), _hb_state(HEARTBEAT_INIT)
 {
-	state_table[NODE_STATE_OFFLINE] = &Matahari::check_state_offline;
-	state_table[NODE_STATE_RUNNING] = &Matahari::check_state_online;
-	state_table[NODE_STATE_PENDING] = NULL;
+	state_table[RECOVER_STATE_FAILED] = &Matahari::check_state_offline;
+	state_table[RECOVER_STATE_RUNNING] = &Matahari::check_state_online;
+	state_table[RECOVER_STATE_UNKNOWN] = NULL;
 
-	state_action_table[NODE_STATE_OFFLINE][NODE_STATE_RUNNING] = &Matahari::state_offline_to_online;
-	state_action_table[NODE_STATE_OFFLINE][NODE_STATE_OFFLINE] = NULL;
+	state_action_table[RECOVER_STATE_FAILED][RECOVER_STATE_RUNNING] = &Matahari::state_offline_to_online;
+	state_action_table[RECOVER_STATE_FAILED][RECOVER_STATE_FAILED] = NULL;
 
-	state_action_table[NODE_STATE_RUNNING][NODE_STATE_OFFLINE] = &Matahari::state_online_to_offline;
-	state_action_table[NODE_STATE_RUNNING][NODE_STATE_RUNNING] = NULL;
+	state_action_table[RECOVER_STATE_RUNNING][RECOVER_STATE_FAILED] = &Matahari::state_online_to_offline;
+	state_action_table[RECOVER_STATE_RUNNING][RECOVER_STATE_RUNNING] = NULL;
 
 	qb_log(LOG_DEBUG, "Matahari(%s:%s)", _name.c_str(), _uuid.c_str());
 

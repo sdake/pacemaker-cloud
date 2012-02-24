@@ -67,6 +67,8 @@ static pe_working_set_t *working_set = NULL;
 static int graph_updated = FALSE;
 static int pe_log_tag = 0;
 
+static int transition_count = 0;
+
 enum ocf_exitcode
 pe_resource_ocf_exitcode_get(struct pe_operation *op, int lsb_exitcode)
 {
@@ -497,7 +499,8 @@ pe_process_state(xmlNode *xml_input,
 
 //	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 
-	qb_log(LOG_INFO, "Executing deployable transition");
+	qb_log(LOG_INFO, "Executing deployable transition [%d]",
+	       ++transition_count);
 
 	working_set = calloc(1, sizeof(pe_working_set_t));
 	run_fn = exec_fn;

@@ -54,48 +54,53 @@ extern "C" {
 #define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
-enum node_state {
-	NODE_STATE_OFFLINE = 1,
-	NODE_STATE_PENDING = 2,
-	NODE_STATE_RUNNING = 3,
-	NODE_STATE_FAILED = 4,
-	NODE_STATE_RECOVERING = 5,
-	NODE_STATE_ESCALATING = 6
+
+enum recover_state {
+	RECOVER_STATE_UNKNOWN,
+	RECOVER_STATE_RUNNING,
+	RECOVER_STATE_FAILED,
+	RECOVER_STATE_STOPPED,
+	RECOVER_STATE_UNRECOVERABLE,
 };
-#define NODE_NUM_STATES 5
+#define NODE_NUM_STATES 3 /* only the first 3 states used by matahari.cpp */
 
 typedef void (*recover_restart_fn_t)(void* inst);
 typedef void (*recover_escalate_fn_t)(void* inst);
+typedef void (*recover_state_changing_fn_t)(void* inst,
+					    enum recover_state from,
+					    enum recover_state to);
 
 struct recover {
 	void * instance;
-	int escalating;
+	enum recover_state state;
 	int num_failures;
 	int failure_period;
 	qb_util_stopwatch_t *sw;
 	recover_restart_fn_t restart;
 	recover_escalate_fn_t escalate;
+	recover_state_changing_fn_t state_changing;
 };
 void recover_init(struct recover* r,
 		 const char * escalation_failures,
 		 const char * escalation_period,
 		 recover_restart_fn_t recover_restart_fn,
-		 recover_escalate_fn_t recover_escalate_fn);
-void recover(struct recover* r);
+		 recover_escalate_fn_t recover_escalate_fn,
+		 recover_state_changing_fn_t recover_state_changing_fn);
 
+void recover_state_set(struct recover* r, enum recover_state state);
 
 struct assembly {
 	char *name;
 	char *uuid;
 	char *address;
 	char *instance_id;
-	enum node_state instance_state;
 	qb_map_t *resource_map;
 	int fd;
 	qb_loop_timer_handle healthcheck_timer;
 	void *transport_assembly;
 	qb_util_stopwatch_t *sw_instance_create;
 	qb_util_stopwatch_t *sw_instance_connected;
+	struct recover recover;
 };
 
 struct resource {
@@ -110,13 +115,20 @@ struct resource {
 
 void resource_action_completed(struct pe_operation *op, enum ocf_exitcode rc);
 
-void node_state_changed(struct assembly *assembly, enum node_state state);
-
 void cape_init(void);
 
 int cape_load(const char * name);
 
 void cape_load_from_buffer(const char *buffer);
+
+int32_t cape_admin_init(void);
+
+void cape_admin_event_send(const char *app,
+			   struct assembly *a,
+			   struct resource *r,
+			   const char *state,
+			   const char *reason);
+void cape_admin_fini(void);
 
 int32_t instance_create(struct assembly *assembly);
 

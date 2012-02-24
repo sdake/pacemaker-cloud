@@ -80,7 +80,7 @@ void instance_state_detect(void *data)
 		ta_connect(assembly);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
-		node_state_changed(assembly, NODE_STATE_PENDING);
+		recover_state_set(&assembly->recover, RECOVER_STATE_UNKNOWN);
 		qb_loop_timer_add(NULL, QB_LOOP_LOW,
 			PENDING_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			instance_state_detect, &timer_handle);

@@ -151,6 +151,9 @@ main(int argc, char * argv[])
 	loop = qb_loop_create();
 
 	cape_init();
+
+	cape_admin_init();
+
 	if (cape_load(cloud_app) != 0) {
 		qb_perror(LOG_ERR, "failed to load the configuration");
 		qb_log_fini();
@@ -158,6 +161,8 @@ main(int argc, char * argv[])
 	}
 
 	qb_loop_run(loop);
+
+	cape_admin_fini();
 
 	qb_leave();
 

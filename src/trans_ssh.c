@@ -286,7 +286,7 @@ static void ssh_timeout(void *data)
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
 
-	node_state_changed(ssh_op->assembly, NODE_STATE_FAILED);
+	recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 
 	qb_leave();
 }
@@ -375,7 +375,7 @@ printf ("setting ta_ssh->session %p\n", ta_ssh);
 		}
 		assembly_healthcheck(assembly);
 
-		node_state_changed(assembly, NODE_STATE_RUNNING);
+		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
 		ta_ssh->ssh_state = SSH_CONNECTED;
 
 	case SSH_CONNECTED:
@@ -455,7 +455,7 @@ static void assembly_healthcheck_completion(void *data)
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
 		ta_del(ssh_op->assembly->transport_assembly);
 		ssh_op_delete(ssh_op);
-		node_state_changed(ssh_op->assembly, NODE_STATE_FAILED);
+		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
 		qb_leave();
 		return;
@@ -464,7 +464,7 @@ static void assembly_healthcheck_completion(void *data)
 	/*
 	 * Add a healthcheck if asssembly is still running
 	 */
-	if (ssh_op->assembly->instance_state == NODE_STATE_RUNNING) {
+	if (ssh_op->assembly->recover.state == RECOVER_STATE_RUNNING) {
 		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
 		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
 			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
@@ -587,5 +587,6 @@ ta_connect(struct assembly * a)
 	qb_loop_job_add(NULL, QB_LOOP_LOW, a, connect_execute);
 
 	qb_leave();
+	return ta_ssh;
 }
 

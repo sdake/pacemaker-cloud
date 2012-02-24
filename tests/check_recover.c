@@ -48,15 +48,18 @@ START_TEST(test_recover)
 {
 	struct recover r;
 
-	recover_init(&r, "3", "1", _restart_cb, _escalate_cb);
+	recover_init(&r, "3", "1", _restart_cb, _escalate_cb, NULL);
 	r.instance = &r;
 
 	num_restarts = 0;
 	num_escalations = 0;
 
-	recover(&r);
-	recover(&r);
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_restarts, 2);
 	ck_assert_int_eq(num_escalations, 1);
 
@@ -64,10 +67,13 @@ START_TEST(test_recover)
 	num_restarts = 0;
 	num_escalations = 0;
 
-	recover(&r);
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_escalations, 0);
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	qb_log(LOG_DEBUG, "escalate here");
 	ck_assert_int_eq(num_restarts, 2);
 	ck_assert_int_eq(num_escalations, 1);
@@ -80,28 +86,33 @@ START_TEST(test_recover)
 	 * after the escalation
 	 * (so below)
 	 */
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_restarts, 1);
 	ck_assert_int_eq(num_escalations, 0);
 	usleep(600000);
 
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_restarts, 2);
 	ck_assert_int_eq(num_escalations, 0);
 	usleep(600000);
 
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	/* no escalation as it's been over a second */
 	ck_assert_int_eq(num_restarts, 3);
 	ck_assert_int_eq(num_escalations, 0);
 
 	usleep(300000);
 
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_restarts, 3);
 	ck_assert_int_eq(num_escalations, 1);
 
-	recover(&r);
+	recover_state_set(&r, RECOVER_STATE_RUNNING);
+	recover_state_set(&r, RECOVER_STATE_FAILED);
 	ck_assert_int_eq(num_restarts, 4);
 	ck_assert_int_eq(num_escalations, 1);
 }

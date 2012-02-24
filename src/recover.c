@@ -35,8 +35,9 @@ void
 recover_init(struct recover* r,
 	    const char * escalation_failures,
 	    const char * escalation_period,
-	    recover_restart_fn_t resource_recover_restart,
-	    recover_escalate_fn_t resource_recover_escalate)
+	    recover_restart_fn_t recover_restart,
+	    recover_escalate_fn_t recover_escalate,
+	    recover_state_changing_fn_t recover_state_changing)
 {
 	long val;
 	char *endptr;
@@ -69,8 +70,10 @@ recover_init(struct recover* r,
 		}
 	}
 
-	r->restart = resource_recover_restart;
-	r->escalate = resource_recover_escalate;
+	r->restart = recover_restart;
+	r->escalate = recover_escalate;
+	r->state_changing = recover_state_changing;
+	r->state = RECOVER_STATE_UNKNOWN;
 
 	r->sw = NULL;
 	if (r->failure_period > 0 && r->num_failures > 0) {
@@ -84,11 +87,25 @@ recover_init(struct recover* r,
 }
 
 void
-recover(struct recover* r)
+recover_state_set(struct recover* r, enum recover_state state)
 {
+	int escalating = QB_FALSE;
+
+	if (r->state == state) {
+		return;
+	}
+
+	if (r->state_changing) {
+		r->state_changing(r->instance, r->state, state);
+	}
+	r->state = state;
+
+	if (r->state != RECOVER_STATE_FAILED) {
+		return;
+	}
+
 	qb_enter();
 
-	r->escalating = QB_FALSE;
 	if (r->num_failures > 0 && r->failure_period > 0) {
 		uint64_t diff;
 		float p;
@@ -104,17 +121,16 @@ recover(struct recover* r)
 			p /= QB_TIME_US_IN_SEC;
 			qb_log(LOG_TRACE, "split time %f/%d", p, r->failure_period);
 			if (p <= r->failure_period) {
-				r->escalating = QB_TRUE;
+				escalating = QB_TRUE;
 				qb_util_stopwatch_start(r->sw);
 			}
 		}
 	}
-	if (r->escalating) {
+	if (escalating) {
 		r->escalate(r->instance);
 	} else {
 		r->restart(r->instance);
 	}
-
 	qb_leave();
 }
 

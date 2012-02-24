@@ -141,8 +141,6 @@ static void xml_new_time_prop(xmlNode *n, const char *name, time_t val)
 	qb_leave();
 }
 
-
-
 static void op_history_insert(xmlNode *resource_xml,
 	struct operation_history *oh)
 {
@@ -180,13 +178,37 @@ static void op_history_insert(xmlNode *resource_xml,
 	qb_leave();
 }
 
+static const char * state_str[5][5] = {
+	{NULL, "running", NULL, "needs starting", "unrecoverable"},
+	{"unknown", NULL, "recovering", "stopped", "unrecoverable"},
+	{"unknown", "running", NULL, "stopped", "unrecoverable"},
+	{"unknown", "started", NULL, NULL, "unrecoverable"},
+	{NULL, NULL, NULL, NULL}
+};
+
+
+static void
+resource_state_change_event(void* inst,
+			    enum recover_state from,
+			    enum recover_state to)
+{
+	struct resource *r = (struct resource *)inst;
+
+	qb_enter();
+	qb_log(LOG_INFO, "Resource: changing state from %d to %d", from, to);
+
+	cape_admin_event_send("my_app", r->assembly, r,
+			      state_str[from][to],
+			      "bla");
+	qb_leave();
+}
+
 static void resource_recover_restart(void * inst)
 {
 	struct resource *resource = (struct resource *)inst;
 
 	qb_enter();
 
-	node_state_changed(resource->assembly, NODE_STATE_RECOVERING);
 	qb_loop_timer_del(NULL, resource->monitor_timer);
 
 	qb_leave();
@@ -198,10 +220,8 @@ static void resource_recover_escalate(void * inst)
 
 	qb_enter();
 
-	r->assembly->instance_state = NODE_STATE_ESCALATING;
-
 	qb_log(LOG_NOTICE, "Escalating failure of service %s to node %s:%s",
-	       r, r->assembly->uuid, r->assembly->name);
+	       r->name, r->assembly->uuid, r->assembly->name);
 
 	qb_loop_timer_del(NULL, r->monitor_timer);
 
@@ -242,34 +262,96 @@ static void node_op_history_clear(struct assembly *assembly)
 	qb_leave();
 }
 
-void
-node_state_changed(struct assembly *assembly, enum node_state state)
+static void
+node_state_change_event(void* inst,
+			enum recover_state from,
+			enum recover_state to)
 {
+	struct assembly *a = (struct assembly *)inst;
+
 	qb_enter();
 
-	qb_log(LOG_INFO, "node state changed for assembly '%s' old %d new %d",
-		 assembly->name, assembly->instance_state, state);
-	if (assembly->instance_state != NODE_STATE_FAILED &&
-		state == NODE_STATE_FAILED) {
-
-		ta_del(assembly->transport_assembly);
-		qb_loop_timer_del(NULL, assembly->healthcheck_timer);
-
-		if (assembly->instance_state != NODE_STATE_ESCALATING) {
-			node_op_history_clear(assembly);
-		}
-		instance_create(assembly);
-	}
-	if (state == NODE_STATE_RUNNING) {
-		qb_util_stopwatch_stop(assembly->sw_instance_connected);
+	qb_log(LOG_INFO, "Node: changing state from %d to %d", from, to);
+	cape_admin_event_send("my_app", a, NULL,
+			      state_str[from][to],
+			      "bla");
+	if (to == RECOVER_STATE_RUNNING) {
+		qb_util_stopwatch_stop(a->sw_instance_connected);
 		qb_log(LOG_INFO, "Assembly '%s' connected in (%"PRIu64" ms).",
-			assembly->name,
-			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_connected) / QB_TIME_US_IN_MSEC);
+			a->name,
+			qb_util_stopwatch_us_elapsed_get(a->sw_instance_connected) / QB_TIME_US_IN_MSEC);
 	}
-	assembly->instance_state = state;
 	schedule_processing();
+	qb_leave();
+}
+
+static void
+node_recover_restart(void * inst)
+{
+	struct assembly *a = (struct assembly *)inst;
+
+	qb_enter();
+
+	ta_del(a->transport_assembly);
+	qb_loop_timer_del(NULL, a->healthcheck_timer);
+
+	node_op_history_clear(a);
+
+	instance_create(a);
 
 	qb_leave();
+}
+
+static void
+node_recover_escalate(void * inst)
+{
+//	struct assembly *a = (struct assembly *)inst;
+
+	qb_enter();
+
+
+	qb_leave();
+}
+
+static void
+resource_state_set(struct resource *r,
+		   struct pe_operation *op,
+		   enum ocf_exitcode pe_exitcode)
+{
+	if (strcmp(op->method, "monitor") == 0) {
+		if (pe_exitcode == OCF_OK) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_RUNNING);
+		} else if (op->interval == 0) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_STOPPED);
+		} else {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_FAILED);
+		}
+	} else if (strcmp(op->method, "start") == 0) {
+		if (pe_exitcode == OCF_OK) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_RUNNING);
+		} else if (pe_resource_is_hard_error(pe_exitcode)) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_UNRECOVERABLE);
+		} else {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_UNKNOWN);
+		}
+	} else if (strcmp(op->method, "stop") == 0) {
+		if (pe_exitcode == OCF_OK) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_STOPPED);
+		} else if (pe_resource_is_hard_error(pe_exitcode)) {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_UNRECOVERABLE);
+		} else {
+			recover_state_set(&r->recover,
+					  RECOVER_STATE_UNKNOWN);
+		}
+	}
 }
 
 void
@@ -298,12 +380,17 @@ resource_action_completed(struct pe_operation *op,
 	if (op->times_executed <= 1) {
 		pe_resource_completed(op, pe_exitcode);
 	}
+
+	resource_state_set(r, op, pe_exitcode);
+
+	if (pe_exitcode != op->target_outcome) {
+		schedule_processing();
+	}
 	if (op->interval > 0) {
 		if (pe_exitcode != op->target_outcome) {
 			/* unreference as not used by the timer anymore.
 			 */
 			pe_resource_unref(op);
-			recover(&r->recover);
 		} else {
 			qb_loop_timer_add(NULL, QB_LOOP_LOW,
 					  op->interval * QB_TIME_NS_IN_MSEC, op,
@@ -421,9 +508,9 @@ static void resource_execute_cb(struct pe_operation *op)
 
 	qb_util_stopwatch_start(op->time_execed);
 
+	op->resource = resource;
 	if (strcmp(op->method, "monitor") == 0) {
 		if (strstr(op->rname, op->hostname) != NULL) {
-			op->resource = resource;
 			assert(op->resource);
 			if (op->interval > 0) {
 				recurring_monitor_start(op);
@@ -438,13 +525,12 @@ static void resource_execute_cb(struct pe_operation *op)
 	} else if (strcmp (op->method, "start") == 0) {
 		ta_resource_action(assembly, resource, op);
 	} else if (strcmp(op->method, "stop") == 0) {
-		ta_resource_action(assembly, resource, op);
 		if (resource->monitor_op) {
 			recurring_monitor_stop(resource->monitor_op);
 		}
+		ta_resource_action(assembly, resource, op);
 	} else if (strcmp(op->method, "delete") == 0) {
 		op_history_delete(op);
-		recurring_monitor_stop(op);
 	} else {
 		assert(0);
 	}
@@ -494,7 +580,7 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
         xmlNewProp(node_state, BAD_CAST "crmd", BAD_CAST "online");
 
 	/* check state*/
-	if (assembly->instance_state == NODE_STATE_RUNNING || assembly->instance_state == NODE_STATE_RECOVERING) {
+	if (assembly->recover.state == RECOVER_STATE_RUNNING) {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
 		qb_log(LOG_INFO, "Assembly '%s' marked as member",
 			assembly->name);
@@ -583,7 +669,7 @@ static void schedule_processing(void)
 {
 	qb_enter();
 
-	qb_loop_job_add(NULL, QB_LOOP_HIGH, NULL, process_job);
+	qb_loop_job_add(NULL, QB_LOOP_LOW, NULL, process_job);
 
 	qb_leave();
 }
@@ -615,7 +701,9 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 
 	recover_init(&resource->recover,
 		    escalation_failures, escalation_period,
-		    resource_recover_restart, resource_recover_escalate);
+		    resource_recover_restart,
+		    resource_recover_escalate,
+		    resource_state_change_event);
 	resource->recover.instance = resource;
 
 	resource->assembly = assembly;
@@ -644,6 +732,8 @@ static void assembly_create(xmlNode *cur_node)
 	char *name;
 	char *uuid;
 	xmlNode *child_node;
+	char *escalation_failures;
+	char *escalation_period;
 
 	qb_enter();
 
@@ -652,10 +742,19 @@ static void assembly_create(xmlNode *cur_node)
 	assembly->name = strdup(name);
 	uuid = (char*)xmlGetProp(cur_node, BAD_CAST "uuid");
 	assembly->uuid = strdup(uuid);
-	assembly->instance_state = NODE_STATE_OFFLINE;
 	assembly->resource_map = qb_skiplist_create();
 	assembly->sw_instance_create = qb_util_stopwatch_create();
 	assembly->sw_instance_connected = qb_util_stopwatch_create();
+
+	escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
+	escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
+
+	recover_init(&assembly->recover,
+		    escalation_failures, escalation_period,
+		    node_recover_restart,
+		    node_recover_escalate,
+		    node_state_change_event);
+	assembly->recover.instance = assembly;
 
 	instance_create(assembly);
 	qb_map_put(assembly_map, name, assembly);
