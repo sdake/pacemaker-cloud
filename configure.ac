@@ -108,6 +108,10 @@ AC_ARG_WITH([qmf-lib-path],
 fail=0
 AC_SUBST([qmf_LIBS])
 
+AC_ARG_ENABLE([debug],
+	[  --enable-debug			: enable debug build. ],
+	[ default="no" ])
+
 AC_LANG_PUSH(C++)
   cpe_saved_libs=$LIBS
 
@@ -160,6 +164,26 @@ AC_LANG_PUSH(C++)
   LIBS=$cpe_saved_libs
 AC_LANG_POP([C++])
 test $fail = 1 && AC_MSG_ERROR([missing libraries; see above])
+
+if test "x${enable_debug}" = xyes; then
+	AC_DEFINE_UNQUOTED([DEBUG], [1], [Enable debug version])
+	OPT_CFLAGS="-O0"
+	OPT_CXXFLAGS="-O0"
+else
+	OPT_CFLAG="-O2"
+	OPT_CXXFLAG="-O2"
+fi
+
+# gdb flags
+if test "x${GCC}" = xyes; then
+	GDB_FLAGS="-ggdb3"
+else
+	GDB_FLAGS="-g"
+fi
+
+CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS"
+
+CXXFLAGS="$ENV_CPPFLAGS $OPT_CXXFLAGS $GDB_FLAGS"
 
 AC_CONFIG_FILES([Makefile
 		 init/Makefile
