@@ -59,10 +59,10 @@ void instance_state_detect(void *data)
 
 	if (strcmp(instance.state, "RUNNING") == 0) {
 		assembly->address = strdup (instance.private_addresses->address);
-printf ("addrss = '%s'\n", assembly->address);
 		qb_util_stopwatch_stop(assembly->sw_instance_create);
-		qb_log(LOG_INFO, "Instance '%s' changed to RUNNING in (%lld ms).",
-			assembly->name, qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
+		qb_log(LOG_INFO, "Instance '%s' with address '%s' changed to RUNNING in (%lld ms).",
+			assembly->name, assembly->address,
+			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
 		qb_util_stopwatch_start(assembly->sw_instance_connected);
 		ta_connect(assembly);
 	} else
