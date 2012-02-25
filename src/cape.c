@@ -292,7 +292,8 @@ node_recover_restart(void * inst)
 
 	qb_enter();
 
-	ta_del(a->transport_assembly);
+	ta_disconnect(a);
+
 	qb_loop_timer_del(NULL, a->healthcheck_timer);
 
 	node_op_history_clear(a);

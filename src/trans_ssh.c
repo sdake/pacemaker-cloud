@@ -40,22 +40,23 @@
 static void assembly_healthcheck(void *data);
 
 enum ssh_state {
-	SSH_SESSION_INIT = 0,
-	SSH_SESSION_STARTUP = 1,
-	SSH_KEEPALIVE_CONFIG = 2,
-	SSH_USERAUTH_PUBLICKEY_FROMFILE = 3,
-	SSH_CONNECTED = 4
+	SSH_SESSION_CONNECTING = 1,
+	SSH_SESSION_INIT = 2,
+	SSH_SESSION_STARTUP = 3,
+	SSH_KEEPALIVE_CONFIG = 4,
+	SSH_USERAUTH_PUBLICKEY_FROMFILE = 5,
+	SSH_SESSION_CONNECTED = 6
 };
 
 enum ssh_exec_state {
-	SSH_CHANNEL_OPEN = 0,
-	SSH_CHANNEL_EXEC = 1,
-	SSH_CHANNEL_READ = 2,
-	SSH_CHANNEL_SEND_EOF = 3,
-	SSH_CHANNEL_WAIT_EOF = 4,
-	SSH_CHANNEL_CLOSE = 5,
-	SSH_CHANNEL_WAIT_CLOSED = 6,
-	SSH_CHANNEL_FREE = 7
+	SSH_CHANNEL_OPEN = 1,
+	SSH_CHANNEL_EXEC = 2,
+	SSH_CHANNEL_READ = 3,
+	SSH_CHANNEL_SEND_EOF = 4,
+	SSH_CHANNEL_WAIT_EOF = 5,
+	SSH_CHANNEL_CLOSE = 6,
+	SSH_CHANNEL_WAIT_CLOSED = 7,
+	SSH_CHANNEL_FREE = 8
 };
 
 struct ssh_operation {
@@ -137,23 +138,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_exec failed %d\n", rc);
-			ssh_op->failed = 1;
-			goto channel_free;
-		}
-		ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
-
-		/*
-                 * no break here is intentional
-		 */
-
-	case SSH_CHANNEL_READ:
-		rc_read = libssh2_channel_read(ssh_op->channel, buffer, sizeof(buffer));
-		if (rc_read == LIBSSH2_ERROR_EAGAIN) {
-			goto job_repeat_schedule;
-		}
-		if (rc_read < 0) {
-			qb_log(LOG_NOTICE,
-				"libssh2_channel_read failed %d\n", rc);
+		assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
@@ -171,6 +156,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_send_eof failed %d\n", rc);
+		assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
@@ -180,6 +166,7 @@ static void assembly_ssh_exec(void *data)
                  * no break here is intentional
 		 */
 
+
 	case SSH_CHANNEL_WAIT_EOF:
 		rc = libssh2_channel_wait_eof(ssh_op->channel);
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
@@ -188,6 +175,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_wait_eof failed %d\n", rc);
+		assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 			return;
@@ -207,6 +195,26 @@ static void assembly_ssh_exec(void *data)
 			qb_log(LOG_NOTICE,
 				"libssh2_channel close failed %d\n", rc);
 			ssh_op->failed = 1;
+		assert(0);
+			goto channel_free;
+		}
+		ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
+
+		/*
+                 * no break here is intentional
+		 */
+
+
+	case SSH_CHANNEL_READ:
+		rc_read = libssh2_channel_read(ssh_op->channel, buffer, sizeof(buffer));
+		if (rc_read == LIBSSH2_ERROR_EAGAIN) {
+			goto job_repeat_schedule;
+		}
+		if (rc_read < 0) {
+			qb_log(LOG_NOTICE,
+				"libssh2_channel_read failed %d\n", rc);
+		assert(0);
+			ssh_op->failed = 1;
 			goto channel_free;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_WAIT_CLOSED;
@@ -215,15 +223,19 @@ static void assembly_ssh_exec(void *data)
                  * no break here is intentional
 		 */
 
-
 	case SSH_CHANNEL_WAIT_CLOSED:
 		rc = libssh2_channel_wait_closed(ssh_op->channel);
+		if (rc == LIBSSH2_ERROR_INVAL) {
+			ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
+			goto job_repeat_schedule;
+		}
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_wait_closed failed %d\n", rc);
+		assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
@@ -247,6 +259,7 @@ channel_free:
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_free failed %d\n", rc);
+		assert(0);
 		}
 		break;
 
@@ -314,13 +327,13 @@ static void ssh_assembly_connect(void *data)
 	int rc;
 
 	qb_enter();
+
 	switch (ta_ssh->ssh_state) {
 	case SSH_SESSION_INIT:
 		ta_ssh->session = libssh2_session_init();
 		if (ta_ssh->session == NULL) {
 			goto job_repeat_schedule;
 		}
-printf ("setting ta_ssh->session %p\n", ta_ssh);
 
 		libssh2_session_set_blocking(ta_ssh->session, 0);
 		ta_ssh->ssh_state = SSH_SESSION_STARTUP;
@@ -376,10 +389,12 @@ printf ("setting ta_ssh->session %p\n", ta_ssh);
 		assembly_healthcheck(assembly);
 
 		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
-		ta_ssh->ssh_state = SSH_CONNECTED;
+		ta_ssh->ssh_state = SSH_SESSION_CONNECTED;
 
-	case SSH_CONNECTED:
+	case SSH_SESSION_CONNECTED:
 		break;
+	case SSH_SESSION_CONNECTING:
+		assert(0);
 	}
 error:
 	qb_leave();
@@ -492,14 +507,18 @@ static void connect_execute(void *data)
 	struct assembly *assembly = (struct assembly *)data;
 	struct ta_ssh *ta_ssh = (struct ta_ssh *)assembly->transport_assembly;
 	int rc;
+	int flags;
 
 	qb_enter();
 
 	rc = connect(ta_ssh->fd, (struct sockaddr*)(&ta_ssh->sin),
 		sizeof (struct sockaddr_in));
 	if (rc == 0) {
+		flags = fcntl(ta_ssh->fd, F_GETFL, 0);
+		fcntl(ta_ssh->fd, F_SETFL, flags | (~O_NONBLOCK));
 		qb_log(LOG_NOTICE, "Connected to assembly '%s'",
 			assembly->name);
+		ta_ssh->ssh_state = SSH_SESSION_INIT;
 		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, ssh_assembly_connect);
 	} else {
 		qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, connect_execute);
@@ -561,6 +580,7 @@ ta_connect(struct assembly * a)
 {
 	unsigned long hostaddr;
         struct ta_ssh *ta_ssh;
+	int flags;
 
 	qb_enter();
 
@@ -574,11 +594,12 @@ ta_connect(struct assembly * a)
 
 	hostaddr = inet_addr(a->address);
 	ta_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
-	fcntl(ta_ssh->fd, F_SETFL, O_NONBLOCK);
+	flags = fcntl(ta_ssh->fd, F_GETFL, 0);
+	fcntl(ta_ssh->fd, F_SETFL, flags | O_NONBLOCK);
 	ta_ssh->sin.sin_family = AF_INET;
 	ta_ssh->sin.sin_port = htons(22);
 	ta_ssh->sin.sin_addr.s_addr = hostaddr;
-	ta_ssh->ssh_state = SSH_SESSION_INIT;
+	ta_ssh->ssh_state = SSH_SESSION_CONNECTING;
 	qb_list_init(&ta_ssh->ssh_op_head);
 
 	qb_log(LOG_NOTICE, "Connection in progress to assembly '%s'",
@@ -590,3 +611,60 @@ ta_connect(struct assembly * a)
 	return ta_ssh;
 }
 
+void ta_disconnect(struct assembly *a)
+{
+	struct ta_ssh *ta_ssh = (struct ta_ssh *)a->transport_assembly;
+	struct qb_list_head *list_temp;
+	struct qb_list_head *list;
+	struct ssh_operation *ssh_op_del;
+
+	qb_enter();
+
+	/*
+	 * Delete a transport connection in progress
+	 */
+	if (ta_ssh->ssh_state == SSH_SESSION_INIT) {
+		qb_loop_job_del(NULL, QB_LOOP_LOW, a, connect_execute);
+	}
+
+	/*
+	 * Delete a transport attempting an SSH connection
+	 */
+	if (ta_ssh->ssh_state != SSH_SESSION_CONNECTED) {
+		qb_loop_job_del(NULL, QB_LOOP_LOW, a, ssh_assembly_connect);
+	}
+
+	/*
+	 * Delete any outstanding ssh operations
+	 */
+	qb_list_for_each_safe(list, list_temp, &ta_ssh->ssh_op_head) {
+		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
+		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
+		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
+			assembly_ssh_exec);
+		qb_list_del(list);
+		libssh2_channel_free(ssh_op_del->channel);
+		free(ssh_op_del);
+		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
+	}
+	/*
+	 * Free the SSH session associated with this transport
+	 * there are no breaks intentionally in this switch
+	 */
+	switch (ta_ssh->ssh_state) {
+	case SSH_SESSION_CONNECTED:
+	case SSH_SESSION_STARTUP:
+		libssh2_session_free(ta_ssh->session);
+	case SSH_USERAUTH_PUBLICKEY_FROMFILE:
+	case SSH_KEEPALIVE_CONFIG:
+		qb_loop_timer_del(NULL, ta_ssh->keepalive_timer);
+	case SSH_SESSION_INIT:
+		qb_loop_job_del(NULL, QB_LOOP_LOW, a, ssh_assembly_connect);
+	default:
+		break;
+	}
+
+	free(a->transport_assembly);
+	close(ta_ssh->fd);
+	qb_leave();
+}

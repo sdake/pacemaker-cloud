@@ -341,7 +341,9 @@ Matahari::Matahari(struct assembly* na, QmfMultiplexer *m,
 }
 
 
-void ta_del(void *ta) {}
+void ta_disconnect(struct assembly *a)
+{
+}
 
 void
 ta_resource_action(struct assembly * a,

@@ -28,13 +28,13 @@ extern "C" {
 #include "pcmk_pe.h"
 #include "cape.h"
 
-void
-ta_resource_action(struct assembly * a,
-		   struct resource *resource,
-		   struct pe_operation *op);
+void ta_resource_action(struct assembly *a,
+	struct resource *resource,
+	struct pe_operation *op);
 
-void*
-ta_connect(struct assembly * a);
+void *ta_connect(struct assembly *a);
+
+void ta_disconnect(struct assembly *a);
 
 void ta_del(void *ta);
 
