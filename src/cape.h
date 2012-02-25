@@ -136,6 +136,8 @@ void instance_state_detect(void *data);
 
 int instance_stop(struct assembly *a);
 
+void cape_exit(void);
+
 #ifdef __cplusplus
 }
 #endif

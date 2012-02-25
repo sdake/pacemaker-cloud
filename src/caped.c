@@ -96,6 +96,12 @@ show_usage(const char *name)
 	printf("\n");
 }
 
+int32_t signal_int(int32_t rsignal, void *data) {
+	cape_exit();
+	qb_loop_stop(NULL);
+	return 0;
+}
+
 int
 main(int argc, char * argv[])
 {
@@ -149,6 +155,8 @@ main(int argc, char * argv[])
 
 	qb_enter();
 	loop = qb_loop_create();
+
+	qb_loop_signal_add(NULL, QB_LOOP_LOW, SIGINT, NULL, signal_int, NULL);
 
 	cape_init();
 
