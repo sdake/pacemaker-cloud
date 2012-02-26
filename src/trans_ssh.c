@@ -39,6 +39,8 @@
 
 static void assembly_healthcheck(void *data);
 
+static void assembly_ssh_exec(void *data);
+
 enum ssh_state {
 	SSH_SESSION_CONNECTING = 1,
 	SSH_SESSION_INIT = 2,
@@ -83,10 +85,35 @@ struct trans_ssh {
 	LIBSSH2_SESSION *session;
 	struct sockaddr_in sin;
 	struct qb_list_head ssh_op_head;
+	int scheduled;
 };
 
 
 int ssh_init_rc = -1;
+
+static void transport_schedule(struct trans_ssh *trans_ssh)
+{
+	struct ssh_operation *ssh_op;
+
+	if (qb_list_empty(&trans_ssh->ssh_op_head) == 0) {
+		trans_ssh->scheduled = 1;
+		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_operation, list);
+		qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+	} else {
+		trans_ssh->scheduled = 0;
+	}
+}
+
+static void transport_unschedule(struct trans_ssh *trans_ssh)
+{
+	struct ssh_operation *ssh_op;
+
+	if (trans_ssh->scheduled) {
+		trans_ssh->scheduled = 0;
+		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_operation, list);
+		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
+	}
+}
 
 static void ssh_op_complete(struct ssh_operation *ssh_op)
 {
@@ -227,10 +254,6 @@ static void assembly_ssh_exec(void *data)
 
 	case SSH_CHANNEL_WAIT_CLOSED:
 		rc = libssh2_channel_wait_closed(ssh_op->channel);
-		if (rc == LIBSSH2_ERROR_INVAL) {
-			ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
-			goto job_repeat_schedule;
-		}
 		if (rc == LIBSSH2_ERROR_EAGAIN) {
 			goto job_repeat_schedule;
 		}
@@ -271,6 +294,8 @@ channel_free:
 
 	ssh_op_complete(ssh_op);
 
+	transport_schedule(trans_ssh);
+
 	qb_leave();
 
 	return;
@@ -291,12 +316,12 @@ static void ssh_timeout(void *data)
 
 	qb_enter();
 
+	transport_unschedule(trans_ssh);
+
 	qb_log(LOG_NOTICE, "ssh service timeout on assembly '%s'", ssh_op->assembly->name);
 	qb_list_for_each_safe(list, list_temp, &trans_ssh->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
-		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
-			assembly_ssh_exec);
 		qb_list_del(list);
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
@@ -455,11 +480,14 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	qb_list_init(&ssh_op->list);
 	qb_list_add_tail(&ssh_op->list, &trans_ssh->ssh_op_head);
 
+	if (trans_ssh->scheduled == 0) {
+		transport_schedule(trans_ssh);
+	}
+
 	if (op) {
 		pe_resource_ref(ssh_op->op);
 	}
 
-	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	qb_loop_timer_add(NULL, QB_LOOP_LOW,
 		SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
 		ssh_op, ssh_timeout, &ssh_op->ssh_timer);
@@ -642,14 +670,16 @@ void transport_disconnect(struct assembly *a)
 		qb_loop_job_del(NULL, QB_LOOP_LOW, a, ssh_assembly_connect);
 	}
 
+	if (trans_ssh->ssh_state == SSH_SESSION_CONNECTED) {
+		transport_unschedule(trans_ssh);
+	}
+
 	/*
 	 * Delete any outstanding ssh operations
 	 */
 	qb_list_for_each_safe(list, list_temp, &trans_ssh->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
-		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op_del,
-			assembly_ssh_exec);
 		qb_list_del(list);
 		libssh2_channel_free(ssh_op_del->channel);
 		free(ssh_op_del);
