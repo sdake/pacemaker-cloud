@@ -130,12 +130,6 @@ Matahari::resource_action(struct pe_operation *op)
 
 	qb_enter();
 
-	if (_state != RECOVER_STATE_RUNNING) {
-		qb_log(LOG_DEBUG, "can't execute resource in offline state");
-		resource_action_completed(op, OCF_UNKNOWN_ERROR);
-		return;
-	}
-
 	if (strcmp(op->method, "monitor") == 0) {
 		is_monitor_op = true;
 	}

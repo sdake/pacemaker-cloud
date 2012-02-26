@@ -417,6 +417,11 @@ resource_monitor_execute(void *data)
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
+	if (assembly->recover.state != RECOVER_STATE_RUNNING) {
+		qb_log(LOG_DEBUG, "can't execute resource in offline state");
+		resource_action_completed(op, OCF_UNKNOWN_ERROR);
+		return;
+	}
 	qb_util_stopwatch_start(op->time_execed);
 	transport_resource_action(assembly, resource, op);
 
@@ -503,6 +508,11 @@ static void resource_execute_cb(struct pe_operation *op)
 	assembly = qb_map_get(assembly_map, op->hostname);
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
+	if (assembly->recover.state != RECOVER_STATE_RUNNING) {
+		qb_log(LOG_DEBUG, "can't execute resource in offline state");
+		resource_action_completed(op, OCF_UNKNOWN_ERROR);
+		return;
+	}
 	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s target_rc:%d",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       op->target_outcome);
