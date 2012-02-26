@@ -292,7 +292,7 @@ node_recover_restart(void * inst)
 
 	qb_enter();
 
-	ta_disconnect(a);
+	transport_disconnect(a);
 
 	qb_loop_timer_del(NULL, a->healthcheck_timer);
 
@@ -418,7 +418,7 @@ resource_monitor_execute(void *data)
 	resource = qb_map_get(assembly->resource_map, op->rname);
 
 	qb_util_stopwatch_start(op->time_execed);
-	ta_resource_action(assembly, resource, op);
+	transport_resource_action(assembly, resource, op);
 
 	qb_leave();
 }
@@ -524,12 +524,12 @@ static void resource_execute_cb(struct pe_operation *op)
 			pe_resource_unref(op);
 		}
 	} else if (strcmp (op->method, "start") == 0) {
-		ta_resource_action(assembly, resource, op);
+		transport_resource_action(assembly, resource, op);
 	} else if (strcmp(op->method, "stop") == 0) {
 		if (resource->monitor_op) {
 			recurring_monitor_stop(resource->monitor_op);
 		}
-		ta_resource_action(assembly, resource, op);
+		transport_resource_action(assembly, resource, op);
 	} else if (strcmp(op->method, "delete") == 0) {
 		op_history_delete(op);
 	} else {
@@ -874,7 +874,7 @@ void cape_exit(void)
 
 	iter = qb_map_iter_create(assembly_map);
 	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
-		ta_disconnect(assembly);
+		transport_disconnect(assembly);
 	}
 	qb_map_iter_free(iter);
 

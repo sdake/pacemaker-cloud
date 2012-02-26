@@ -64,7 +64,7 @@ void instance_state_detect(void *data)
 			assembly->name, assembly->address,
 			qb_util_stopwatch_us_elapsed_get(assembly->sw_instance_create) / 1000);
 		qb_util_stopwatch_start(assembly->sw_instance_connected);
-		ta_connect(assembly);
+		transport_connect(assembly);
 	} else
 	if (strcmp(instance.state, "PENDING") == 0) {
 		recover_state_set(&assembly->recover, RECOVER_STATE_UNKNOWN);

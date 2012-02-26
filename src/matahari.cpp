@@ -341,12 +341,12 @@ Matahari::Matahari(struct assembly* na, QmfMultiplexer *m,
 }
 
 
-void ta_disconnect(struct assembly *a)
+void transport_disconnect(struct assembly *a)
 {
 }
 
 void
-ta_resource_action(struct assembly * a,
+transport_resource_action(struct assembly * a,
 		   struct resource *resource,
 		   struct pe_operation *op)
 {
@@ -355,7 +355,7 @@ ta_resource_action(struct assembly * a,
 }
 
 void*
-ta_connect(struct assembly * a)
+transport_connect(struct assembly * a)
 {
 	string name(a->name);
 	string u(a->uuid);

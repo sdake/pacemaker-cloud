@@ -111,7 +111,7 @@ int instance_stop(struct assembly *a)
 }
 
 
-void ta_disconnect(struct assembly *a)
+void transport_disconnect(struct assembly *a)
 {
 }
 
@@ -191,7 +191,7 @@ static void resource_action_completion_cb(void *data)
 }
 
 void
-ta_resource_action(struct assembly * a,
+transport_resource_action(struct assembly * a,
 		   struct resource *r,
 		   struct pe_operation *op)
 {
@@ -203,7 +203,7 @@ ta_resource_action(struct assembly * a,
 }
 
 void*
-ta_connect(struct assembly * a)
+transport_connect(struct assembly * a)
 {
 	return NULL;
 }

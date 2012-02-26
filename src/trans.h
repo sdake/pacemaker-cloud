@@ -14,7 +14,7 @@
  * pacemaker-cloud is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU Lesser General Public License for more detransportils.
  *
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
@@ -28,15 +28,15 @@ extern "C" {
 #include "pcmk_pe.h"
 #include "cape.h"
 
-void ta_resource_action(struct assembly *a,
+void transport_resource_action(struct assembly *a,
 	struct resource *resource,
 	struct pe_operation *op);
 
-void *ta_connect(struct assembly *a);
+void *transport_connect(struct assembly *a);
 
-void ta_disconnect(struct assembly *a);
+void transport_disconnect(struct assembly *a);
 
-void ta_del(void *ta);
+void transport_del(void *transport);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

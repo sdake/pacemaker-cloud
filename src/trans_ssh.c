@@ -476,7 +476,7 @@ static void assembly_healthcheck_completion(void *data)
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		ta_del(ssh_op->assembly->transport);
+		transport_del(ssh_op->assembly->transport);
 		ssh_op_delete(ssh_op);
 		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
@@ -535,7 +535,7 @@ static void connect_execute(void *data)
 	qb_leave();
 }
 
-void ta_del(void *ta)
+void transport_del(void *ta)
 {
 	struct trans_ssh *trans_ssh = (struct trans_ssh *)ta;
 
@@ -562,7 +562,7 @@ static void resource_action_completion_cb(void *data)
 }
 
 void
-ta_resource_action(struct assembly * a,
+transport_resource_action(struct assembly * a,
 		   struct resource *r,
 		   struct pe_operation *op)
 {
@@ -584,7 +584,7 @@ ta_resource_action(struct assembly * a,
 }
 
 void*
-ta_connect(struct assembly * a)
+transport_connect(struct assembly * a)
 {
 	unsigned long hostaddr;
         struct trans_ssh *trans_ssh;
@@ -619,7 +619,7 @@ ta_connect(struct assembly * a)
 	return trans_ssh;
 }
 
-void ta_disconnect(struct assembly *a)
+void transport_disconnect(struct assembly *a)
 {
 	struct trans_ssh *trans_ssh = (struct trans_ssh *)a->transport;
 	struct qb_list_head *list_temp;
