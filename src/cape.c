@@ -294,8 +294,6 @@ node_recover_restart(void * inst)
 
 	transport_disconnect(a);
 
-	qb_loop_timer_del(NULL, a->healthcheck_timer);
-
 	node_op_history_clear(a);
 
 	instance_create(a);

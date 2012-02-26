@@ -656,6 +656,8 @@ void transport_disconnect(struct assembly *a)
 
 	qb_enter();
 
+	qb_loop_timer_del(NULL, a->healthcheck_timer);
+
 	/*
 	 * Delete a transport connection in progress
 	 */
