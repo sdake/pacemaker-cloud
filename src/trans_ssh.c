@@ -111,6 +111,8 @@ static void assembly_ssh_exec(void *data)
 
 	qb_enter();
 
+	assert (ta_ssh->ssh_state == SSH_SESSION_CONNECTED);
+
 	switch (ssh_op->ssh_exec_state) {
 	case SSH_CHANNEL_OPEN:
 		ssh_op->channel = libssh2_channel_open_session(ta_ssh->session);
