@@ -128,7 +128,7 @@ int instance_stop(struct assembly *a)
 }
 
 
-void ta_del(void *ta)
+void ta_disconnect(struct assembly *assembly)
 {
 }
 
