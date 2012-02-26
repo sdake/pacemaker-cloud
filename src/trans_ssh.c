@@ -104,7 +104,7 @@ static void ssh_op_complete(struct ssh_operation *ssh_op)
 static void assembly_ssh_exec(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport_assembly;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
 	int rc;
 	char buffer[4096];
 	ssize_t rc_read;
@@ -284,7 +284,7 @@ job_repeat_schedule:
 static void ssh_timeout(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport_assembly;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
 	struct qb_list_head *list_temp;
 	struct qb_list_head *list;
 	struct ssh_operation *ssh_op_del;
@@ -323,7 +323,7 @@ static void ssh_keepalive_send(void *data)
 static void ssh_assembly_connect(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)assembly->transport_assembly;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)assembly->transport;
 	char name[PATH_MAX];
 	char name_pub[PATH_MAX];
 	int rc;
@@ -423,7 +423,7 @@ ssh_nonblocking_exec(struct assembly *assembly,
 {
 	va_list ap;
 	struct ssh_operation *ssh_op;
-	struct trans_ssh *trans_ssh = assembly->transport_assembly;
+	struct trans_ssh *trans_ssh = assembly->transport;
 
 	qb_enter();
 	/*
@@ -476,7 +476,7 @@ static void assembly_healthcheck_completion(void *data)
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		ta_del(ssh_op->assembly->transport_assembly);
+		ta_del(ssh_op->assembly->transport);
 		ssh_op_delete(ssh_op);
 		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
@@ -513,7 +513,7 @@ static void assembly_healthcheck(void *data)
 static void connect_execute(void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)assembly->transport_assembly;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)assembly->transport;
 	int rc;
 	int flags;
 
@@ -598,7 +598,7 @@ ta_connect(struct assembly * a)
 	assert(ssh_init_rc == 0);
 
 	trans_ssh = calloc(1, sizeof(struct trans_ssh));
-	a->transport_assembly = trans_ssh;
+	a->transport = trans_ssh;
 
 	hostaddr = inet_addr(a->address);
 	trans_ssh->fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -621,7 +621,7 @@ ta_connect(struct assembly * a)
 
 void ta_disconnect(struct assembly *a)
 {
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)a->transport_assembly;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)a->transport;
 	struct qb_list_head *list_temp;
 	struct qb_list_head *list;
 	struct ssh_operation *ssh_op_del;
@@ -672,7 +672,7 @@ void ta_disconnect(struct assembly *a)
 		break;
 	}
 
-	free(a->transport_assembly);
+	free(a->transport);
 	close(trans_ssh->fd);
 	qb_leave();
 }

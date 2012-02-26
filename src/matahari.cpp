@@ -350,7 +350,7 @@ ta_resource_action(struct assembly * a,
 		   struct resource *resource,
 		   struct pe_operation *op)
 {
-	Matahari *m = (Matahari *)a->transport_assembly;
+	Matahari *m = (Matahari *)a->transport;
 	m->resource_action(op);
 }
 
@@ -365,9 +365,9 @@ ta_connect(struct assembly * a)
 		mux->filter_set("[or, [eq, _vendor, [quote, 'matahariproject.org']], [eq, _vendor, [quote, 'pacemakercloud.org']]]");
 		mux->start();
 	}
-	if (a->transport_assembly == NULL) {
-		a->transport_assembly = new Matahari(a, mux, name, u);
+	if (a->transport == NULL) {
+		a->transport = new Matahari(a, mux, name, u);
 	}
-	return a->transport_assembly;
+	return a->transport;
 }
 
