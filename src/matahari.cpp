@@ -39,8 +39,8 @@ class QmfMultiplexer *mux = NULL;
 
 static void
 resource_method_response(QmfAsyncRequest* ar,
-			qpid::types::Variant::Map out_args,
-			enum QmfObject::rpc_result rpc_rc)
+			 qpid::types::Variant::Map out_args,
+			 enum QmfObject::rpc_result rpc_rc)
 {
 	enum ocf_exitcode rc;
 	struct pe_operation *op;
@@ -181,51 +181,6 @@ Matahari::resource_action(struct pe_operation *op)
 	qb_leave();
 }
 
-uint32_t
-Matahari::check_state_online(void)
-{
-	uint32_t new_state = _state;
-	gdouble elapsed = 0;
-
-	if (_hb_state == HEARTBEAT_OK) {
-		elapsed = g_timer_elapsed(_last_heartbeat, NULL);
-		if (elapsed > HEALTHCHECK_TIMEOUT) {
-			_hb_state = Matahari::HEARTBEAT_NOT_RECEIVED;
-			qb_log(LOG_WARNING,
-			       "assembly (%s) heartbeat too late! (%.2f > %d seconds)",
-			       _name.c_str(), elapsed, HEALTHCHECK_TIMEOUT);
-		}
-	}
-	if (_hb_state != HEARTBEAT_OK) {
-		new_state = RECOVER_STATE_FAILED;
-	}
-	return new_state;
-}
-
-uint32_t
-Matahari::check_state_offline(void)
-{
-	uint32_t new_state = _state;
-	if (_hb_state == HEARTBEAT_OK &&
-	    _mh_rsc.is_connected() &&
-	    _mh_serv.is_connected() &&
-	    _mh_host.is_connected()) {
-		new_state = RECOVER_STATE_RUNNING;
-	}
-	return new_state;
-}
-
-void
-Matahari::state_offline_to_online(void)
-{
-	qb_loop_timer_handle th;
-
-	recover_state_set(&_node_access->recover, RECOVER_STATE_RUNNING);
-
-	qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC, this,
-			  heartbeat_check_tmo, &th);
-}
-
 void
 Matahari::state_online_to_offline(void)
 {
@@ -236,8 +191,6 @@ Matahari::state_online_to_offline(void)
 	/* re-init the heartbeat state
 	 */
 	_hb_state = Matahari::HEARTBEAT_INIT;
-
-	recover_state_set(&_node_access->recover, RECOVER_STATE_FAILED);
 }
 
 void
@@ -275,15 +228,34 @@ Matahari::heartbeat_recv(uint32_t timestamp, uint32_t sequence)
 void
 Matahari::check_state(void)
 {
-	uint32_t old_state = _state;
-	uint32_t new_state = (this->*state_table[_state])();
+	if (_node_access->recover.state == RECOVER_STATE_RUNNING) {
+		if (_hb_state == HEARTBEAT_OK) {
+			gdouble elapsed = 0;
+			elapsed = g_timer_elapsed(_last_heartbeat, NULL);
+			if (elapsed > HEALTHCHECK_TIMEOUT) {
+				_hb_state = Matahari::HEARTBEAT_NOT_RECEIVED;
+				qb_log(LOG_WARNING,
+				       "assembly (%s) heartbeat too late! (%.2f > %d seconds)",
+				       _name.c_str(), elapsed, HEALTHCHECK_TIMEOUT);
+			}
+		}
+		if (_hb_state != HEARTBEAT_OK) {
+			recover_state_set(&_node_access->recover, RECOVER_STATE_FAILED);
+			return;
+		}
 
-	if (old_state != new_state) {
-		_state = new_state;
-	}
-
-	if (state_action_table[old_state][new_state]) {
-		(this->*state_action_table[old_state][new_state])();
+	} else {
+		if (_hb_state == HEARTBEAT_OK &&
+		    _mh_rsc.is_connected() &&
+		    _mh_serv.is_connected() &&
+		    _mh_host.is_connected()) {
+			recover_state_set(&_node_access->recover, RECOVER_STATE_RUNNING);
+			qb_loop_timer_add(NULL, QB_LOOP_MED,
+					  4000 * QB_TIME_NS_IN_MSEC, this,
+					  heartbeat_check_tmo,
+					  &_node_access->healthcheck_timer);
+			return;
+		}
 	}
 }
 
@@ -300,18 +272,8 @@ Matahari::~Matahari()
 Matahari::Matahari(struct assembly* na, QmfMultiplexer *m,
 		   std::string& name, std::string& uuid) :
 	_node_access(na), _name(name), _uuid(uuid), _mux(m),
-	_state(RECOVER_STATE_FAILED), _hb_state(HEARTBEAT_INIT)
+	_hb_state(HEARTBEAT_INIT)
 {
-	state_table[RECOVER_STATE_FAILED] = &Matahari::check_state_offline;
-	state_table[RECOVER_STATE_RUNNING] = &Matahari::check_state_online;
-	state_table[RECOVER_STATE_UNKNOWN] = NULL;
-
-	state_action_table[RECOVER_STATE_FAILED][RECOVER_STATE_RUNNING] = &Matahari::state_offline_to_online;
-	state_action_table[RECOVER_STATE_FAILED][RECOVER_STATE_FAILED] = NULL;
-
-	state_action_table[RECOVER_STATE_RUNNING][RECOVER_STATE_FAILED] = &Matahari::state_online_to_offline;
-	state_action_table[RECOVER_STATE_RUNNING][RECOVER_STATE_RUNNING] = NULL;
-
 	qb_log(LOG_DEBUG, "Matahari(%s:%s)", _name.c_str(), _uuid.c_str());
 
 	_mh_host.query_set("{class:Host, package:org.matahariproject}");
@@ -341,12 +303,14 @@ transport_disconnect(struct assembly *a)
 	Matahari *m = (Matahari *)a->transport;
 
 	qb_loop_timer_del(NULL, a->healthcheck_timer);
+
+	m->state_online_to_offline();
 }
 
 void
 transport_resource_action(struct assembly * a,
-		   struct resource *resource,
-		   struct pe_operation *op)
+			  struct resource *resource,
+			  struct pe_operation *op)
 {
 	Matahari *m = (Matahari *)a->transport;
 	m->resource_action(op);
