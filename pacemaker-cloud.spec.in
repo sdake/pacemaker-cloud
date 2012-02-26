@@ -115,6 +115,7 @@ fi
 %{_sbindir}/cped
 %{_sbindir}/dped
 %{_sbindir}/cape-sshd
+%{_sbindir}/cape-mh
 %{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_sysconfdir}/init/pcloud-dped.conf
 %{_unitdir}/pcloud-dped@.service
