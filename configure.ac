@@ -170,8 +170,8 @@ if test "x${enable_debug}" = xyes; then
 	OPT_CFLAGS="-O0"
 	OPT_CXXFLAGS="-O0"
 else
-	OPT_CFLAG="-O2"
-	OPT_CXXFLAG="-O2"
+	OPT_CFLAGS="-O2"
+	OPT_CXXFLAGS="-O2"
 fi
 
 # gdb flags
