@@ -421,9 +421,16 @@ ssh_nonblocking_exec(struct assembly *assembly,
 {
 	va_list ap;
 	struct ssh_operation *ssh_op;
-	struct ta_ssh *ta_ssh;
+	struct ta_ssh *ta_ssh = assembly->transport_assembly;
 
 	qb_enter();
+	/*
+	 * Only execute an opperation when in the connected state
+	 */
+	if (ta_ssh->ssh_state != SSH_SESSION_CONNECTED) {
+		qb_leave();
+		return;
+	}
 	ssh_op = calloc(1, sizeof(struct ssh_operation));
 
 	/*
@@ -444,7 +451,6 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	ssh_op->resource = resource;
 	ssh_op->completion_func = completion_func;
 	qb_list_init(&ssh_op->list);
-	ta_ssh = ssh_op->assembly->transport_assembly;
 	qb_list_add_tail(&ssh_op->list, &ta_ssh->ssh_op_head);
 
 	if (op) {
