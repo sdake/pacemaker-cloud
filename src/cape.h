@@ -50,7 +50,6 @@ extern "C" {
  */
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
-#define SCHEDULE_PROCESS_TIMEOUT 1000	/* milliseconds */
 #define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
