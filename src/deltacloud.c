@@ -37,7 +37,10 @@
 
 static qb_loop_timer_handle timer_handle;
 
-void instance_state_detect(void *data)
+/*
+ * Internal Implementation
+ */
+static void instance_state_detect(void *data)
 {
 	static struct deltacloud_api api;
 	struct assembly *assembly = (struct assembly *)data;
@@ -86,6 +89,9 @@ void instance_state_detect(void *data)
 	qb_leave();
 }
 
+/*
+ * External API
+ */
 int32_t instance_create(struct assembly *assembly)
 {
 	static struct deltacloud_api api;

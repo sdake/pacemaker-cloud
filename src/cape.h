@@ -135,8 +135,6 @@ void cape_admin_fini(void);
 
 int32_t instance_create(struct assembly *assembly);
 
-void instance_state_detect(void *data);
-
 int instance_stop(struct assembly *a);
 
 void cape_exit(void);
