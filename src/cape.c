@@ -884,12 +884,11 @@ void cape_exit(void)
 {
 	struct assembly *assembly;
 	qb_map_iter_t *iter;
-	const char *key;
 
 	qb_enter();
 
 	iter = qb_map_iter_create(assembly_map);
-	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
+	while ((qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
 		transport_disconnect(assembly);
 	}
 	qb_map_iter_free(iter);
