@@ -19,6 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with pacemaker-cloud.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <inttypes.h>
 #include <sys/epoll.h>
 #include <qb/qbdefs.h>
 #include <qb/qblist.h>
@@ -241,7 +242,7 @@ static void assembly_ssh_exec(void *data)
 		}
 		if (rc_read < 0) {
 			qb_log(LOG_NOTICE,
-				"libssh2_channel_read failed %d\n", rc);
+				"libssh2_channel_read failed %"PRIu64, rc_read);
 		assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
