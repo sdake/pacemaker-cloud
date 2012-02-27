@@ -46,7 +46,8 @@ void instance_state_detect(void *data)
 
 	qb_enter();
 
-	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
+	if (deltacloud_initialize(&api, "http://localhost:3001/api",
+				  assembly->application->name, "") < 0) {
 		qb_log(LOG_ERR, "Failed to initialize libdeltacloud: %s",
 		       deltacloud_get_last_error_string());
 
@@ -98,7 +99,8 @@ int32_t instance_create(struct assembly *assembly)
 	qb_enter();
 
 	qb_util_stopwatch_start(assembly->sw_instance_create);
-	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
+	if (deltacloud_initialize(&api, "http://localhost:3001/api",
+				  assembly->application->name, "") < 0) {
 		qb_log(LOG_ERR, "Failed to initialize libdeltacloud: %s",
 		       deltacloud_get_last_error_string());
 
@@ -179,7 +181,8 @@ int instance_stop(struct assembly *a)
 
 	qb_enter();
 
-	if (deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "") < 0) {
+	if (deltacloud_initialize(&api, "http://localhost:3001/api",
+				  a->application->name, "") < 0) {
 		qb_log(LOG_ERR, "Failed to initialize libdeltacloud: %s",
 		       deltacloud_get_last_error_string());
 

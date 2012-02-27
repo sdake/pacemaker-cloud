@@ -53,6 +53,11 @@ extern "C" {
 #define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
+struct application {
+	char *name;
+	char *uuid;
+	qb_map_t *node_map;
+};
 
 enum recover_state {
 	RECOVER_STATE_UNKNOWN,
@@ -68,7 +73,6 @@ typedef void (*recover_escalate_fn_t)(void* inst);
 typedef void (*recover_state_changing_fn_t)(void* inst,
 					    enum recover_state from,
 					    enum recover_state to);
-
 struct recover {
 	void * instance;
 	enum recover_state state;
@@ -93,6 +97,7 @@ struct assembly {
 	char *uuid;
 	char *address;
 	char *instance_id;
+	struct application *application;
 	qb_map_t *resource_map;
 	int fd;
 	qb_loop_timer_handle healthcheck_timer;

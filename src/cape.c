@@ -37,6 +37,8 @@
 #include "cape.h"
 #include "trans.h"
 
+static struct application *application;
+
 static qb_map_t *assembly_map;
 
 static qb_map_t *op_history_map;
@@ -754,6 +756,7 @@ static void assembly_create(xmlNode *cur_node)
 	assembly->resource_map = qb_skiplist_create();
 	assembly->sw_instance_create = qb_util_stopwatch_create();
 	assembly->sw_instance_connected = qb_util_stopwatch_create();
+	assembly->application = application;
 
 	escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
 	escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
@@ -800,6 +803,8 @@ static void assemblies_create(xmlNode *xml)
 static void
 parse_and_load(void)
 {
+	char *name;
+	char *uuid;
 	xmlNode *cur_node;
 	xmlNode *dep_node;
         xsltStylesheetPtr ss;
@@ -813,6 +818,13 @@ parse_and_load(void)
         _pe = xsltApplyStylesheet(ss, _config, params);
         xsltFreeStylesheet(ss);
         dep_node = xmlDocGetRootElement(_config);
+
+	application = calloc(1, sizeof(struct application));
+
+	name = (char*)xmlGetProp(dep_node, BAD_CAST "name");
+	application->name = strdup(name);
+	uuid = (char*)xmlGetProp(dep_node, BAD_CAST "uuid");
+	application->uuid = strdup(uuid);
 
         for (cur_node = dep_node->children; cur_node;
              cur_node = cur_node->next) {
