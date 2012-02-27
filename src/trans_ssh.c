@@ -681,11 +681,13 @@ void transport_disconnect(struct assembly *a)
 	 */
 	qb_list_for_each_safe(list, list_temp, &trans_ssh->ssh_op_head) {
 		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
+
+		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
+
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
 		qb_list_del(list);
 		libssh2_channel_free(ssh_op_del->channel);
 		free(ssh_op_del);
-		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
 	/*
 	 * Free the SSH session associated with this transport
