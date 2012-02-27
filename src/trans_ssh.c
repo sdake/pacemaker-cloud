@@ -87,8 +87,8 @@ struct trans_ssh {
 	struct sockaddr_in sin;
 	struct qb_list_head ssh_op_head;
 	int scheduled;
+	qb_loop_timer_handle healthcheck_timer;
 };
-
 
 int ssh_init_rc = -1;
 
@@ -499,6 +499,7 @@ ssh_nonblocking_exec(struct assembly *assembly,
 static void assembly_healthcheck_completion(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+	struct trans_ssh *trans_ssh;
 
 	qb_enter();
 
@@ -513,6 +514,8 @@ static void assembly_healthcheck_completion(void *data)
 		return;
 	}
 
+	trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
+
 	/*
 	 * Add a healthcheck if asssembly is still running
 	 */
@@ -520,7 +523,7 @@ static void assembly_healthcheck_completion(void *data)
 		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
 		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
 			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
-			assembly_healthcheck, &ssh_op->assembly->healthcheck_timer);
+			assembly_healthcheck, &trans_ssh->healthcheck_timer);
 	}
 
 	qb_leave();
@@ -657,7 +660,7 @@ void transport_disconnect(struct assembly *a)
 
 	qb_enter();
 
-	qb_loop_timer_del(NULL, a->healthcheck_timer);
+	qb_loop_timer_del(NULL, trans_ssh->healthcheck_timer);
 
 	/*
 	 * Delete a transport connection in progress

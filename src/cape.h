@@ -100,7 +100,6 @@ struct assembly {
 	struct application *application;
 	qb_map_t *resource_map;
 	int fd;
-	qb_loop_timer_handle healthcheck_timer;
 	void *transport;
 	qb_util_stopwatch_t *sw_instance_create;
 	qb_util_stopwatch_t *sw_instance_connected;

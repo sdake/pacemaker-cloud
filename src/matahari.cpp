@@ -91,7 +91,7 @@ heartbeat_check_tmo(void *data)
 	if (a->state_get() == RECOVER_STATE_RUNNING) {
 		qb_loop_timer_add(NULL, QB_LOOP_MED, 4000 * QB_TIME_NS_IN_MSEC,
 				  a, heartbeat_check_tmo,
-				  &a->_node_access->healthcheck_timer);
+				  &a->healthcheck_timer);
 	}
 }
 
@@ -253,7 +253,7 @@ Matahari::check_state(void)
 			qb_loop_timer_add(NULL, QB_LOOP_MED,
 					  4000 * QB_TIME_NS_IN_MSEC, this,
 					  heartbeat_check_tmo,
-					  &_node_access->healthcheck_timer);
+					  &healthcheck_timer);
 			return;
 		}
 	}
@@ -302,7 +302,7 @@ transport_disconnect(struct assembly *a)
 {
 	Matahari *m = (Matahari *)a->transport;
 
-	qb_loop_timer_del(NULL, a->healthcheck_timer);
+	qb_loop_timer_del(NULL, m->healthcheck_timer);
 
 	m->state_online_to_offline();
 }

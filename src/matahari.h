@@ -45,6 +45,7 @@ private:
 public:
 	struct assembly* _node_access;
 
+        qb_loop_timer_handle healthcheck_timer;
 	void state_online_to_offline(void);
 	void heartbeat_recv(uint32_t timestamp, uint32_t sequence);
 	void check_state(void);
