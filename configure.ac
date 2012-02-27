@@ -112,6 +112,10 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug			: enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([scale-bins],
+	[ --enable-scale-bins			| enable scale binaries. ],
+	[ defualt="no" ])
+
 AC_LANG_PUSH(C++)
   cpe_saved_libs=$LIBS
 
@@ -173,6 +177,12 @@ else
 	OPT_CFLAGS="-O2"
 	OPT_CXXFLAGS="-O2"
 fi
+
+if test "x${enable_scale_bins}" = xyes ; then
+	AC_DEFINE([HAVE_SCALE_BINS], 1,[have scale bins])
+	AC_MSG_NOTICE([Enabling Scale Binaries])
+fi
+AM_CONDITIONAL(HAVE_SCALE_BINS, [test "x${enable_scale_bins}" = xyes])
 
 # gdb flags
 if test "x${GCC}" = xyes; then
