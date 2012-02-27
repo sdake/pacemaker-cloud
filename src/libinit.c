@@ -41,13 +41,22 @@ int
 dbus_init(void)
 {
 	DBusError error;
-	char link_name[PATH_MAX];
+	char link_name[PATH_MAX + 1];
 	ssize_t res;
 
 	init_use_systemd = false;
-	res = readlink("/sbin/init", link_name, sizeof(link_name));
-	if (res != -1 && (strstr(link_name, "systemd") != NULL)) {
-		init_use_systemd = true;
+	/*
+	 * According to posix, readlink does not null terminate
+	 * the results set in link_name.  As a result, we need to
+	 * add room for a null terminator and terminate the string
+	 * with a null.  What were they thinking?
+	 */
+	res = readlink("/sbin/init", link_name, PATH_MAX);
+	if (res != -1) {
+		link_name[res] = '\0';
+		if ((strstr(link_name, "systemd") != NULL)) {
+			init_use_systemd = true;
+		}
 	}
 
 	/* Get a connection to the session bus */
