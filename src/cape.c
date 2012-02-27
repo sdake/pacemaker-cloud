@@ -433,13 +433,9 @@ static void recurring_monitor_start(struct pe_operation *op)
 	struct resource * r = (struct resource *)op->resource;
 
 	if (!qb_loop_timer_is_running(NULL, r->monitor_timer)) {
-		resource_monitor_execute(op);
 		pe_resource_ref(op);
 		r->monitor_op = op;
-		qb_loop_timer_add(NULL, QB_LOOP_LOW,
-				  op->interval * QB_TIME_NS_IN_MSEC, op,
-				  resource_monitor_execute,
-				  &r->monitor_timer);
+		resource_monitor_execute(op);
 	} else {
 		qb_util_stopwatch_stop(op->time_execed);
 		pe_resource_completed(op, OCF_OK);
