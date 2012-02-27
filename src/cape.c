@@ -572,7 +572,6 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	xmlNode *lrm_xml;
 	struct resource *resource;
 	qb_map_iter_t *iter;
-	const char *key;
 
 	qb_enter();
 
@@ -600,7 +599,7 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	lrm_xml = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);
 	resources_xml = xmlNewChild(lrm_xml, NULL, BAD_CAST "lrm_resources", NULL);
 	iter = qb_map_iter_create(op_history_map);
-	while ((key = qb_map_iter_next(iter, (void **)&oh)) != NULL) {
+	while ((qb_map_iter_next(iter, (void **)&oh)) != NULL) {
 		resource = oh->resource;
 
 		if (strstr(resource->name, assembly->name) == NULL) {
