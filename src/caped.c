@@ -112,7 +112,13 @@ main(int argc, char * argv[])
 	int loglevel = LOG_INFO;
 	qb_loop_t *loop;
 	char *cloud_app = NULL;
+	char *prog_name = strrchr(argv[0], '/');
 
+	if (prog_name) {
+		prog_name++;
+	} else {
+		prog_name = argv[0];
+	}
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
@@ -136,11 +142,11 @@ main(int argc, char * argv[])
 	if (optind < argc) {
 		cloud_app =  argv[optind];
 	} else {
-		show_usage(argv[0]);
+		show_usage(prog_name);
 		exit(EXIT_FAILURE);
 	}
 
-	qb_log_init(argv[0], LOG_DAEMON, loglevel);
+	qb_log_init(prog_name, LOG_DAEMON, loglevel);
 	qb_log_format_set(QB_LOG_SYSLOG, "%g[%p] %b");
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - loglevel);
 	if (!daemonize || do_stdout) {
