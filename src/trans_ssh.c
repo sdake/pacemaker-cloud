@@ -407,7 +407,7 @@ static void ssh_assembly_connect(void *data)
 
 	case SSH_KEEPALIVE_CONFIG:
 		libssh2_keepalive_config(trans_ssh->session, 1, KEEPALIVE_TIMEOUT);
-		qb_loop_job_add(NULL, QB_LOOP_LOW, trans_ssh, ssh_keepalive_send);
+		ssh_keepalive_send(trans_ssh);
 
 		/*
                  * no break here is intentional
