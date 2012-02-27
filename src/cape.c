@@ -621,7 +621,6 @@ static void process(void)
 	int rc;
 	struct assembly *assembly;
 	qb_map_iter_t *iter;
-	const char *key;
 	static xmlNode *pe_root;
 	char filename[PATH_MAX];
 
@@ -643,7 +642,7 @@ static void process(void)
 
 	status = xmlNewChild(pe_root, NULL, BAD_CAST "status", NULL);
 	iter = qb_map_iter_create(assembly_map);
-	while ((key = qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
+	while ((qb_map_iter_next(iter, (void **)&assembly)) != NULL) {
 		insert_status(status, assembly);
 	}
 	qb_map_iter_free(iter);
