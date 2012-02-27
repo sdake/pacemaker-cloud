@@ -38,10 +38,14 @@
 #include "cape.h"
 #include "trans.h"
 
-static void assembly_healthcheck(void *data);
+/*
+ * Internal global variables
+ */
+static int ssh_init_rc = -1;
 
-static void assembly_ssh_exec(void *data);
-
+/*
+ * Internal datatypes
+ */
 enum ssh_state {
 	SSH_SESSION_CONNECTING = 1,
 	SSH_SESSION_INIT = 2,
@@ -90,7 +94,13 @@ struct trans_ssh {
 	qb_loop_timer_handle healthcheck_timer;
 };
 
-int ssh_init_rc = -1;
+/*
+ * Internal implementation
+ */
+
+static void assembly_healthcheck(void *data);
+
+static void assembly_ssh_exec(void *data);
 
 static void transport_schedule(struct trans_ssh *trans_ssh)
 {
@@ -114,6 +124,17 @@ static void transport_unschedule(struct trans_ssh *trans_ssh)
 		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_operation, list);
 		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	}
+}
+
+static void transport_failed(void *ta)
+{
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)ta;
+
+	qb_enter();
+
+	qb_loop_timer_del(NULL, trans_ssh->keepalive_timer);
+
+	qb_leave();
 }
 
 static void ssh_op_complete(struct ssh_operation *ssh_op)
@@ -506,7 +527,7 @@ static void assembly_healthcheck_completion(void *data)
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		transport_del(ssh_op->assembly->transport);
+		transport_failed(ssh_op->assembly->transport);
 		ssh_op_delete(ssh_op);
 		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
@@ -567,17 +588,6 @@ static void connect_execute(void *data)
 	qb_leave();
 }
 
-void transport_del(void *ta)
-{
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ta;
-
-	qb_enter();
-
-	qb_loop_timer_del(NULL, trans_ssh->keepalive_timer);
-
-	qb_leave();
-}
-
 static void resource_action_completion_cb(void *data)
 {
 	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
@@ -593,6 +603,9 @@ static void resource_action_completion_cb(void *data)
 	qb_leave();
 }
 
+/*
+ * External API
+ */
 void
 transport_resource_action(struct assembly * a,
 		   struct resource *r,
