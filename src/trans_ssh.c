@@ -126,10 +126,8 @@ static void transport_unschedule(struct trans_ssh *trans_ssh)
 	}
 }
 
-static void transport_failed(void *ta)
+static void transport_failed(struct trans_ssh *trans_ssh)
 {
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ta;
-
 	qb_enter();
 
 	qb_loop_timer_del(NULL, trans_ssh->keepalive_timer);
@@ -524,10 +522,12 @@ static void assembly_healthcheck_completion(void *data)
 
 	qb_enter();
 
+	trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
+
 	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
 	if (ssh_op->ssh_rc != 0) {
 		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
-		transport_failed(ssh_op->assembly->transport);
+		transport_failed(trans_ssh);
 		ssh_op_delete(ssh_op);
 		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
@@ -535,7 +535,6 @@ static void assembly_healthcheck_completion(void *data)
 		return;
 	}
 
-	trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
 
 	/*
 	 * Add a healthcheck if asssembly is still running
