@@ -423,7 +423,7 @@ static void ssh_assembly_connect(void *data)
 		trans_ssh->ssh_state = SSH_KEEPALIVE_CONFIG;
 
 	case SSH_KEEPALIVE_CONFIG:
-		libssh2_keepalive_config(trans_ssh->session, 1, KEEPALIVE_TIMEOUT);
+		libssh2_keepalive_config(trans_ssh->session, 0, KEEPALIVE_TIMEOUT);
 		ssh_keepalive_send(trans_ssh);
 
 		/*
