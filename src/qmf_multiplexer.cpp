@@ -86,7 +86,7 @@ _poll_for_qmf_events(int32_t fd, int32_t revents, void *data)
 	QmfMultiplexer *m = (QmfMultiplexer *)data;
 	qb_loop_timer_handle timer_handle;
 
-	if (revents | POLLIN) {
+	if (revents & POLLIN) {
 		m->process_events();
 	}
 }
