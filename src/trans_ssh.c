@@ -59,11 +59,12 @@ enum ssh_exec_state {
 	SSH_CHANNEL_OPEN = 1,
 	SSH_CHANNEL_EXEC = 2,
 	SSH_CHANNEL_READ = 3,
-	SSH_CHANNEL_SEND_EOF = 4,
-	SSH_CHANNEL_WAIT_EOF = 5,
-	SSH_CHANNEL_CLOSE = 6,
-	SSH_CHANNEL_WAIT_CLOSED = 7,
-	SSH_CHANNEL_FREE = 8
+	SSH_CHANNEL_READ_STDERR = 4,
+	SSH_CHANNEL_SEND_EOF = 5,
+	SSH_CHANNEL_WAIT_EOF = 6,
+	SSH_CHANNEL_CLOSE = 7,
+	SSH_CHANNEL_WAIT_CLOSED = 8,
+	SSH_CHANNEL_FREE = 9
 };
 
 struct ssh_operation {
@@ -187,7 +188,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_exec failed %d\n", rc);
-		assert(0);
+			assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
@@ -205,7 +206,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_send_eof failed %d\n", rc);
-		assert(0);
+			assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
@@ -224,10 +225,9 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_wait_eof failed %d\n", rc);
-		assert(0);
+			assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
-			return;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_CLOSE;
 
@@ -244,7 +244,7 @@ static void assembly_ssh_exec(void *data)
 			qb_log(LOG_NOTICE,
 				"libssh2_channel close failed %d\n", rc);
 			ssh_op->failed = 1;
-		assert(0);
+			assert(0);
 			goto channel_free;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_READ;
@@ -262,12 +262,29 @@ static void assembly_ssh_exec(void *data)
 		if (rc_read < 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_read failed %"PRIu64, rc_read);
-		assert(0);
+			assert(0);
+			ssh_op->failed = 1;
+			goto channel_free;
+		}
+		ssh_op->ssh_exec_state = SSH_CHANNEL_READ_STDERR;
+
+		/*
+                 * no break here is intentional
+		 */
+
+	case SSH_CHANNEL_READ_STDERR:
+		rc_read = libssh2_channel_read_stderr(ssh_op->channel, buffer, sizeof(buffer));
+		if (rc_read == LIBSSH2_ERROR_EAGAIN) {
+			goto job_repeat_schedule;
+		}
+		if (rc_read < 0) {
+			qb_log(LOG_NOTICE,
+				"libssh2_channel_read_stderr failed %"PRIu64, rc_read);
+			assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
 		ssh_op->ssh_exec_state = SSH_CHANNEL_WAIT_CLOSED;
-
 		/*
                  * no break here is intentional
 		 */
@@ -280,7 +297,7 @@ static void assembly_ssh_exec(void *data)
 		if (rc != 0) {
 			qb_log(LOG_NOTICE,
 				"libssh2_channel_wait_closed failed %d\n", rc);
-		assert(0);
+			assert(0);
 			ssh_op->failed = 1;
 			goto channel_free;
 		}
