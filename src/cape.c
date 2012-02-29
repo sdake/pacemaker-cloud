@@ -268,6 +268,62 @@ static void node_op_history_clear(struct assembly *assembly)
 	qb_leave();
 }
 
+/*
+ * find all resources that have an ip or hostname parameter reference
+ * and update them.
+ *
+ * We are looking for something like this:
+ *
+ * <parameter name=\"mysql_ip\" type=\"scalar\"><reference assembly=\"mysql\" parameter=\"ipaddress\"/></parameter>
+ * <parameter name=\"mysql_hostname\" type=\"scalar\"><reference assembly=\"mysql\" parameter=\"hostname\"/></parameter>
+ */
+static void
+node_update_addr_info(struct assembly *a_changed)
+{
+	struct assembly *a;
+	struct resource *r;
+	struct reference_param *p;
+	const char *a_name;
+	const char *r_name;
+	const char *p_name;
+	qb_map_iter_t *a_iter;
+	qb_map_iter_t *r_iter;
+	qb_map_iter_t *p_iter;
+
+	a_iter = qb_map_iter_create(assembly_map);
+	while ((a_name = qb_map_iter_next(a_iter, (void**)&a)) != NULL) {
+		r_iter = qb_map_iter_create(a->resource_map);
+		while ((r_name = qb_map_iter_next(r_iter, (void**)&r)) != NULL) {
+			if (r->ref_params_map == NULL) {
+				continue;
+			}
+			/* See if there is a reference parameter that references
+			 * the changed node.
+			 */
+			p_iter = qb_map_iter_create(r->ref_params_map);
+			while ((p_name = qb_map_iter_next(p_iter, (void**)&p)) != NULL) {
+				if (p->xmlnode &&
+				    strcmp(p->assembly, a_changed->name) == 0) {
+					if (strcmp(p->parameter, "hostname") == 0) {
+						/* FIXME we probably need to get
+						 * the real hostname
+						 */
+						xmlSetProp(p->xmlnode, BAD_CAST "value",
+							   BAD_CAST a_changed->name);
+					} else {
+						xmlSetProp(p->xmlnode, BAD_CAST "value",
+							   BAD_CAST a_changed->address);
+					}
+				}
+			}
+			qb_map_iter_free(p_iter);
+		}
+		qb_map_iter_free(r_iter);
+	}
+	qb_map_iter_free(a_iter);
+}
+
+
 static void
 node_state_change_event(void* inst,
 			enum recover_state from,
@@ -287,6 +343,7 @@ node_state_change_event(void* inst,
 		qb_log(LOG_INFO, "Assembly '%s' connected in (%"PRIu64" ms).",
 			a->name,
 			qb_util_stopwatch_us_elapsed_get(a->sw_instance_connected) / QB_TIME_US_IN_MSEC);
+		node_update_addr_info(a);
 	}
 	schedule_processing();
 	qb_leave();
@@ -687,9 +744,154 @@ static void schedule_processing(void)
 	qb_leave();
 }
 
+static xmlNode*
+get_xml_child_by(xmlNode* parent, const char* node_name,
+		 const char* prop_name,
+		 const char* prop_value)
+{
+	xmlNode *child_node;
+	char *val;
+
+	for (child_node = parent->children; child_node;
+		child_node = child_node->next) {
+		if (child_node->type != XML_ELEMENT_NODE ||
+		    strcmp((char*)child_node->name, node_name) != 0) {
+			continue;
+		}
+		if (prop_name == NULL || prop_value == NULL) {
+			return child_node;
+		}
+		val = (char*)xmlGetProp(child_node, BAD_CAST prop_name);
+		if (val && strcmp(val, prop_value) == 0) {
+			return child_node;
+		}
+	}
+	return NULL;
+}
+
+/*
+ * <cib>
+ *  <configuration>
+ *   <resources>
+ *    <primitive id="cfg_bar_angus" class="ocf" type="script_runner" provider="pacemaker-cloud">
+ *     <instance_attributes id="attrs_angus">
+ *  ->  <nvpair id="param_wp_ip" name="ipaddress" value=""/>
+*/
+xmlNode*
+find_pe_parameter(const char* rsc_id, const char* parm_name)
+{
+	xmlNode *cib_node = xmlDocGetRootElement(_pe);
+	xmlNode *config_node = get_xml_child_by(cib_node, "configuration", NULL, NULL);
+	xmlNode *rscs_node;
+	xmlNode *prim_node;
+	xmlNode *insts_node;
+
+	assert(config_node);
+
+	rscs_node = get_xml_child_by(config_node, "resources", NULL, NULL);
+	assert(rscs_node);
+
+	prim_node = get_xml_child_by(rscs_node, "primitive", "id", rsc_id);
+	if (prim_node == NULL) {
+		return NULL;
+	}
+	insts_node = get_xml_child_by(prim_node, "instance_attributes", NULL, NULL);
+	if (insts_node == NULL) {
+		return NULL;
+	}
+	return get_xml_child_by(insts_node, "nvpair", "name", parm_name);
+}
+
+
+static void
+resource_add_ref_params(xmlNode *params_node, struct resource *r)
+{
+	xmlNode *child_node;
+	xmlNode *ref_node;
+	struct reference_param *p;
+
+	qb_enter();
+
+	if (params_node == NULL || params_node->children == NULL) {
+		return;
+	}
+
+	for (child_node = params_node->children; child_node;
+		child_node = child_node->next) {
+		if (child_node->type != XML_ELEMENT_NODE ||
+		    strcmp((char*)child_node->name, "parameter") != 0) {
+			continue;
+		}
+
+		for (ref_node = child_node->children; ref_node;
+		     ref_node = ref_node->next) {
+			if (ref_node->type != XML_ELEMENT_NODE ||
+			    strcmp((char*)ref_node->name, "reference") != 0) {
+				continue;
+			}
+			if (r->ref_params_map == NULL) {
+				r->ref_params_map = qb_skiplist_create();
+			}
+			p = calloc(1, sizeof(struct reference_param));
+
+			/* example:
+			 * <parameter name="mysql_ip" type="scalar">
+			 *   <reference assembly="mysql" parameter="ipaddress"/>
+			 * </parameter>
+			 */
+			p->name = (char*)xmlGetProp(child_node, BAD_CAST "name");
+			p->parameter = (char*)xmlGetProp(ref_node, BAD_CAST "parameter");
+			p->assembly = (char*)xmlGetProp(ref_node, BAD_CAST "assembly");
+			p->xmlnode = find_pe_parameter(r->name, p->name);
+			assert(p->xmlnode);
+			qb_log(LOG_INFO, "angus: adding reference_param %s to %s",
+			       p->name, r->name);
+			qb_map_put(r->ref_params_map, p->name, p);
+		}
+	}
+}
+
+static void
+configure_resource_create(xmlNode *rsc_node, xmlNode *params_node, struct assembly *assembly)
+{
+	struct resource *resource;
+	char *name;
+	/* 6 = rsc__ and terminator */
+	char resource_name[ASSEMBLY_NAME_MAX + RESOURCE_NAME_MAX + 6];
+
+	qb_enter();
+
+	resource = calloc(1, sizeof (struct resource));
+
+	name = (char*)xmlGetProp(rsc_node, BAD_CAST "name");
+	snprintf(resource_name, ASSEMBLY_NAME_MAX + RESOURCE_NAME_MAX + 6,
+		"cfg_%s_%s", assembly->name, name);
+	resource->name = strdup(resource_name);
+	resource->type = strdup("script_runner");
+	resource->rclass = strdup("ocf");
+	resource->rprovider = strdup("pacemaker-cloud");
+
+	recover_init(&resource->recover,
+		    "-1", "-1",
+		    resource_recover_restart,
+		    resource_recover_escalate,
+		    resource_state_change_event);
+	resource->recover.instance = resource;
+
+	resource->assembly = assembly;
+	qb_map_put(assembly->resource_map, resource->name, resource);
+
+	resource_add_ref_params(params_node, resource);
+
+	qb_leave();
+}
+
+
 static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 {
 	struct resource *resource;
+	xmlNode *child_node;
+	xmlNode *params_node = NULL;
 	char *name;
 	char *type;
 	char *rclass;
@@ -700,6 +902,30 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	char *escalation_period;
 
 	qb_enter();
+
+
+	for (child_node = cur_node->children; child_node;
+		child_node = child_node->next) {
+		if (child_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		if (strcmp((char*)child_node->name, "parameters") == 0) {
+			params_node = child_node;
+			break;
+		}
+	}
+
+
+	for (child_node = cur_node->children; child_node;
+		child_node = child_node->next) {
+		if (child_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		if (strcmp((char*)child_node->name, "configure_executable") == 0) {
+			configure_resource_create(cur_node, params_node, assembly);
+			break;
+		}
+	}
 
 	resource = calloc(1, sizeof (struct resource));
 	name = (char*)xmlGetProp(cur_node, BAD_CAST "name");
@@ -729,6 +955,10 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 
 	resource->assembly = assembly;
 	qb_map_put(assembly->resource_map, resource->name, resource);
+
+	if (strcmp(resource->rclass, "ocf") == 0) {
+		resource_add_ref_params(params_node, resource);
+	}
 
 	qb_leave();
 }

@@ -57,13 +57,11 @@
 <instance_attributes>
 <xsl:attribute name="id">attrs_<xsl:value-of select="@name"/></xsl:attribute>
 <xsl:for-each select="parameters/parameter">
-<xsl:if test="value">
 	<nvpair>
 <xsl:attribute name="id">param_<xsl:value-of select="@name"/></xsl:attribute>
 <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
 <xsl:attribute name="value"><xsl:value-of select="value"/></xsl:attribute>
 	</nvpair>
-</xsl:if>
 </xsl:for-each>
 </instance_attributes>
 </xsl:if>
@@ -77,6 +75,32 @@
           </op>
         </operations>
       </primitive>
+<xsl:if test="configure_executable">
+      <primitive>
+<xsl:attribute name="id">cfg_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="class">ocf</xsl:attribute>
+<xsl:attribute name="type">script_runner</xsl:attribute>
+<xsl:attribute name="provider">pacemaker-cloud</xsl:attribute>
+
+<instance_attributes>
+<xsl:attribute name="id">attrs_<xsl:value-of select="@name"/></xsl:attribute>
+	<nvpair>
+<xsl:attribute name="id">param_url_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="name">executable_url</xsl:attribute>
+<xsl:attribute name="value"><xsl:value-of select="configure_executable/@url"/></xsl:attribute>
+	</nvpair>
+<xsl:for-each select="parameters/parameter">
+	<nvpair>
+<xsl:attribute name="id">param_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="value"><xsl:value-of select="value"/></xsl:attribute>
+	</nvpair>
+</xsl:for-each>
+</instance_attributes>
+
+      </primitive>
+</xsl:if>
+
 </xsl:for-each>
 </xsl:for-each>
     </resources>
@@ -90,8 +114,35 @@
 <xsl:attribute name="score">INFINITY</xsl:attribute>
 <xsl:attribute name="node"><xsl:value-of select="$ass_name"/></xsl:attribute>
       </rsc_location>
+
+<xsl:if test="configure_executable">
+      <rsc_order>
+<xsl:attribute name="id">depend_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="first">cfg_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="then">rsc_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="score">INFINITY</xsl:attribute>
+      </rsc_order>
+      <rsc_location>
+<xsl:attribute name="id">loc_cfg_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="rsc">cfg_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
+<xsl:attribute name="score">INFINITY</xsl:attribute>
+<xsl:attribute name="node"><xsl:value-of select="$ass_name"/></xsl:attribute>
+      </rsc_location>
+
+</xsl:if>
+
 </xsl:for-each>
 </xsl:for-each>
+
+<xsl:for-each select="constraints/service_dependancy">
+      <rsc_order>
+<xsl:attribute name="id">depend_<xsl:value-of select="@id"/></xsl:attribute>
+<xsl:attribute name="first"><xsl:value-of select="@first"/></xsl:attribute>
+<xsl:attribute name="then"><xsl:value-of select="@then"/></xsl:attribute>
+<xsl:attribute name="score">INFINITY</xsl:attribute>
+      </rsc_order>
+</xsl:for-each>
+
     </constraints>
   </configuration>
 </cib>

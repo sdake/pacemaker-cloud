@@ -106,6 +106,13 @@ struct assembly {
 	struct recover recover;
 };
 
+struct reference_param {
+	char *name;
+	char *assembly;
+	char *parameter;
+	xmlNode *xmlnode;
+};
+
 struct resource {
 	char *name;
 	char *type;
@@ -115,6 +122,7 @@ struct resource {
 	struct pe_operation *monitor_op;
 	qb_loop_timer_handle monitor_timer;
 	struct recover recover;
+	qb_map_t *ref_params_map;
 };
 
 void resource_action_completed(struct pe_operation *op, enum ocf_exitcode rc);
