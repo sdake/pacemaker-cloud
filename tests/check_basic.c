@@ -50,9 +50,6 @@ static const char * test1_conf = "\
     <assembly name=\"bar\" uuid=\"7891011\" escalation_failures=\"3\" escalation_period=\"10\">\
       <services>\
         <service name=\"angus\" provider=\"me\" class=\"lsb\" type=\"httpd\" monitor_interval=\"1\" escalation_period=\"-1\" escalation_failures=\"-1\">\
-          <paramaters>\
-	    <paramater name=\"not\" value=\"this\"/>\
-          </paramaters>\
 	</service>\
       </services>\
     </assembly>\
@@ -61,6 +58,22 @@ static const char * test1_conf = "\
 </deployable>\
 ";
 
+static const char * test_ocf_conf = "\
+<deployable name=\"foo\" uuid=\"123456\" monitor=\"tester\" username=\"me\">\
+  <assemblies>\
+    <assembly name=\"bar\" uuid=\"7891011\" escalation_failures=\"3\" escalation_period=\"10\">\
+      <services>\
+        <service name=\"angus\" provider=\"heartbeat\" class=\"ocf\" type=\"Dummy\" monitor_interval=\"1\" escalation_period=\"-1\" escalation_failures=\"-1\">\
+          <parameters>\
+	    <parameter name=\"assertion\"> <value>true</value></parameter>\
+          </parameters>\
+	</service>\
+      </services>\
+    </assembly>\
+  </assemblies>\
+  <constraints/>\
+</deployable>\
+";
 
 enum resource_test_seq {
 	RSEQ_INIT,
@@ -77,9 +90,18 @@ enum resource_test_seq {
 	RSEQ_MON_REPEAT_5,
 	RSEQ_MON_REPEAT_6,
 };
+
+struct job_holder {
+	struct assembly *a;
+	struct resource *r;
+	struct pe_operation *op;
+};
+
 static int inst_up = 0;
 static int test_seq = RSEQ_INIT;
 static int is_node_test = 0;
+static int is_ocf_test = 0;
+static int seen_my_param = 0;
 
 static void
 instance_state_detect(void *data)
@@ -116,11 +138,18 @@ void transport_disconnect(struct assembly *a)
 {
 }
 
-struct job_holder {
-	struct assembly *a;
-	struct resource *r;
-	struct pe_operation *op;
-};
+
+
+
+static void
+log_ocf_envs(gpointer key, gpointer value, gpointer user_data)
+{
+	if (strcmp(key, "assertion") == 0 &&
+	    strcmp(value, "true") == 0) {
+		seen_my_param = 1;
+		qb_log(LOG_INFO, "env %s=%s", key, value);
+	}
+}
 
 static void resource_action_completion_cb(void *data)
 {
@@ -142,6 +171,12 @@ static void resource_action_completion_cb(void *data)
 		test_seq = RSEQ_STOP_1;
 	} else {
 		test_seq++;
+	}
+
+	seen_my_param = 0;
+	if (is_ocf_test && j->op->params) {
+		g_hash_table_foreach(j->op->params, log_ocf_envs, NULL);
+		ck_assert_int_eq(seen_my_param, 1);
 	}
 
 	switch (test_seq) {
@@ -222,6 +257,20 @@ START_TEST(test_restart_resource)
 }
 END_TEST
 
+START_TEST(test_restart_ocf_resource)
+{
+	qb_loop_t *loop = qb_loop_create();
+
+	is_node_test = 0;
+	is_ocf_test = 1;
+	cape_init(1);
+
+	cape_load_from_buffer(test_ocf_conf);
+
+	qb_loop_run(loop);
+}
+END_TEST
+
 START_TEST(test_restart_node)
 {
 	qb_loop_t *loop = qb_loop_create();
@@ -243,6 +292,11 @@ basic_suite(void)
 
 	tc = tcase_create("restart_resource");
 	tcase_add_test(tc, test_restart_resource);
+	tcase_set_timeout(tc, 20);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("restart_ocf_resource");
+	tcase_add_test(tc, test_restart_ocf_resource);
 	tcase_set_timeout(tc, 20);
 	suite_add_tcase(s, tc);
 

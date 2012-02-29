@@ -558,6 +558,9 @@ static xmlNode *insert_resource(xmlNode *status, struct resource *resource)
 	xmlNewProp(resource_xml, BAD_CAST "id", BAD_CAST resource->name);
 	xmlNewProp(resource_xml, BAD_CAST "type", BAD_CAST resource->type);
 	xmlNewProp(resource_xml, BAD_CAST "class", BAD_CAST resource->rclass);
+	if (strcmp(resource->rclass, "ocf") == 0) {
+		xmlNewProp(resource_xml, BAD_CAST "provider", BAD_CAST resource->rprovider);
+	}
 
 	qb_leave();
 
@@ -684,6 +687,7 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	char *name;
 	char *type;
 	char *rclass;
+	char *rprovider;
 	/* 6 = rsc__ and terminator */
 	char resource_name[ASSEMBLY_NAME_MAX + RESOURCE_NAME_MAX + 6];
 	char *escalation_failures;
@@ -700,6 +704,13 @@ static void resource_create(xmlNode *cur_node, struct assembly *assembly)
 	resource->type = strdup(type);
 	rclass = (char*)xmlGetProp(cur_node, BAD_CAST "class");
 	resource->rclass = strdup(rclass);
+
+	rprovider = (char*)xmlGetProp(cur_node, BAD_CAST "provider");
+	if (rprovider) {
+		resource->rprovider = strdup(rprovider);
+	} else {
+		resource->rprovider = NULL;
+	}
 	escalation_failures = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_failures");
 	escalation_period = (char*)xmlGetProp(cur_node, BAD_CAST "escalation_period");
 

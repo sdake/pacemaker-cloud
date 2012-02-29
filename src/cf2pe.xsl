@@ -51,21 +51,22 @@
       <primitive>
 <xsl:attribute name="id">rsc_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>
 <xsl:attribute name="class"><xsl:value-of select="@class"/></xsl:attribute>
+<xsl:attribute name="type"><xsl:value-of select="@type"/></xsl:attribute>
 <xsl:if test="@class='ocf'">
     <xsl:attribute name="provider"><xsl:value-of select="@provider"/></xsl:attribute>
-</xsl:if>
-<xsl:attribute name="type"><xsl:value-of select="@type"/></xsl:attribute>
 <instance_attributes>
 <xsl:attribute name="id">attrs_<xsl:value-of select="@name"/></xsl:attribute>
 <xsl:for-each select="parameters/parameter">
-<instance_attribute>
+<xsl:if test="value">
+	<nvpair>
 <xsl:attribute name="id">param_<xsl:value-of select="@name"/></xsl:attribute>
 <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
-<xsl:attribute name="value"><xsl:value-of select="@value"/></xsl:attribute>
-</instance_attribute>
+<xsl:attribute name="value"><xsl:value-of select="value"/></xsl:attribute>
+	</nvpair>
+</xsl:if>
 </xsl:for-each>
 </instance_attributes>
-
+</xsl:if>
         <operations>
           <op>
 <xsl:attribute name="id">monitor_<xsl:value-of select="$ass_name"/>_<xsl:value-of select="@name"/></xsl:attribute>

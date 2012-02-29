@@ -110,6 +110,7 @@ struct resource {
 	char *name;
 	char *type;
 	char *rclass;
+	char *rprovider;
 	struct assembly *assembly;
 	struct pe_operation *monitor_op;
 	qb_loop_timer_handle monitor_timer;
