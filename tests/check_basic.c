@@ -81,6 +81,16 @@ static int inst_up = 0;
 static int test_seq = RSEQ_INIT;
 static int is_node_test = 0;
 
+static void
+instance_state_detect(void *data)
+{
+	struct assembly * a = (struct assembly *)data;
+	if (!inst_up) {
+		recover_state_set(&a->recover, RECOVER_STATE_RUNNING);
+		inst_up = 1;
+	}
+}
+
 int32_t instance_create(struct assembly *a)
 {
 	qb_log(LOG_INFO, "starting instance (seq %d)", test_seq);
@@ -93,15 +103,6 @@ int32_t instance_create(struct assembly *a)
 	}
 
 	return 0;
-}
-
-void instance_state_detect(void *data)
-{
-	struct assembly * a = (struct assembly *)data;
-	if (!inst_up) {
-		recover_state_set(&a->recover, RECOVER_STATE_RUNNING);
-		inst_up = 1;
-	}
 }
 
 int instance_stop(struct assembly *a)
