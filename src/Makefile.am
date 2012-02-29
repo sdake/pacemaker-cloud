@@ -42,10 +42,6 @@ qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
 $(qmfauto_c): schema.xml
 	qmf-gen -2 schema.xml
 
-if HAVE_SCALE_BINS
-noinst_PROGRAMS = cape-sshd-scale-master cape-sshd-scale-dummy
-endif
-
 cped_SOURCES  = libinit.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
 	        cpe_agent.cpp cpe_impl.cpp cpe_httpd.cpp cpe_agent_register.cpp
 
@@ -62,26 +58,6 @@ cape_sshd_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
 	$(libssh2_CFLAGS)
 
 cape_sshd_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
-	$(libssh2_LIBS)
-
-cape_sshd_scale_master_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c pcmk_pe.c deltacloud.c
-
-cape_sshd_scale_master_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
-	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
-	$(libssh2_CFLAGS) -DSCALE_MASTER
-
-cape_sshd_scale_master_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
-	$(libssh2_LIBS)
-
-cape_sshd_scale_dummy_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c pcmk_pe.c deltacloud.c
-
-cape_sshd_scale_dummy_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
-	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
-	$(libssh2_CFLAGS) -DSCALE_DUMMY
-
-cape_sshd_scale_dummy_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
 	$(libssh2_LIBS)
 

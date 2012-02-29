@@ -20,7 +20,7 @@
 MAINTAINERCLEANFILES	= Makefile.in
 AM_CFLAGS = -Wall
 
-noinst_PROGRAMS = cpe-tool2 pe_test sim-cape-recovery
+noinst_PROGRAMS = cpe-tool2 pe_test
 
 cpe_tool2_SOURCES = cpe-tool2.c ../src/libinit.c
 cpe_tool2_CPPFLAGS = $(dbus_glib_1_CFLAGS)
@@ -57,6 +57,11 @@ escalation_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
 escalation_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
+endif
+
+if HAVE_SIM_SCALE
+noinst_PROGRAMS += sim-cape-recovery sim-cape-sshd-master sim-cape-sshd-dummy
+
 sim_cape_recovery_SOURCES = ../src/caped.c ../src/capeadmin.c ../src/recover.c ../src/cape.c ../src/pcmk_pe.c sim_recovery.c
 
 sim_cape_recovery_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
@@ -66,6 +71,26 @@ sim_cape_recovery_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) 
 sim_cape_recovery_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
+
+sim_cape_sshd_master_SOURCES = ../src/caped.c ../src/capeadmin.c ../src/recover.c ../src/cape.c ../src/trans_ssh.c ../src/pcmk_pe.c sim_deltacloud_master.c
+
+sim_cape_sshd_master_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_CFLAGS) -DSCALE_MASTER
+
+sim_cape_sshd_master_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_LIBS)
+
+sim_cape_sshd_dummy_SOURCES = ../src/caped.c ../src/capeadmin.c ../src/recover.c ../src/cape.c ../src/trans_ssh.c ../src/pcmk_pe.c sim_deltacloud_dummy.c
+
+sim_cape_sshd_dummy_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_CFLAGS) -DSCALE_DUMMY
+
+sim_cape_sshd_dummy_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	$(libssh2_LIBS)
 endif
 
 clean-generic:

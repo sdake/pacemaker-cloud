@@ -112,8 +112,8 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug			: enable debug build. ],
 	[ default="no" ])
 
-AC_ARG_ENABLE([scale-bins],
-	[ --enable-scale-bins			| enable scale binaries. ],
+AC_ARG_ENABLE([sim-scale],
+	[ --enable-sim-scale			| enable sim scale binaries. ],
 	[ defualt="no" ])
 
 AC_LANG_PUSH(C++)
@@ -178,11 +178,11 @@ else
 	OPT_CXXFLAGS="-O2"
 fi
 
-if test "x${enable_scale_bins}" = xyes ; then
-	AC_DEFINE([HAVE_SCALE_BINS], 1,[have scale bins])
+if test "x${enable_sim_scale}" = xyes ; then
+	AC_DEFINE([HAVE_SIM_SCALE], 1,[have sim scale bins])
 	AC_MSG_NOTICE([Enabling Scale Binaries])
 fi
-AM_CONDITIONAL(HAVE_SCALE_BINS, [test "x${enable_scale_bins}" = xyes])
+AM_CONDITIONAL(HAVE_SIM_SCALE, [test "x${enable_sim_scale}" = xyes])
 
 # gdb flags
 if test "x${GCC}" = xyes; then
