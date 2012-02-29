@@ -4,7 +4,7 @@
 AC_PREREQ([2.66])
 AC_INIT([pacemaker-cloud], [0.6.0], [pcmk-cloud@oss.clusterlabs.org])
 AM_INIT_AUTOMAKE([-Wno-portability color-tests parallel-tests])
-AC_CONFIG_SRCDIR([src/dpe_agent.cpp])
+AC_CONFIG_SRCDIR([src/caped.c])
 AC_CONFIG_HEADERS([src/config.h])
 
 AM_PATH_PYTHON

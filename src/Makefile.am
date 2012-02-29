@@ -28,12 +28,11 @@ EXTRA_DIST = $(xsl_DATA)
 
 SUBDIRS = pcloudsh
 
-sbin_PROGRAMS = cped dped cape-sshd cape-mh
-noinst_HEADERS = assembly.h assembly_am.h assembly_pm.h config.h cpe_agent.h \
-	dpe_agent.h cpe_httpd.h mainloop.h vmlauncher.h \
-	common_agent.h  config_loader.h  deployable.h  init-dbus.h  pcmk_pe.h \
+sbin_PROGRAMS = cped cape-sshd cape-mh
+noinst_HEADERS = config.h cpe_agent.h cpe_httpd.h mainloop.h \
+	common_agent.h  config_loader.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
-	org/pacemakercloud/QmfPackage.h resource.h qmf_object.h \
+	org/pacemakercloud/QmfPackage.h qmf_object.h \
 	qmf_multiplexer.h qmf_job.h qmf_agent.h cpe_impl.h trans.h cape.h \
 	matahari.h
 
@@ -55,17 +54,6 @@ cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAG
 
 cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) \
 		$(libmicrohttpd_LIBS) $(libcurl_LIBS) $(libxml2_LIBS)
-
-dped_SOURCES  = pcmk_pe.c mainloop.cpp $(qmfauto_c) common_agent.cpp \
-		deployable.cpp assembly.cpp assembly_am.cpp assembly_pm.cpp \
-		config_loader.cpp dpe_agent.cpp vmlauncher.cpp \
-		resource.cpp qmf_multiplexer.cpp qmf_object.cpp qmf_agent.cpp
-
-dped_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) $(libxml2_CFLAGS) \
-		-I$(qmfauto_path) $(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_CFLAGS)
-
-dped_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-		$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
 cape_sshd_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c pcmk_pe.c deltacloud.c
 
@@ -111,8 +99,6 @@ sloccount:
 	@sloccount $(cape_sshd_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cape Matahari Monitor: "
 	@@sloccount $(cape_mh_SOURCES) | grep Physical | cut --delimiter== --fields=2
-	@echo -n "old Matahari Monitor:  "
-	@sloccount $(dped_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cpe:                   "
 	@sloccount $(cped_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@cd pcloudsh; make -f Makefile sloccount
