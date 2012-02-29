@@ -83,10 +83,11 @@ void pe_resource_completed(struct pe_operation *op, uint32_t return_code);
 void pe_resource_ref(struct pe_operation *op);
 void pe_resource_unref(struct pe_operation *op);
 
-int32_t pe_process_state(xmlNode *xml_input,
+int32_t pe_process_state(xmlDocPtr doc,
 			 pe_resource_execute_t exec_fn,
 			 pe_transition_completed_t done_fn,
-			 void *user_data);
+			 void *user_data,
+			 int debug);
 
 int32_t pe_is_busy_processing(void);
 

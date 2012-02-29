@@ -91,6 +91,7 @@ show_usage(const char *name)
 	printf("  options:\n");
 	printf("\n");
 	printf("  -v             verbose\n");
+	printf("  -g             debug\n");
 	printf("  -o             log to stdout\n");
 	printf("  -h             show this help text\n");
 	printf("\n");
@@ -105,10 +106,11 @@ int32_t signal_int(int32_t rsignal, void *data) {
 int
 main(int argc, char * argv[])
 {
-	const char *options = "vhod";
+	const char *options = "vhodg";
 	int32_t opt;
 	int32_t do_stdout = QB_FALSE;
 	int daemonize = 0;
+	int debug = 0;
 	int loglevel = LOG_INFO;
 	qb_loop_t *loop;
 	char *cloud_app = NULL;
@@ -130,6 +132,9 @@ main(int argc, char * argv[])
 			break;
 		case 'v':
 			loglevel++;
+			break;
+		case 'g':
+			debug++;
 			break;
 		case 'h':
 		default:
@@ -164,7 +169,7 @@ main(int argc, char * argv[])
 
 	qb_loop_signal_add(NULL, QB_LOOP_LOW, SIGINT, NULL, signal_int, NULL);
 
-	cape_init();
+	cape_init(debug);
 
 	cape_admin_init();
 

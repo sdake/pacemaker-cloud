@@ -220,7 +220,7 @@ START_TEST(test_escalation_resource)
 	qb_loop_t *loop = qb_loop_create();
 
 	is_node_test = 0;
-	cape_init();
+	cape_init(1);
 
 	cape_load_from_buffer(test1_conf);
 

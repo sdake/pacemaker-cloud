@@ -118,7 +118,7 @@ struct resource {
 
 void resource_action_completed(struct pe_operation *op, enum ocf_exitcode rc);
 
-void cape_init(void);
+void cape_init(int debug);
 
 int cape_load(const char * name);
 

@@ -214,7 +214,7 @@ START_TEST(test_restart_resource)
 	qb_loop_t *loop = qb_loop_create();
 
 	is_node_test = 0;
-	cape_init();
+	cape_init(1);
 
 	cape_load_from_buffer(test1_conf);
 
@@ -227,7 +227,7 @@ START_TEST(test_restart_node)
 	qb_loop_t *loop = qb_loop_create();
 
 	is_node_test = 1;
-	cape_init();
+	cape_init(1);
 
 	cape_load_from_buffer(test1_conf);
 

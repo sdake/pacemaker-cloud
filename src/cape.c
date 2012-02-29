@@ -45,7 +45,7 @@ static qb_map_t *op_history_map;
 
 static int call_order = 0;
 
-static int counter = 0;
+static int cape_debug = 0;
 
 static char crmd_uuid[37];
 
@@ -621,7 +621,6 @@ static void process(void)
 	struct assembly *assembly;
 	qb_map_iter_t *iter;
 	static xmlNode *pe_root;
-	char filename[PATH_MAX];
 
 	qb_enter();
 
@@ -646,10 +645,10 @@ static void process(void)
 	}
 	qb_map_iter_free(iter);
 
-	rc = pe_process_state(pe_root, resource_execute_cb,
-		transition_completed_cb,  NULL);
-	snprintf (filename, PATH_MAX, "/tmp/z%d.xml", counter++);
-	xmlSaveFormatFileEnc(filename, _pe, "UTF-8", 1);
+	rc = pe_process_state(_pe, resource_execute_cb,
+			      transition_completed_cb,
+			      NULL, cape_debug);
+
 	if (rc != 0) {
 		schedule_processing();
 	}
@@ -863,11 +862,13 @@ cape_load(const char * name)
 }
 
 void
-cape_init(void)
+cape_init(int debug)
 {
 	uuid_t uuid_temp_id;
 
 	qb_enter();
+
+	cape_debug = debug;
 
 	uuid_generate(uuid_temp_id);
 	uuid_unparse(uuid_temp_id, crmd_uuid);

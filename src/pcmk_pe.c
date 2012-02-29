@@ -482,12 +482,13 @@ pe_log_init(int log_tag, int loglevel)
 }
 
 int32_t
-pe_process_state(xmlNode *xml_input,
+pe_process_state(xmlDocPtr doc,
 		 pe_resource_execute_t exec_fn,
 		 pe_transition_completed_t done_fn,
-		 void *user_data)
+		 void *user_data, int debug)
 {
 	crm_graph_t *transition = NULL;
+	xmlNode *xml_input = xmlDocGetRootElement(doc);
 
 	qb_enter();
 
@@ -497,11 +498,20 @@ pe_process_state(xmlNode *xml_input,
 		return -EEXIST;
 	}
 
-//	assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
+	if (debug) {
+		char filename[PATH_MAX];
 
-	qb_log(LOG_INFO, "Executing deployable transition [%d]",
-	       ++transition_count);
+		assert(validate_xml(xml_input, "pacemaker-1.2", FALSE) == TRUE);
 
+		snprintf(filename, PATH_MAX, "/tmp/pe-%d-%d.xml",
+			 getpid(), transition_count);
+		xmlSaveFormatFileEnc(filename, doc, "UTF-8", 1);
+		qb_log(LOG_INFO, "Executing deployable transition [%s]",
+		       filename);
+	} else {
+		qb_log(LOG_INFO, "Executing deployable transition [%d]",
+		       ++transition_count);
+	}
 	working_set = calloc(1, sizeof(pe_working_set_t));
 	run_fn = exec_fn;
 	completed_fn = done_fn;
