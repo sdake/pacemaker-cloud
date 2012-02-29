@@ -450,10 +450,11 @@ static void ssh_assembly_connect(void *data)
 				"Authentication by public key for '%s' successful\n",
 				assembly->name);
 		}
-		assembly_healthcheck(assembly);
 
 		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
 		trans_ssh->ssh_state = SSH_SESSION_CONNECTED;
+
+		assembly_healthcheck(assembly);
 
 	case SSH_SESSION_CONNECTED:
 		break;
