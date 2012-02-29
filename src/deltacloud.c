@@ -122,39 +122,6 @@ int32_t instance_create(struct assembly *assembly)
 		return -1;
 	}
 
-/*
- * Scale bins are test binaries to test scalability and performance with
- * thousands of simulated cloud applications
- *
- * The master stores the instance id in the assembly named file and creates
- *   the instance via deltacloud
- * the dummy loads the instance id from the assembly named file
- */
- 
-#if defined(HAVE_SCALE_BINS)
-	for (images_head = images; images; images = images->next) {
-		if (strcmp(images->name, assembly->name) == 0) {
-	#if defined(SCALE_DUMMY)
-			assembly->instance_id = malloc(1024);
-			fp = fopen(assembly->name, "r+");
-			fgets(assembly->instance_id, 1024, fp);
-			fclose(fp);
-	#endif /* SCALE_DUMMY */
-			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &assembly->instance_id);
-			if (rc < 0) {
-				fprintf(stderr, "Failed to initialize libdeltacloud: %s\n",
-				deltacloud_get_last_error_string());
-				return -1;
-			}
-	#if defined(SCALE_MASTER)
-			fp = fopen(assembly->name, "w+");
-			fwrite (assembly->instance_id, strlen (assembly->instance_id), 1, fp);
-			fclose(fp);
-	#endif /* SCALE_MASTER */
-			instance_state_detect(assembly);
-		}
-	}
-#else /* !defined(HAVE_SCALE_BINS) */
 	for (images_head = images; images; images = images->next) {
 		if (strcmp(images->name, assembly->name) == 0) {
 			rc = deltacloud_create_instance(&api, images->id, NULL, 0, &assembly->instance_id);
@@ -167,7 +134,6 @@ int32_t instance_create(struct assembly *assembly)
 			instance_state_detect(assembly);
 		}
 	}
-#endif
 	deltacloud_free_image_list(&images_head);
 	deltacloud_free(&api);
 
