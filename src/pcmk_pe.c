@@ -164,6 +164,7 @@ void pe_resource_unref(struct pe_operation *op)
 		crm_free(op->rclass);
 		free(op->method);
 		free(op->rname);
+		g_hash_table_destroy(op->params);
 		qb_util_stopwatch_free(op->time_execed);
 		free(op);
 	}
