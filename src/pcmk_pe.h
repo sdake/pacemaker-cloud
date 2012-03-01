@@ -22,6 +22,8 @@
 #ifndef _PCMK_PE_H_
 #define _PCMK_PE_H_
 
+#include <qb/qbdefs.h>
+#include <qb/qbmap.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,7 +57,7 @@ struct pe_operation {
 	char *rclass;
 	char *rprovider;
 	char *rtype;
-	GHashTable *params;
+	qb_map_t *params;
 	char *op_digest;
 	uint32_t timeout;
 	uint32_t times_executed;

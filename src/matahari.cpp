@@ -110,8 +110,8 @@ host_event_handler(ConsoleEvent &event, void *user_data)
 	}
 }
 
-static void
-g_hash_to_variant_map(gpointer key, gpointer value, gpointer user_data)
+static int32_t
+qbmap_to_variant_map(const char *key, void *value, void *user_data)
 {
 	qpid::types::Variant::Map* the_args = (qpid::types::Variant::Map*)user_data;
 	char * s_key = (char *)key;
@@ -164,7 +164,7 @@ Matahari::resource_action(struct pe_operation *op)
 		in_args["interval"] = 0;
 		// make a non-empty parameters map
 		in_params["qmf"] = "frustrating";
-		g_hash_table_foreach(op->params, g_hash_to_variant_map, &in_params);
+		qb_map_foreach(op->params, qbmap_to_variant_map, &in_params);
 
 		in_args["name"] = op->rname;
 		in_args["class"] = op->rclass;

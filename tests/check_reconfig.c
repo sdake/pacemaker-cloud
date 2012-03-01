@@ -134,8 +134,8 @@ transport_disconnect(struct assembly *a)
 {
 }
 
-static void
-log_ocf_envs(gpointer key, gpointer value, gpointer user_data)
+static int32_t
+log_ocf_envs(const char *key, void *value, void *user_data)
 {
 	if (strcmp(key, "executable_url") == 0 &&
 	    strcmp(value,
@@ -146,6 +146,7 @@ log_ocf_envs(gpointer key, gpointer value, gpointer user_data)
 		seen_my_param++;
 	}
 	qb_log(LOG_INFO, "%s: %s", key, value);
+	return 0;
 }
 
 static void
@@ -163,7 +164,7 @@ resource_action_completion_cb(void *data)
 	}
 	if (strcmp("ocf", j->op->rclass) == 0) {
 		seen_my_param = 0;
-		g_hash_table_foreach(j->op->params, log_ocf_envs, NULL);
+		qb_map_foreach(j->op->params, log_ocf_envs, NULL);
 		ck_assert_int_eq(seen_my_param, 2);
 	}
 

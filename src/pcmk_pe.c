@@ -148,6 +148,13 @@ void pe_resource_ref(struct pe_operation *op)
 	qb_leave();
 }
 
+static int32_t qb_map_transverse_rm(const char *key, void *value, void *user_data)
+{
+	free((char *)key);
+	free(value);
+	return 0;
+}
+
 void pe_resource_unref(struct pe_operation *op)
 {
 	qb_enter();
@@ -166,7 +173,9 @@ void pe_resource_unref(struct pe_operation *op)
 		crm_free(op->op_digest);
 		free(op->method);
 		free(op->rname);
-		g_hash_table_destroy(op->params);
+                qb_map_foreach(op->params, qb_map_transverse_rm, op->params);
+		qb_map_destroy(op->params);
+
 		qb_util_stopwatch_free(op->time_execed);
 		free(op);
 	}
@@ -198,26 +207,12 @@ pe_resource_completed(struct pe_operation *op, uint32_t return_code)
 	qb_leave();
 }
 
-static guint
-g_str_hash_traditional_copy(gconstpointer v)
-{
-	const signed char *p;
-	guint32 h = 0;
-
-	qb_enter();
-	for (p = v; *p != '\0'; p++) {
-		h = (h << 5) - h + *p;
-	}
-	qb_leave();
-	return h;
-}
-
 static void
 dup_attr(gpointer key, gpointer value, gpointer user_data)
 {
 	qb_enter();
 
-	g_hash_table_replace(user_data, crm_strdup(key), crm_strdup(value));
+	qb_map_put(user_data, strdup(key), strdup(value));
 
 	qb_leave();
 }
@@ -284,9 +279,7 @@ exec_rsc_action(crm_graph_t *graph, crm_action_t *action)
 
 	pe_op->method = strdup(op->op_type);
 
-	pe_op->params = g_hash_table_new_full(g_str_hash_traditional_copy, g_str_equal,
-					      g_hash_destroy_str, g_hash_destroy_str);
-
+	pe_op->params = qb_skiplist_create();
 	if (op->params != NULL) {
 		g_hash_table_foreach(op->params, dup_attr, pe_op->params);
 	}
