@@ -99,7 +99,7 @@ static void op_history_save(struct resource *resource, struct pe_operation *op,
 		oh->target_outcome = op->target_outcome;
 		oh->interval = op->interval;
 		oh->rc = OCF_PENDING;
-		oh->op_digest = op->op_digest;
+		oh->op_digest = strdup(op->op_digest);
 		qb_map_put(op_history_map, oh->rsc_id, oh);
 	} else
 	if (strcmp(oh->op_digest, op->op_digest) != 0) {
@@ -256,6 +256,7 @@ static void node_op_history_clear(struct assembly *assembly)
 			qb_map_rm(op_history_map, key);
 			free(oh->rsc_id);
 			free(oh->operation);
+			free(oh->op_digest);
 			free(oh);
 		}
 	}
@@ -482,6 +483,7 @@ static void op_history_delete(struct pe_operation *op)
 			qb_map_rm(op_history_map, key);
 			free(oh->rsc_id);
 			free(oh->operation);
+			free(oh->op_digest);
 			free(oh);
 		}
 	}

@@ -163,6 +163,7 @@ void pe_resource_unref(struct pe_operation *op)
 		crm_free(op->rtype);
 		crm_free(op->rclass);
 		crm_free(op->node_uuid);
+		crm_free(op->op_digest);
 		free(op->method);
 		free(op->rname);
 		g_hash_table_destroy(op->params);
