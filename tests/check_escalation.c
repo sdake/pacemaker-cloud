@@ -102,6 +102,8 @@ int32_t instance_create(struct assembly *a)
 {
 	qb_log(LOG_INFO, "starting instance (seq %d)", test_seq);
 
+	a->address = strdup("1.2.3.4");
+
 	if (is_node_test && test_seq >= RSEQ_MON_REPEAT_FAIL_1) {
 		qb_loop_timer_add(NULL, QB_LOOP_LOW, 1 * QB_TIME_NS_IN_SEC, a,
 				  instance_state_detect, NULL);

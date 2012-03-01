@@ -33,8 +33,8 @@ pe_test_LDADD = $(pcmk_LIBS) $(glib_LIBS) $(libxml2_LIBS)
 
 if HAVE_CHECK
 
-TESTS = recover.test basic.test escalation.test
-check_PROGRAMS = recover.test basic.test escalation.test
+TESTS = recover.test basic.test escalation.test reconfig.test
+check_PROGRAMS = recover.test basic.test escalation.test reconfig.test
 
 recover_test_SOURCES = check_recover.c ../src/recover.c
 recover_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
@@ -44,18 +44,27 @@ recover_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS)
 basic_test_SOURCES = check_basic.c ../src/pcmk_pe.c ../src/recover.c ../src/cape.c \
 		     ../src/capeadmin.c
 basic_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
-			     $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
-			     $(libxslt_CFLAGS) $(uuid_CFLAGS)
+		      $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
+		      $(libxslt_CFLAGS) $(uuid_CFLAGS)
 basic_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
+		   $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
 
 escalation_test_SOURCES = check_escalation.c ../src/pcmk_pe.c ../src/recover.c \
 			  ../src/cape.c ../src/capeadmin.c
 escalation_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
-			     $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
-			     $(libxslt_CFLAGS) $(uuid_CFLAGS)
+			   $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
+			   $(libxslt_CFLAGS) $(uuid_CFLAGS)
 escalation_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
-			  $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
+			$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
+
+reconfig_test_SOURCES = check_reconfig.c ../src/pcmk_pe.c ../src/recover.c \
+			../src/cape.c ../src/capeadmin.c
+reconfig_test_CPPFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src $(libqb_CFLAGS) \
+			 $(glib_CFLAGS) $(libxml2_CFLAGS)  $(pcmk_CFLAGS) \
+			 $(libxslt_CFLAGS) $(uuid_CFLAGS)
+reconfig_test_LDADD = @CHECK_LIBS@ $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+		      $(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS)
+
 
 endif
 
