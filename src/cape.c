@@ -188,6 +188,8 @@ static const char * state_str[5][5] = {
 	{NULL, NULL, NULL, NULL}
 };
 
+static const char * state_name_str[5] = {
+	"unknown", "running", "failed", "stopped", "unrecoverable"};
 
 static void
 resource_state_change_event(void* inst,
@@ -197,9 +199,10 @@ resource_state_change_event(void* inst,
 	struct resource *r = (struct resource *)inst;
 
 	qb_enter();
-	qb_log(LOG_INFO, "Resource: changing state from %d to %d", from, to);
+	qb_log(LOG_INFO, "Resource (%s): changing state from %s to %s",
+	       r->name, state_name_str[from], state_name_str[to]);
 
-	cape_admin_event_send("my_app", r->assembly, r,
+	cape_admin_event_send(application->name, r->assembly, r,
 			      state_str[from][to],
 			      "bla");
 	qb_leave();
@@ -274,8 +277,9 @@ node_state_change_event(void* inst,
 
 	qb_enter();
 
-	qb_log(LOG_INFO, "Node: changing state from %d to %d", from, to);
-	cape_admin_event_send("my_app", a, NULL,
+	qb_log(LOG_INFO, "Node (%s): changing state from %s to %s",
+	       a->name, state_name_str[from], state_name_str[to]);
+	cape_admin_event_send(application->name, a, NULL,
 			      state_str[from][to],
 			      "bla");
 	if (to == RECOVER_STATE_RUNNING) {
@@ -511,7 +515,7 @@ static void resource_execute_cb(struct pe_operation *op)
 		resource_action_completed(op, OCF_UNKNOWN_ERROR);
 		return;
 	}
-	qb_log(LOG_INFO, "%s_%s_%d [%s] on %s target_rc:%d",
+	qb_log(LOG_TRACE, "%s_%s_%d [%s] on %s target_rc:%d",
 	       op->rname, op->method, op->interval, op->rclass, op->hostname,
 	       op->target_outcome);
 
@@ -580,7 +584,7 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 
 	qb_enter();
 
-	qb_log(LOG_INFO, "Inserting assembly %s", assembly->name);
+	qb_log(LOG_DEBUG, "Inserting assembly %s", assembly->name);
 
 	xmlNode *node_state = xmlNewChild(status, NULL, BAD_CAST "node_state", NULL);
         xmlNewProp(node_state, BAD_CAST "id", BAD_CAST assembly->uuid);
@@ -593,12 +597,12 @@ static void insert_status(xmlNode *status, struct assembly *assembly)
 	/* check state*/
 	if (assembly->recover.state == RECOVER_STATE_RUNNING) {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "member");
-		qb_log(LOG_INFO, "Assembly '%s' marked as member",
+		qb_log(LOG_DEBUG, "Assembly '%s' marked as member",
 			assembly->name);
 
 	} else {
 		xmlNewProp(node_state, BAD_CAST "join", BAD_CAST "pending");
-		qb_log(LOG_INFO, "Assembly '%s' marked as pending",
+		qb_log(LOG_DEBUG, "Assembly '%s' marked as pending",
 			assembly->name);
 	}
 	lrm_xml = xmlNewChild(node_state, NULL, BAD_CAST "lrm", NULL);

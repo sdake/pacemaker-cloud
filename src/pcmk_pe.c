@@ -501,6 +501,7 @@ pe_process_state(xmlDocPtr doc,
 		return -EEXIST;
 	}
 
+	transition_count++;
 	if (debug) {
 		char filename[PATH_MAX];
 
@@ -513,7 +514,7 @@ pe_process_state(xmlDocPtr doc,
 		       filename);
 	} else {
 		qb_log(LOG_INFO, "Executing deployable transition [%d]",
-		       ++transition_count);
+		       transition_count);
 	}
 	working_set = calloc(1, sizeof(pe_working_set_t));
 	run_fn = exec_fn;
