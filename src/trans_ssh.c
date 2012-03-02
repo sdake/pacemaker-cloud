@@ -78,10 +78,7 @@ struct ssh_operation {
 	qb_loop_job_dispatch_fn completion_func;
 	LIBSSH2_CHANNEL *channel;
 	int failed;
-	/*
-	 * 26 = "systemctl [start|stop|status] .service null-terminator
-	 */
-	char command[RESOURCE_NAME_MAX + 26];
+	char *command;
 };
 
 struct trans_ssh {
@@ -146,6 +143,7 @@ static void ssh_op_complete(struct ssh_operation *ssh_op)
 	if (ssh_op->op) {
 		pe_resource_unref(ssh_op->op);
 	}
+	free(ssh_op->command);
 	free(ssh_op);
 }
 
@@ -487,6 +485,7 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	va_list ap;
 	struct ssh_operation *ssh_op;
 	struct trans_ssh *trans_ssh = assembly->transport;
+	char ssh_command_buffer[RESOURCE_COMMAND_MAX];
 
 	qb_enter();
 	/*
@@ -502,8 +501,9 @@ ssh_nonblocking_exec(struct assembly *assembly,
 	 * 26 = "systemctl [start|stop|status] .service null-terminator
 	 */
 	va_start(ap, format);
-	vsnprintf(ssh_op->command, RESOURCE_NAME_MAX + 26, format, ap);
+	vsnprintf(ssh_command_buffer, RESOURCE_COMMAND_MAX, format, ap);
 	va_end(ap);
+	ssh_op->command = strdup(ssh_command_buffer);
 
 	qb_log(LOG_NOTICE, "ssh_exec for assembly '%s' command '%s'",
 		assembly->name, ssh_op->command);
@@ -612,12 +612,27 @@ static void resource_action_completion_cb(void *data)
 
 	qb_enter();
 
-	pe_rc = pe_resource_ocf_exitcode_get(ssh_op->op, ssh_op->ssh_rc);
+	if (strcmp(ssh_op->op->rclass, "lsb") == 0) {
+		pe_rc = pe_resource_ocf_exitcode_get(ssh_op->op, ssh_op->ssh_rc);
+	} else {
+		pe_rc = ssh_op->ssh_rc;
+	}
 
 	resource_action_completed(ssh_op->op, pe_rc);
 	ssh_op_delete(ssh_op);
 
 	qb_leave();
+}
+
+static int32_t
+set_ocf_env_with_prefix(const char *key, void *value, void *user_data)
+{
+	char *buffer = (char*)user_data;
+	strcat(buffer, "OCF_RESKEY_");
+	strcat(buffer, (char *)key);
+	strcat(buffer, "=");
+	strcat(buffer, (char *)value);
+	return 0;
 }
 
 /*
@@ -628,18 +643,53 @@ transport_resource_action(struct assembly * a,
 		   struct resource *r,
 		   struct pe_operation *op)
 {
+	char envs[RESOURCE_ENVIRONMENT_MAX];
+
 	qb_enter();
 
-	if (strcmp(op->method, "monitor") == 0) {
-		ssh_nonblocking_exec(a, r, op,
-			resource_action_completion_cb,
-			"systemctl status %s.service",
-			op->rtype);
+	if (strcmp(op->rclass, "lsb") == 0) {
+		/*
+		 * LSB resource class
+		 */
+		if (strcmp(op->method, "monitor") == 0) {
+			ssh_nonblocking_exec(a, r, op,
+					     resource_action_completion_cb,
+					     "systemctl status %s.service",
+					     op->rtype);
+		} else {
+			ssh_nonblocking_exec(a, r, op,
+					     resource_action_completion_cb,
+					     "systemctl %s %s.service",
+					     op->method, op->rtype);
+		}
 	} else {
+		/*
+		 * OCF resource class
+		 */
+		sprintf(envs, "OCF_RA_VERSION_MAJOR=1 OCF_RA_VERSION_MINOR=0 OCF_ROOT=%s", OCF_ROOT);
+
+		if (op->rname) {
+			strcat(envs, "OCF_RESOURCE_INSTANCE=");
+			strcat(envs, op->rname);
+		}
+
+		if (op->rtype != NULL) {
+			strcat(envs, "OCF_RESOURCE_TYPE=");
+			strcat(envs, op->rtype);
+		}
+
+		if (op->rprovider != NULL) {
+			strcat(envs, "OCF_RESOURCE_PROVIDER=");
+			strcat(envs, op->rprovider);
+		}
+		if (op->params) {
+			qb_map_foreach(op->params, set_ocf_env_with_prefix, envs);
+		}
 		ssh_nonblocking_exec(a, r, op,
-			resource_action_completion_cb,
-			"systemctl %s %s.service",
-			op->method, op->rtype);
+				     resource_action_completion_cb,
+				     "( %s %s/resource.d/%s/%s %s )",
+				     envs, OCF_ROOT, op->rprovider,
+				     op->rtype, op->method);
 	}
 
 	qb_leave();
@@ -721,6 +771,7 @@ void transport_disconnect(struct assembly *a)
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
 		qb_list_del(list);
 		libssh2_channel_free(ssh_op_del->channel);
+		free(ssh_op_del->command);
 		free(ssh_op_del);
 	}
 	/*

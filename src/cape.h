@@ -44,6 +44,8 @@ extern "C" {
 #define RESOURCE_NAME_MAX 1024		/* Maximum resource length in bytes */
 #define METHOD_NAME_MAX 20		/* Maximum method name in bytes */
 #define OP_NAME_MAX 15			/* Maximum interval length in bytes */
+#define RESOURCE_COMMAND_MAX 4096	/* Command maximum */
+#define RESOURCE_ENVIRONMENT_MAX 2048	/* Maximum environment allowed */
 
 /*
  * Timers of the system
@@ -52,6 +54,8 @@ extern "C" {
 #define SSH_TIMEOUT 5000		/* milliseconds */
 #define PENDING_TIMEOUT 100		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
+
+#define OCF_ROOT "/usr/lib/ocf"		/* OCF root directory */
 
 struct application {
 	char *name;
