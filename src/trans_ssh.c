@@ -50,8 +50,8 @@ enum ssh_state {
 	SSH_SESSION_CONNECTING = 1,
 	SSH_SESSION_INIT = 2,
 	SSH_SESSION_STARTUP = 3,
-	SSH_KEEPALIVE_CONFIG = 4,
-	SSH_USERAUTH_PUBLICKEY_FROMFILE = 5,
+	SSH_USERAUTH_PUBLICKEY_FROMFILE = 4,
+	SSH_KEEPALIVE_CONFIG = 5,
 	SSH_SESSION_CONNECTED = 6
 };
 
@@ -418,15 +418,6 @@ static void ssh_assembly_connect(void *data)
 		/*
                  * no break here is intentional
 		 */
-		trans_ssh->ssh_state = SSH_KEEPALIVE_CONFIG;
-
-	case SSH_KEEPALIVE_CONFIG:
-		libssh2_keepalive_config(trans_ssh->session, 0, KEEPALIVE_TIMEOUT);
-		ssh_keepalive_send(trans_ssh);
-
-		/*
-                 * no break here is intentional
-		 */
 		trans_ssh->ssh_state = SSH_USERAUTH_PUBLICKEY_FROMFILE;
 
 	case SSH_USERAUTH_PUBLICKEY_FROMFILE:
@@ -450,11 +441,19 @@ static void ssh_assembly_connect(void *data)
 		}
 
 		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
+		trans_ssh->ssh_state = SSH_KEEPALIVE_CONFIG;
+
+	case SSH_KEEPALIVE_CONFIG:
+		libssh2_keepalive_config(trans_ssh->session, 0, KEEPALIVE_TIMEOUT);
+		ssh_keepalive_send(trans_ssh);
+
+		/*
+                 * no break here is intentional
+		 */
 		trans_ssh->ssh_state = SSH_SESSION_CONNECTED;
 
-		assembly_healthcheck(assembly);
-
 	case SSH_SESSION_CONNECTED:
+		assembly_healthcheck(assembly);
 		break;
 	case SSH_SESSION_CONNECTING:
 		assert(0);
