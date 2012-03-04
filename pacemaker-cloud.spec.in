@@ -113,8 +113,10 @@ fi
 %defattr(-,root,root,-)
 %doc COPYING
 %{_sbindir}/cped
-%{_sbindir}/cape-sshd
-%{_sbindir}/cape-mh
+%{_sbindir}/cape-sshd-os
+%{_sbindir}/cape-sshd-dc
+%{_sbindir}/cape-mh-os
+%{_sbindir}/cape-mh-dc
 %{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_unitdir}/pcloud-cape-sshd@.service
 %{_unitdir}/pcloud-cped.service

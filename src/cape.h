@@ -52,7 +52,7 @@ extern "C" {
  */
 #define KEEPALIVE_TIMEOUT 15		/* seconds */
 #define SSH_TIMEOUT 5000		/* milliseconds */
-#define PENDING_TIMEOUT 100		/* milliseconds */
+#define PENDING_TIMEOUT 250		/* milliseconds */
 #define HEALTHCHECK_TIMEOUT 3000	/* milliseconds */
 
 #define OCF_ROOT "/usr/lib/ocf"		/* OCF root directory */
@@ -100,7 +100,8 @@ struct assembly {
 	char *name;
 	char *uuid;
 	char *address;
-	char *instance_id;
+	char instance_id[64];
+	char image_id[64];
 	struct application *application;
 	qb_map_t *resource_map;
 	int fd;
