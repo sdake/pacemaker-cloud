@@ -4,19 +4,18 @@
 
 ## Table of Contents
 
-1. Dependencies
-2. Building on Specific Distributions
-3. Definitions
-4. Architecture
+1. Mandatory Host Dependencies
+2. Optional Host Dependencies
+3. Building on Specific Distributions
+4. Definitions
+5. Architecture
 
 
-## 1) Dependencies
+## 1) Mandatory Host Dependencies
 
-* [libqb 0.5.1 or later](https://github.com/asalkeld/libqb)
+* [libqb 0.10.1 or later](https://github.com/asalkeld/libqb)
 
 * [pacemaker](http://www.clusterlabs.org/)
-
-* [qpid (QMFv2)](http://qpid.apache.org/)
 
 * [glib 2.0](http://www.gtk.org/)
 
@@ -24,11 +23,27 @@
 
 * [libxml2](http://xmlsoft.org/)
 
-* [oz 0.5.0 or later](http://www.aeolusproject.org/oz.html)
+* [libcurl](http://curl.haxx.se/)
 
 * [libmicrohttpd](http://www.gnu.org/software/libmicrohttpd/)
 
-* [libcurl](http://curl.haxx.se/)
+* [oz 0.7.0 or later](http://www.aeolusproject.org/oz.html)
+
+* An IAAS platform of some type - the developers typically test with OpenStack
+
+## 2) Optional Host Dependencies
+
+* [libssh2)](http://www.libssh2.org/)
+
+ - To build without, ./configure --disable-transport-ssh2
+
+* [qpid (QMFv2)](http://qpid.apache.org/)
+
+ - To build without, ./configure --disable-transport-matahari
+
+* [deltacloud](http://deltalcloud.apache.org/)
+
+ - To build without, ./configure --disable-api-deltacloud
 
 ### 1.1) Dependencies to run pcloudsh
 

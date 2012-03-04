@@ -28,7 +28,26 @@ EXTRA_DIST = $(xsl_DATA)
 
 SUBDIRS = pcloudsh
 
-sbin_PROGRAMS = cped cape-sshd-os cape-mh-os cape-sshd-dc cape-mh-dc
+sbin_PROGRAMS = cped
+
+if HAVE_API_OPENSTACK
+if HAVE_TRANSPORT_SSH2
+sbin_PROGRAMS = cape-sshd-os
+endif
+if HAVE_TRANSPORT_MATAHARI
+sbin_PROGRAMS += cape-mh-os
+endif
+endif
+
+if HAVE_API_DELTACLOUD
+if HAVE_TRANSPORT_SSH2
+sbin_PROGRAMS += cape-sshd-dc
+endif
+if HAVE_TRANSPORT_MATAHARI
+sbin_PROGRAMS += cape-mh-dc
+endif
+endif
+
 noinst_HEADERS = config.h cpe_agent.h cpe_httpd.h mainloop.h \
 	common_agent.h  config_loader.h  init-dbus.h  pcmk_pe.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \

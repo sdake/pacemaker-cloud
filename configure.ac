@@ -44,8 +44,6 @@ PKG_CHECK_MODULES(libqb, libqb)
 PKG_CHECK_MODULES(uuid, uuid)
 PKG_CHECK_MODULES(libmicrohttpd, libmicrohttpd)
 PKG_CHECK_MODULES(libcurl, libcurl)
-PKG_CHECK_MODULES(libdeltacloud, libdeltacloud)
-PKG_CHECK_MODULES(libssh2, libssh2)
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4],[with_check=yes],[with_check=no])
 AM_CONDITIONAL(HAVE_CHECK, test "${with_check}" = "yes")
 
@@ -109,12 +107,22 @@ fail=0
 AC_SUBST([qmf_LIBS])
 
 AC_ARG_ENABLE([debug],
-	[  --enable-debug			: enable debug build. ],
-	[ default="no" ])
+	[  --enable-debug			: enable debug build. ])
 
 AC_ARG_ENABLE([sim-scale],
-	[ --enable-sim-scale			| enable sim scale binaries. ],
-	[ defualt="no" ])
+	[ --enable-sim-scale			| enable sim scale binaries. ])
+
+AC_ARG_ENABLE([transport-ssh2],
+	AS_HELP_STRING([--disable-transport-ssh2], [disable SSH transport.]))
+
+AC_ARG_ENABLE([transport-matahari],
+	AS_HELP_STRING([--disable-transport-matahari], [disable matahari transport.]))
+
+AC_ARG_ENABLE([api-openstack],
+	AS_HELP_STRING([--disable-api-openstack], [disable openstack api usage.]))
+
+AC_ARG_ENABLE([api-deltacloud],
+	AS_HELP_STRING([--disable-api-deltacloud], [disable deltacloud api usage.]))
 
 AC_LANG_PUSH(C++)
   cpe_saved_libs=$LIBS
@@ -183,6 +191,40 @@ if test "x${enable_sim_scale}" = xyes ; then
 	AC_MSG_NOTICE([Enabling Scale Binaries])
 fi
 AM_CONDITIONAL(HAVE_SIM_SCALE, [test "x${enable_sim_scale}" = xyes])
+
+# check for ssh2
+
+AS_IF([test "x$enable_transport_ssh2" != "xno"], [
+	AC_DEFINE([HAVE_TRANSPORT_SSH2], 1,[have ssh transport])
+	AC_MSG_NOTICE([Enabling SSH2 transport])
+	PKG_CHECK_MODULES(libssh2, libssh2)
+])
+AM_CONDITIONAL(HAVE_TRANSPORT_SSH2, [test "x${enable_transport_ssh2}" != "xno"])
+
+# check for matahari
+
+AS_IF([test "x$enable_transport_matahari" != "xno"], [
+	AC_DEFINE([HAVE_TRANSPORT_MATAHARI], 1,[have Matahari transport])
+	AC_MSG_NOTICE([Enabling matahari transport])
+])
+AM_CONDITIONAL(HAVE_TRANSPORT_MATAHARI, [test "x${enable_transport_matahari}" != "xno"])
+
+# check for openstack
+
+AS_IF([test "x$enable_api_openstack" != "xno"], [
+	AC_DEFINE([HAVE_API_OPENSTACK], 1,[have openstack API])
+	AC_MSG_NOTICE([Enabling openstack API])
+])
+AM_CONDITIONAL(HAVE_API_OPENSTACK, [test "x${enable_api_openstack}" != "xno"])
+
+# check for deltacloud
+
+AS_IF([test "x$enable_api_deltacloud" != "xno"], [
+	AC_DEFINE([HAVE_API_DELTACLOUD], 1,[have deltacloud API])
+	AC_MSG_NOTICE([Enabling deltacloud API])
+	PKG_CHECK_MODULES(libdeltacloud, libdeltacloud)
+])
+AM_CONDITIONAL(HAVE_API_DELTACLOUD, [test "x${enable_api_deltacloud}" != "xno"])
 
 # gdb flags
 if test "x${GCC}" = xyes; then
