@@ -32,7 +32,7 @@ sbin_PROGRAMS = cped
 
 if HAVE_API_OPENSTACK
 if HAVE_TRANSPORT_SSH2
-sbin_PROGRAMS = cape-sshd-os
+sbin_PROGRAMS += cape-sshd-os
 endif
 if HAVE_TRANSPORT_MATAHARI
 sbin_PROGRAMS += cape-mh-os
