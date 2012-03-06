@@ -181,6 +181,7 @@ void instance_state_get(char *instance_id,
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	curl_easy_perform(curl);
+	curl_slist_free_all(headers);
 	curl_easy_cleanup(curl);
 }
 
@@ -210,6 +211,7 @@ void image_id_get(char *image_name,
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	curl_easy_perform(curl);
+	curl_slist_free_all(headers);
 	curl_easy_cleanup(curl);
 }
 
@@ -242,5 +244,6 @@ void instance_create_from_image_id(char *image_id,
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(command));
 	curl_easy_setopt(curl, CURLOPT_POST, 1);
 	curl_easy_perform(curl);
+	curl_slist_free_all(headers);
 	curl_easy_cleanup(curl);
 }
