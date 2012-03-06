@@ -59,6 +59,13 @@ static void instance_create_completion(char *instance_id, void *data)
 	strcpy(assembly->instance_id, instance_id);
 }
 
+static void instance_destroy_completion(void *data)
+{
+	struct assembly *assembly = (struct assembly *)data;
+
+	assembly->instance_id[0] = '\0';
+}
+
 static void instance_state_completion(char *state, char *address, void *data)
 {
 	struct assembly *assembly = (struct assembly *)data;
@@ -92,10 +99,18 @@ int32_t instance_create(struct assembly *assembly)
 	qb_loop_job_add(NULL, QB_LOOP_LOW, assembly, my_instance_state_get);
 
 	qb_leave();
+
 	return 0;
 }
 
-int instance_stop(struct assembly *a)
+int instance_destroy(struct assembly *a)
 {
+	qb_enter();
+
+	instance_destroy_by_instance_id(a->instance_id,
+		instance_destroy_completion, a);
+
+	qb_leave();
+
 	return 0;
 }

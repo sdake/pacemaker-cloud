@@ -149,7 +149,7 @@ void cape_admin_fini(void);
 
 int32_t instance_create(struct assembly *assembly);
 
-int instance_stop(struct assembly *a);
+int instance_destroy(struct assembly *assembly);
 
 void cape_exit(void);
 

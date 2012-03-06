@@ -55,6 +55,11 @@ struct instance_create_data {
 	char *instance_id;
 };
 	
+struct instance_destroy_data {
+	void (*completion_func)(void *);
+	void *data;
+};
+
 /*
  * Internal Implementation
  */
@@ -146,6 +151,18 @@ static size_t instance_create_curl_callback(void *ptr, size_t size, size_t nmemb
 	}
 	free(instance_create_data);
 	xmlFreeDoc(xml);
+	return 0;
+}
+
+
+static size_t instance_destroy_curl_callback(void *ptr, size_t size, size_t nmemb, void *data)
+{
+	struct instance_destroy_data *instance_destroy_data = (struct instance_destroy_data *)data;
+
+	instance_destroy_data->completion_func(instance_destroy_data->data);
+
+	free(instance_destroy_data);
+
 	return 0;
 }
 
@@ -243,6 +260,37 @@ void instance_create_from_image_id(char *image_id,
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, command);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(command));
 	curl_easy_setopt(curl, CURLOPT_POST, 1);
+	curl_easy_perform(curl);
+	curl_slist_free_all(headers);
+	curl_easy_cleanup(curl);
+}
+
+void instance_destroy_by_instance_id(char *instance_id,
+	void (*completion_func)(void *data),
+	void *data)
+{
+	struct curl_slist *headers = NULL;
+	CURL *curl;
+	struct instance_destroy_data *instance_destroy_data;
+	char url[1024];
+
+	instance_destroy_data = calloc(1, sizeof(struct instance_destroy_data));
+	instance_destroy_data->completion_func = completion_func;
+	instance_destroy_data->data = data;
+
+	curl = curl_easy_init();
+	sprintf(url, "http://localhost:8774/v1.0/servers/%s", instance_id);
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_USERNAME, "sdake");
+	curl_easy_setopt(curl, CURLOPT_PASSWORD, "sdake");
+	headers = curl_slist_append(headers, "Accept: application/xml");
+	headers = curl_slist_append(headers, "Content-Type: application/xml");
+	headers = curl_slist_append(headers, "X-Auth_token: sdake:dep-wp");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, instance_destroy_curl_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, instance_destroy_data);
+	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 	curl_easy_perform(curl);
 	curl_slist_free_all(headers);
 	curl_easy_cleanup(curl);

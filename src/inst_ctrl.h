@@ -34,4 +34,8 @@ void instance_create_from_image_id(char *image_id,
 	void (*completion_func)(char *instance_id, void *data),
 	void *data);
 
+void instance_destroy_by_instance_id(char *instance_id,
+        void (*completion_func)(void *data),
+        void *data);
+
 #endif /* INST_CTRL_H_DEFINED */

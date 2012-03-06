@@ -230,7 +230,7 @@ static void resource_recover_escalate(void * inst)
 
 	qb_loop_timer_del(NULL, r->monitor_timer);
 
-	instance_stop(r->assembly);
+	instance_destroy(r->assembly);
 
 	qb_leave();
 }
