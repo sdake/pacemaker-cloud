@@ -1,6 +1,7 @@
 org/
-dped
 cped
-cape-mh
-cape-sshd
 rpc/netdb.h
+cape-mh-dc
+cape-mh-os
+cape-sshd-dc
+cape-sshd-os
