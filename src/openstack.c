@@ -97,7 +97,7 @@ done:
 		instance_state_get_data->completion_func((char *)status, (char *)ip_addr, instance_state_get_data->data);
 	}
 	free(instance_state_get_data);
-	xmlFree(xml);
+	xmlFreeDoc(xml);
 	return 0;
 }
 
@@ -126,7 +126,7 @@ static size_t image_id_get_curl_callback(void *ptr, size_t size, size_t nmemb, v
 		image_id_get->completion_func((char *)id, image_id_get->data);
 	}
 	free(image_id_get);
-	xmlFree(xml);
+	xmlFreeDoc(xml);
 	return 0;
 }
 
@@ -145,7 +145,7 @@ static size_t instance_create_curl_callback(void *ptr, size_t size, size_t nmemb
 		instance_create_data->completion_func((char *)id, instance_create_data->data);
 	}
 	free(instance_create_data);
-	xmlFree(xml);
+	xmlFreeDoc(xml);
 	return 0;
 }
 
