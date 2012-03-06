@@ -739,6 +739,10 @@ void transport_disconnect(struct assembly *a)
 
 	qb_enter();
 
+	if (trans_ssh == NULL) {
+		return;
+	}
+
 	qb_loop_timer_del(NULL, trans_ssh->healthcheck_timer);
 
 	/*

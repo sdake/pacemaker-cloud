@@ -97,10 +97,13 @@ show_usage(const char *name)
 	printf("\n");
 }
 
-int32_t signal_int(int32_t rsignal, void *data) {
+static int32_t
+signal_int(int32_t rsignal, void *data)
+{
+	qb_log(LOG_INFO, "exiting on signal %d", rsignal);
 	cape_exit();
 	qb_loop_stop(NULL);
-	return 0;
+	return -1;
 }
 
 int
