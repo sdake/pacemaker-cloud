@@ -440,7 +440,6 @@ static void ssh_assembly_connect(void *data)
 				assembly->name);
 		}
 
-		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
 		trans_ssh->ssh_state = SSH_KEEPALIVE_CONFIG;
 
 	case SSH_KEEPALIVE_CONFIG:
@@ -453,6 +452,7 @@ static void ssh_assembly_connect(void *data)
 		trans_ssh->ssh_state = SSH_SESSION_CONNECTED;
 
 	case SSH_SESSION_CONNECTED:
+		recover_state_set(&assembly->recover, RECOVER_STATE_RUNNING);
 		assembly_healthcheck(assembly);
 		break;
 	case SSH_SESSION_CONNECTING:
