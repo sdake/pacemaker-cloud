@@ -133,7 +133,7 @@ int32_t instance_create(struct assembly *assembly)
 	return 0;
 }
 
-int instance_stop(struct assembly *a)
+int instance_destroy(struct assembly *a)
 {
 	static struct deltacloud_api api;
 	struct deltacloud_instance *instances = NULL;

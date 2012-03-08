@@ -81,7 +81,7 @@ int32_t instance_create(struct assembly *assembly)
 	return 0;
 }
 
-int instance_stop(struct assembly *a)
+int instance_destroy(struct assembly *a)
 {
 	qb_enter();
 	qb_leave();

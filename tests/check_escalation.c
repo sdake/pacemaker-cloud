@@ -121,7 +121,7 @@ static void instance_notify_down(void *data)
 }
 
 
-int instance_stop(struct assembly *a)
+int instance_destroy(struct assembly *a)
 {
 	qb_log(LOG_INFO, "stopping instance");
 	ck_assert_int_eq(test_seq, RSEQ_MON_REPEAT_FAIL_2);

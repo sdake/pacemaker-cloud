@@ -123,7 +123,7 @@ instance_create(struct assembly *a)
 }
 
 int
-instance_stop(struct assembly *a)
+instance_destroy(struct assembly *a)
 {
 	qb_log(LOG_INFO, "stopping instance");
 	return 0;

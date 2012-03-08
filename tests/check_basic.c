@@ -128,7 +128,7 @@ int32_t instance_create(struct assembly *a)
 	return 0;
 }
 
-int instance_stop(struct assembly *a)
+int instance_destroy(struct assembly *a)
 {
 	qb_log(LOG_INFO, "stopping instance");
 	return 0;
