@@ -67,18 +67,24 @@ enum ssh_exec_state {
 	SSH_CHANNEL_FREE = 9
 };
 
-struct ssh_operation {
+struct ssh_op {
 	int ssh_rc;
-	struct assembly *assembly;
-	struct resource *resource;
 	struct qb_list_head list;
-	struct pe_operation *op;
 	qb_loop_timer_handle ssh_timer;
 	enum ssh_exec_state ssh_exec_state;
-	qb_loop_job_dispatch_fn completion_func;
+	void (*completion_func) (void *data, int rc);
+	void (*timeout_func) (void *data);
+	void *data;
 	LIBSSH2_CHANNEL *channel;
 	int failed;
 	char *command;
+	struct trans_ssh *transport;
+};
+
+struct ra_op {
+	struct assembly *assembly;
+	struct resource *resource;
+	struct pe_operation *pe_op;
 };
 
 struct trans_ssh {
@@ -102,11 +108,12 @@ static void assembly_ssh_exec(void *data);
 
 static void transport_schedule(struct trans_ssh *trans_ssh)
 {
-	struct ssh_operation *ssh_op;
+	struct ssh_op *ssh_op;
 
 	if (qb_list_empty(&trans_ssh->ssh_op_head) == 0) {
 		trans_ssh->scheduled = 1;
-		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_operation, list);
+		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_op, list);
+	assert(ssh_op);
 		qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	} else {
 		trans_ssh->scheduled = 0;
@@ -115,11 +122,12 @@ static void transport_schedule(struct trans_ssh *trans_ssh)
 
 static void transport_unschedule(struct trans_ssh *trans_ssh)
 {
-	struct ssh_operation *ssh_op;
+	struct ssh_op *ssh_op;
 
 	if (trans_ssh->scheduled) {
 		trans_ssh->scheduled = 0;
-		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_operation, list);
+		ssh_op = qb_list_entry(trans_ssh->ssh_op_head.next, struct ssh_op, list);
+	assert(ssh_op);
 		qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 	}
 }
@@ -133,15 +141,12 @@ static void transport_failed(struct trans_ssh *trans_ssh)
 	qb_leave();
 }
 
-static void ssh_op_complete(struct ssh_operation *ssh_op)
+static void ssh_op_complete(struct ssh_op *ssh_op)
 {
 	qb_loop_timer_del(NULL, ssh_op->ssh_timer);
 	qb_list_del(&ssh_op->list);
 	if (ssh_op->failed == 0) {
-		ssh_op->completion_func(ssh_op);
-	}
-	if (ssh_op->op) {
-		pe_resource_unref(ssh_op->op);
+		ssh_op->completion_func(ssh_op->data, ssh_op->ssh_rc);
 	}
 	free(ssh_op->command);
 	free(ssh_op);
@@ -149,8 +154,8 @@ static void ssh_op_complete(struct ssh_operation *ssh_op)
 
 static void assembly_ssh_exec(void *data)
 {
-	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
+	struct ssh_op *ssh_op = (struct ssh_op *)data;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->transport;
 	int rc;
 	char buffer[4096];
 	ssize_t rc_read;
@@ -336,6 +341,7 @@ channel_free:
 	return;
 
 job_repeat_schedule:
+	assert(ssh_op);
 	qb_loop_job_add(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
 
 	qb_leave();
@@ -343,25 +349,25 @@ job_repeat_schedule:
 
 static void ssh_timeout(void *data)
 {
-	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
-	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
+	struct ssh_op *ssh_op = (struct ssh_op *)data;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)ssh_op->transport;
 	struct qb_list_head *list_temp;
 	struct qb_list_head *list;
-	struct ssh_operation *ssh_op_del;
+	struct ssh_op *ssh_op_del;
 
 	qb_enter();
 
 	transport_unschedule(trans_ssh);
 
-	qb_log(LOG_NOTICE, "ssh service timeout on assembly '%s'", ssh_op->assembly->name);
+	qb_log(LOG_NOTICE, "ssh timeout for command '%s'", ssh_op->command);
 	qb_list_for_each_safe(list, list_temp, &trans_ssh->ssh_op_head) {
-		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
+		ssh_op_del = qb_list_entry(list, struct ssh_op, list);
 		qb_loop_timer_del(NULL, ssh_op_del->ssh_timer);
 		qb_list_del(list);
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 	}
 
-	recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
+	ssh_op->timeout_func(ssh_op->data);
 
 	qb_leave();
 }
@@ -467,87 +473,34 @@ job_repeat_schedule:
 	qb_leave();
 }
 
-static void
-ssh_op_delete(struct ssh_operation *ssh_op)
+static void assembly_healthcheck_failed(struct assembly *assembly)
 {
-	qb_enter();
-	qb_loop_job_del(NULL, QB_LOOP_LOW, ssh_op, assembly_ssh_exec);
-	qb_leave();
+	transport_failed(assembly->transport);
+	recover_state_set(&assembly->recover, RECOVER_STATE_FAILED);
 }
 
-static void
-ssh_nonblocking_exec(struct assembly *assembly,
-	struct resource *resource, struct pe_operation *op,
-	void (*completion_func)(void *),
-	char *format, ...)
-{
-	va_list ap;
-	struct ssh_operation *ssh_op;
-	struct trans_ssh *trans_ssh = assembly->transport;
-	char ssh_command_buffer[RESOURCE_COMMAND_MAX];
+static void assembly_healthcheck_timeout(void *data) {
+	struct assembly *assembly = (struct assembly *)data;
 
-	qb_enter();
-	/*
-	 * Only execute an opperation when in the connected state
-	 */
-	if (trans_ssh->ssh_state != SSH_SESSION_CONNECTED) {
-		qb_leave();
-		return;
-	}
-	ssh_op = calloc(1, sizeof(struct ssh_operation));
-
-	/*
-	 * 26 = "systemctl [start|stop|status] .service null-terminator
-	 */
-	va_start(ap, format);
-	vsnprintf(ssh_command_buffer, RESOURCE_COMMAND_MAX, format, ap);
-	va_end(ap);
-	ssh_op->command = strdup(ssh_command_buffer);
-
-	qb_log(LOG_NOTICE, "ssh_exec for assembly '%s' command '%s'",
-		assembly->name, ssh_op->command);
-
-	ssh_op->assembly = assembly;
-	ssh_op->ssh_rc = 0;
-	ssh_op->failed = 0;
-	ssh_op->op = op;
-	ssh_op->ssh_exec_state = SSH_CHANNEL_OPEN;
-	ssh_op->resource = resource;
-	ssh_op->completion_func = completion_func;
-	qb_list_init(&ssh_op->list);
-	qb_list_add_tail(&ssh_op->list, &trans_ssh->ssh_op_head);
-
-	if (trans_ssh->scheduled == 0) {
-		transport_schedule(trans_ssh);
-	}
-
-	if (op) {
-		pe_resource_ref(ssh_op->op);
-	}
-
-	qb_loop_timer_add(NULL, QB_LOOP_LOW,
-		SSH_TIMEOUT * QB_TIME_NS_IN_MSEC,
-		ssh_op, ssh_timeout, &ssh_op->ssh_timer);
-	qb_leave();
+	assembly_healthcheck_failed(assembly);
 }
 
-
-static void assembly_healthcheck_completion(void *data)
+static void assembly_healthcheck_completion(void *data, int ssh_rc)
 {
-	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
+	struct assembly *assembly = (struct assembly *)data;
 	struct trans_ssh *trans_ssh;
 
 	qb_enter();
 
-	trans_ssh = (struct trans_ssh *)ssh_op->assembly->transport;
+	trans_ssh = (struct trans_ssh *)assembly->transport;
 
-	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", ssh_op->assembly->name);
-	if (ssh_op->ssh_rc != 0) {
-		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_op->ssh_rc);
+	qb_log(LOG_NOTICE, "assembly_healthcheck_completion for assembly '%s'", assembly->name);
+	if (ssh_rc != 0) {
+		qb_log(LOG_NOTICE, "assembly healthcheck failed %d\n", ssh_rc);
 		transport_failed(trans_ssh);
-		ssh_op_delete(ssh_op);
-		recover_state_set(&ssh_op->assembly->recover, RECOVER_STATE_FAILED);
+		recover_state_set(&assembly->recover, RECOVER_STATE_FAILED);
 		//free(ssh_op);
+
 		qb_leave();
 		return;
 	}
@@ -556,10 +509,10 @@ static void assembly_healthcheck_completion(void *data)
 	/*
 	 * Add a healthcheck if asssembly is still running
 	 */
-	if (ssh_op->assembly->recover.state == RECOVER_STATE_RUNNING) {
-		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", ssh_op->assembly->name);
+	if (assembly->recover.state == RECOVER_STATE_RUNNING) {
+		qb_log(LOG_NOTICE, "adding a healthcheck timer for assembly '%s'", assembly->name);
 		qb_loop_timer_add(NULL, QB_LOOP_HIGH,
-			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, ssh_op->assembly,
+			HEALTHCHECK_TIMEOUT * QB_TIME_NS_IN_MSEC, assembly,
 			assembly_healthcheck, &trans_ssh->healthcheck_timer);
 	}
 
@@ -572,9 +525,8 @@ static void assembly_healthcheck(void *data)
 
 	qb_enter();
 
-	ssh_nonblocking_exec(assembly, NULL, NULL,
-		assembly_healthcheck_completion,
-		"uptime");
+	transport_execute(assembly->transport, assembly_healthcheck_completion,
+		assembly_healthcheck_timeout, assembly, SSH_TIMEOUT, "uptime");
 
 	qb_leave();
 }
@@ -604,25 +556,6 @@ static void connect_execute(void *data)
 	qb_leave();
 }
 
-static void resource_action_completion_cb(void *data)
-{
-	struct ssh_operation *ssh_op = (struct ssh_operation *)data;
-	enum ocf_exitcode pe_rc;
-
-	qb_enter();
-
-	if (strcmp(ssh_op->op->rclass, "lsb") == 0) {
-		pe_rc = pe_resource_ocf_exitcode_get(ssh_op->op, ssh_op->ssh_rc);
-	} else {
-		pe_rc = ssh_op->ssh_rc;
-	}
-
-	resource_action_completed(ssh_op->op, pe_rc);
-	ssh_op_delete(ssh_op);
-
-	qb_leave();
-}
-
 static int32_t
 set_ocf_env_with_prefix(const char *key, void *value, void *user_data)
 {
@@ -634,32 +567,80 @@ set_ocf_env_with_prefix(const char *key, void *value, void *user_data)
 	return 0;
 }
 
+
+void resource_action_completion(void *data, int ssh_rc)
+{
+	struct ra_op *ra_op = (struct ra_op *)data;
+	enum ocf_exitcode pe_rc;
+
+	qb_enter();
+
+	if (strcmp(ra_op->pe_op->rclass, "lsb") == 0) {
+		pe_rc = pe_resource_ocf_exitcode_get(ra_op->pe_op, ssh_rc);
+	} else {
+		pe_rc = ssh_rc;
+	}
+
+	resource_action_completed(ra_op->pe_op, pe_rc);
+	pe_resource_unref(ra_op->pe_op);
+	free(ra_op);
+
+	qb_leave();
+}
+
+void resource_action_timeout(void *data)
+{
+	struct ra_op *ra_op = (struct ra_op *)data;
+	qb_enter();
+
+	recover_state_set(&ra_op->assembly->recover, RECOVER_STATE_FAILED);
+	free(ra_op);
+
+	qb_leave();
+}
+
 /*
  * External API
  */
 void
-transport_resource_action(struct assembly * a,
-		   struct resource *r,
-		   struct pe_operation *op)
+transport_resource_action(struct assembly *assembly,
+		   struct resource *resource,
+		   struct pe_operation *pe_op)
 {
 	char envs[RESOURCE_ENVIRONMENT_MAX];
+	struct ra_op *ra_op;
 
 	qb_enter();
 
-	if (strcmp(op->rclass, "lsb") == 0) {
+	ra_op = calloc(1, sizeof (struct ra_op));
+	ra_op->assembly = assembly;
+	ra_op->resource = resource;
+	ra_op->pe_op = pe_op;
+
+	pe_resource_ref(pe_op);
+
+	if (strcmp(pe_op->rclass, "lsb") == 0) {
 		/*
 		 * LSB resource class
 		 */
-		if (strcmp(op->method, "monitor") == 0) {
-			ssh_nonblocking_exec(a, r, op,
-					     resource_action_completion_cb,
-					     "systemctl status %s.service",
-					     op->rtype);
+		if (strcmp(pe_op->method, "monitor") == 0) {
+			transport_execute(
+				assembly->transport,
+				resource_action_completion,
+				resource_action_timeout,
+				ra_op,
+				SSH_TIMEOUT,
+				"systemctl status %s.service",
+				ra_op->pe_op->rtype);
 		} else {
-			ssh_nonblocking_exec(a, r, op,
-					     resource_action_completion_cb,
-					     "systemctl %s %s.service",
-					     op->method, op->rtype);
+			transport_execute(
+				assembly->transport,
+				resource_action_completion,
+				resource_action_timeout,
+				ra_op,
+				SSH_TIMEOUT,
+				"systemctl %s %s.service",
+				ra_op->pe_op->method, ra_op->pe_op->rtype);
 		}
 	} else {
 		/*
@@ -667,28 +648,32 @@ transport_resource_action(struct assembly * a,
 		 */
 		sprintf(envs, "OCF_RA_VERSION_MAJOR=1 OCF_RA_VERSION_MINOR=0 OCF_ROOT=%s", OCF_ROOT);
 
-		if (op->rname) {
+		if (pe_op->rname) {
 			strcat(envs, "OCF_RESOURCE_INSTANCE=");
-			strcat(envs, op->rname);
+			strcat(envs, pe_op->rname);
 		}
 
-		if (op->rtype != NULL) {
+		if (pe_op->rtype != NULL) {
 			strcat(envs, "OCF_RESOURCE_TYPE=");
-			strcat(envs, op->rtype);
+			strcat(envs, pe_op->rtype);
 		}
 
-		if (op->rprovider != NULL) {
+		if (pe_op->rprovider != NULL) {
 			strcat(envs, "OCF_RESOURCE_PROVIDER=");
-			strcat(envs, op->rprovider);
+			strcat(envs, pe_op->rprovider);
 		}
-		if (op->params) {
-			qb_map_foreach(op->params, set_ocf_env_with_prefix, envs);
+		if (pe_op->params) {
+			qb_map_foreach(pe_op->params, set_ocf_env_with_prefix, envs);
 		}
-		ssh_nonblocking_exec(a, r, op,
-				     resource_action_completion_cb,
-				     "( %s %s/resource.d/%s/%s %s )",
-				     envs, OCF_ROOT, op->rprovider,
-				     op->rtype, op->method);
+		transport_execute(
+			assembly->transport,
+			resource_action_completion,
+			resource_action_timeout,
+			ra_op,
+			SSH_TIMEOUT,
+			"%s %s/resource.d/%s/%s %s )",
+			envs, OCF_ROOT, pe_op->rprovider,
+			pe_op->rtype, pe_op->method);
 	}
 
 	qb_leave();
@@ -735,7 +720,7 @@ void transport_disconnect(struct assembly *a)
 	struct trans_ssh *trans_ssh = (struct trans_ssh *)a->transport;
 	struct qb_list_head *list_temp;
 	struct qb_list_head *list;
-	struct ssh_operation *ssh_op_del;
+	struct ssh_op *ssh_op_del;
 
 	qb_enter();
 
@@ -767,7 +752,7 @@ void transport_disconnect(struct assembly *a)
 	 * Delete any outstanding ssh operations
 	 */
 	qb_list_for_each_safe(list, list_temp, &trans_ssh->ssh_op_head) {
-		ssh_op_del = qb_list_entry(list, struct ssh_operation, list);
+		ssh_op_del = qb_list_entry(list, struct ssh_op, list);
 
 		qb_log(LOG_NOTICE, "delete ssh operation '%s'", ssh_op_del->command);
 
@@ -796,5 +781,57 @@ void transport_disconnect(struct assembly *a)
 
 	free(a->transport);
 	close(trans_ssh->fd);
+	qb_leave();
+}
+
+void
+transport_execute(void *transport,
+	void (*completion_func)(void *data, int ssh_rc),
+	void (*timeout_func)(void *data),
+	void *data,
+	uint64_t timeout_msec,
+	char *format, ...)
+{
+	va_list ap;
+	struct trans_ssh *trans_ssh = (struct trans_ssh *)transport;
+	struct ssh_op *ssh_op;
+	char ssh_command_buffer[COMMAND_MAX];
+
+	qb_enter();
+
+	assert(transport);
+	/*
+	 * Only execute an opperation when in the connected state
+	 */
+	if (trans_ssh->ssh_state != SSH_SESSION_CONNECTED) {
+		qb_leave();
+		return;
+	}
+	ssh_op = calloc(1, sizeof(struct ssh_op));
+
+	va_start(ap, format);
+	vsnprintf(ssh_command_buffer, COMMAND_MAX, format, ap);
+	va_end(ap);
+	ssh_op->command = strdup(ssh_command_buffer);
+
+	qb_log(LOG_NOTICE, "transport_exec command '%s'", ssh_command_buffer);
+
+	ssh_op->ssh_rc = 0;
+	ssh_op->failed = 0;
+	ssh_op->data = data;
+	ssh_op->transport = transport;
+	ssh_op->ssh_exec_state = SSH_CHANNEL_OPEN;
+	ssh_op->completion_func = completion_func;
+	ssh_op->timeout_func = timeout_func;
+	qb_list_init(&ssh_op->list);
+	qb_list_add_tail(&ssh_op->list, &trans_ssh->ssh_op_head);
+
+	if (trans_ssh->scheduled == 0) {
+		transport_schedule(transport);
+	}
+
+	qb_loop_timer_add(NULL, QB_LOOP_LOW,
+		timeout_msec * QB_TIME_NS_IN_MSEC,
+		ssh_op, ssh_timeout, &ssh_op->ssh_timer);
 	qb_leave();
 }

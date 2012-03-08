@@ -38,6 +38,14 @@ void transport_disconnect(struct assembly *a);
 
 void transport_del(void *transport);
 
+void
+transport_execute(void *transport,
+	void (*completion_func)(void *data, int rc),
+        void (*timeout_func)(void *data),
+        void *data,
+        uint64_t timeout_msec,
+        char *format, ...);
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
 }
