@@ -118,8 +118,8 @@ AC_ARG_ENABLE([transport-ssh2],
 AC_ARG_ENABLE([transport-matahari],
 	AS_HELP_STRING([--disable-transport-matahari], [disable matahari transport.]))
 
-AC_ARG_ENABLE([api-openstack],
-	AS_HELP_STRING([--disable-api-openstack], [disable openstack api usage.]))
+AC_ARG_ENABLE([api-openstack1],
+	AS_HELP_STRING([--disable-api-openstack1], [disable openstack v1 api usage.]))
 
 AC_ARG_ENABLE([api-deltacloud],
 	AS_HELP_STRING([--disable-api-deltacloud], [disable deltacloud api usage.]))
@@ -209,13 +209,13 @@ AS_IF([test "x$enable_transport_matahari" != "xno"], [
 ])
 AM_CONDITIONAL(HAVE_TRANSPORT_MATAHARI, [test "x${enable_transport_matahari}" != "xno"])
 
-# check for openstack
+# check for openstack v1
 
-AS_IF([test "x$enable_api_openstack" != "xno"], [
-	AC_DEFINE([HAVE_API_OPENSTACK], 1,[have openstack API])
+AS_IF([test "x$enable_api_openstack1" != "xno"], [
+	AC_DEFINE([HAVE_API_OPENSTACK1], 1,[have openstack v1 API])
 	AC_MSG_NOTICE([Enabling openstack API])
 ])
-AM_CONDITIONAL(HAVE_API_OPENSTACK, [test "x${enable_api_openstack}" != "xno"])
+AM_CONDITIONAL(HAVE_API_OPENSTACK1, [test "x${enable_api_openstack1}" != "xno"])
 
 # check for deltacloud
 

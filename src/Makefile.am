@@ -30,12 +30,12 @@ SUBDIRS = pcloudsh
 
 sbin_PROGRAMS = cped
 
-if HAVE_API_OPENSTACK
+if HAVE_API_OPENSTACK1
 if HAVE_TRANSPORT_SSH2
-sbin_PROGRAMS += cape-sshd-os
+sbin_PROGRAMS += cape-sshd-os1
 endif
 if HAVE_TRANSPORT_MATAHARI
-sbin_PROGRAMS += cape-mh-os
+sbin_PROGRAMS += cape-mh-os1
 endif
 endif
 
@@ -70,26 +70,26 @@ cped_CPPFLAGS = $(libqb_CFLAGS) $(dbus_glib_1_CFLAGS) $(glib_CFLAGS) \
 cped_LDFLAGS  = $(libqb_LIBS) $(dbus_glib_1_LIBS) $(qmf_LIBS) $(glib_LIBS) \
 		$(libmicrohttpd_LIBS) $(libcurl_LIBS) $(libxml2_LIBS)
 
-cape_sshd_os_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c \
-	 pcmk_pe.c inst_ctrl.c openstack.c
+cape_sshd_os1_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c \
+	 pcmk_pe.c inst_ctrl.c openstackv1.c
 
-cape_sshd_os_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+cape_sshd_os1_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
 	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libcurl_CFLAGS) \
 	$(libssh2_CFLAGS)
 
-cape_sshd_os_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+cape_sshd_os1_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libcurl_LIBS) \
 	$(libssh2_LIBS)
 
-cape_mh_os_SOURCES  = caped.c capeadmin.c pcmk_pe.c recover.c cape.c \
-	matahari.cpp inst_ctrl.c openstack.c config_loader.cpp \
+cape_mh_os1_SOURCES  = caped.c capeadmin.c pcmk_pe.c recover.c cape.c \
+	matahari.cpp inst_ctrl.c openstackv1.c config_loader.cpp \
 	qmf_multiplexer.cpp qmf_object.cpp qmf_agent.cpp
 
-cape_mh_os_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
+cape_mh_os1_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 	$(libxml2_CFLAGS) -I$(qmfauto_path) $(pcmk_CFLAGS) $(libxslt_CFLAGS) \
 	$(uuid_CFLAGS) $(libcurl_CFLAGS)
 
-cape_mh_os_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+cape_mh_os1_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libcurl_LIBS)
 
 cape_sshd_dc_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c \
