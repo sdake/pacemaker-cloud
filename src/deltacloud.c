@@ -124,3 +124,25 @@ void image_id_get(char *image_name,
 
 	qb_leave();
 }
+
+void instance_destroy_by_instance_id(char *instance_id,
+	void (*completion_func)(void *data),
+	void *data)
+{
+	struct deltacloud_api api;
+	struct deltacloud_instance instance;
+	int rc;
+
+	rc = deltacloud_initialize(&api, "http://localhost:3001/api", "dep-wp", "");
+	if (rc < 0) {
+		qb_log(LOG_ERR, "Failed to initialize libdeltacloud: %s",
+		       deltacloud_get_last_error_string());
+
+		qb_leave();
+		return;
+	}
+
+	rc = deltacloud_get_instance_by_id(&api, instance_id, &instance);
+	deltacloud_instance_destroy(&api, &instance);
+	completion_func(data);
+}
