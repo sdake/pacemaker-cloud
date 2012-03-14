@@ -28,6 +28,8 @@ BuildRequires: libcurl-devel
 BuildRequires: python-nova
 BuildRequires: python-glance
 BuildRequires: libssh2-devel
+BuildRequires: libuuid-devel
+BuildRequires: libdeltacloud-devel
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
@@ -62,7 +64,9 @@ License: GPLv2+
 Summary: Core functionality of Pacemaker Cloud
 Group: System Environment/Base
 Requires: python-daemon
-Requires: python-qmf
+Requires: qpid-cpp-server
+Requires: python-qpid-qmf
+Requires: qpid-cpp-client
 Requires: qpid-cpp-server
 Requires: oz > 0.5.0-1
 
