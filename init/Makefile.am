@@ -24,7 +24,7 @@ sysconfsysconf_DATA = pacemaker-cloud
 
 systemdconfdir = /lib/systemd/system
 systemdconf_DATA = pcloud-cped.service pcloud-vmlauncher.service \
-	pcloud-qpidd.service pcloud-cape-sshd@.service
+	pcloud-qpidd.service pcloud-cape-sshd@.service pcloud-cape-cim.service
 
 EXTRA_DIST = $(systemdconf_DATA) $(sysconfsysconf_DATA)
 

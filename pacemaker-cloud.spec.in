@@ -121,11 +121,14 @@ fi
 %{_sbindir}/cape-sshd-dc
 %{_sbindir}/cape-mh-os1
 %{_sbindir}/cape-mh-dc
+%{_sbindir}/cape-cim-os1
+%{_sbindir}/cape-cim-dc
 %{_sysconfdir}/sysconfig/pacemaker-cloud
 %{_unitdir}/pcloud-cape-sshd@.service
 %{_unitdir}/pcloud-cped.service
 %{_unitdir}/pcloud-vmlauncher.service
 %{_unitdir}/pcloud-qpidd.service
+%{_unitdir}/pcloud-cape-cim.service
 %dir %attr(0755, root, root) %{_datadir}/pacemaker-cloud
 %{_datadir}/pacemaker-cloud/cf2pe.xsl
 %{_datadir}/pacemaker-cloud/resource_templates/

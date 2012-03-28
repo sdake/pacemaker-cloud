@@ -118,6 +118,9 @@ AC_ARG_ENABLE([transport-ssh2],
 AC_ARG_ENABLE([transport-matahari],
 	AS_HELP_STRING([--disable-transport-matahari], [disable matahari transport.]))
 
+AC_ARG_ENABLE([transport-cim],
+	AS_HELP_STRING([--disable-transport-cim], [disable CIM transport.]))
+
 AC_ARG_ENABLE([api-openstack1],
 	AS_HELP_STRING([--disable-api-openstack1], [disable openstack v1 api usage.]))
 
@@ -208,6 +211,19 @@ AS_IF([test "x$enable_transport_matahari" != "xno"], [
 	AC_MSG_NOTICE([Enabling matahari transport])
 ])
 AM_CONDITIONAL(HAVE_TRANSPORT_MATAHARI, [test "x${enable_transport_matahari}" != "xno"])
+
+# check for CIM
+
+AS_IF([test "x$enable_transport_ssh2" != "xno"], [
+	AC_DEFINE([HAVE_TRANSPORT_CIM], 1,[have CIM transport])
+	AC_MSG_NOTICE([Enabling CIM transport])
+	AC_CHECK_HEADER([cimc/cimc.h],,
+	  [fail=1; AC_MSG_WARN([Please install sblim-sfcc-devel])])
+	AC_CHECK_HEADER([CimClientLib/cmci.h],,
+	  [fail=1; AC_MSG_WARN([Please install sblim-sfcc-devel])])
+
+])
+AM_CONDITIONAL(HAVE_TRANSPORT_CIM, [test "x${enable_transport_cim}" != "xno"])
 
 # check for openstack v1
 

@@ -37,6 +37,9 @@ endif
 if HAVE_TRANSPORT_MATAHARI
 sbin_PROGRAMS += cape-mh-os1
 endif
+if HAVE_TRANSPORT_CIM
+sbin_PROGRAMS += cape-cim-os1
+endif
 endif
 
 if HAVE_API_DELTACLOUD
@@ -46,6 +49,9 @@ endif
 if HAVE_TRANSPORT_MATAHARI
 sbin_PROGRAMS += cape-mh-dc
 endif
+if HAVE_TRANSPORT_CIM
+sbin_PROGRAMS += cape-cim-dc
+endif
 endif
 
 noinst_HEADERS = config.h cpe_agent.h cpe_httpd.h mainloop.h \
@@ -53,7 +59,7 @@ noinst_HEADERS = config.h cpe_agent.h cpe_httpd.h mainloop.h \
 	schema.xml org/pacemakercloud/QmfPackage.cpp \
 	org/pacemakercloud/QmfPackage.h qmf_object.h \
 	qmf_multiplexer.h qmf_job.h qmf_agent.h cpe_impl.h trans.h cape.h \
-	matahari.h inst_ctrl.h
+	matahari.h inst_ctrl.h cim_service.h
 
 qmfauto_path = org/pacemakercloud
 qmfauto_c = $(qmfauto_path)/QmfPackage.cpp
@@ -92,6 +98,16 @@ cape_mh_os1_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 cape_mh_os1_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libcurl_LIBS)
 
+cape_cim_os1_SOURCES  = caped.c capeadmin.c recover.c cape.c trans_cim.c \
+	 cim_service.c pcmk_pe.c inst_ctrl.c openstackv1.c
+
+cape_cim_os1_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libcurl_CFLAGS)
+
+cape_cim_os1_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libcurl_LIBS) \
+	-lcmpisfcc -lcimcclient
+
 cape_sshd_dc_SOURCES = caped.c capeadmin.c recover.c cape.c trans_ssh.c \
 	 pcmk_pe.c inst_ctrl.c deltacloud.c
 
@@ -114,15 +130,29 @@ cape_mh_dc_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(qmf_CFLAGS) \
 cape_mh_dc_LDFLAGS  = $(libqb_LIBS) $(qmf_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
 	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS)
 
+cape_cim_dc_SOURCES = caped.c capeadmin.c recover.c cape.c trans_cim.c \
+	 cim_service.c pcmk_pe.c inst_ctrl.c deltacloud.c
+
+cape_cim_dc_CPPFLAGS = $(libqb_CFLAGS) $(glib_CFLAGS) $(libxml2_CFLAGS) \
+	$(pcmk_CFLAGS) $(libxslt_CFLAGS) $(uuid_LIBS) $(libdeltacloud_CFLAGS)
+
+cape_cim_dc_LDFLAGS  = $(libqb_LIBS) $(glib_LIBS) $(libxml2_LIBS) \
+	$(pcmk_LIBS) $(libxslt_LIBS) $(uuid_LIBS) $(libdeltacloud_LIBS) \
+	-lcmpisfcc -lcimcclient
+
 sloccount:
 	@echo -n "cape SSH OpenStack Monitor:      "
 	@sloccount $(cape_sshd_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cape Matahari OpenStack Monitor: "
 	@@sloccount $(cape_mh_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@echo -n "cape CIM OpenStack Monitor: "
+	@@sloccount $(cape_cim_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cape SSH Deltacloud Monitor:      "
 	@sloccount $(cape_sshd_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cape Matahari Deltacloud Monitor: "
 	@@sloccount $(cape_mh_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
+	@echo -n "cape CIM Deltacloud Monitor: "
+	@@sloccount $(cape_cim_os_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@echo -n "cpe:                   "
 	@sloccount $(cped_SOURCES) | grep Physical | cut --delimiter== --fields=2
 	@cd pcloudsh; make -f Makefile sloccount

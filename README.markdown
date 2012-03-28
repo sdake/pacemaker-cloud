@@ -41,6 +41,10 @@
 
  - To build without, ./configure --disable-transport-matahari
 
+* [sblim sfcc](http://sblim.sourceforge.net/)
+
+ - To build without, ./configure --disable-transport-cim
+
 * [deltacloud](http://deltalcloud.apache.org/)
 
  - To build without, ./configure --disable-api-deltacloud
